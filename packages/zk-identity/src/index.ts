@@ -1,41 +1,81 @@
+import { ZKPassport } from "@zkpassport/sdk";
 import type { Eligibility } from "@voto-anonimo/shared-types";
 
 /**
- * Capa de abstracción sobre el proveedor de identidad ZK.
+ * Capa de abstraccion sobre el proveedor de identidad ZK.
  *
- * Ningún otro paquete de este monorepo debe importar el SDK de ZKPassport
- * (ni ningún otro proveedor) directamente. Todo pasa por aquí, para poder
- * sustituir el proveedor en el futuro (p.ej. por la Cartera Europea de
- * Identidad Digital / eIDAS 2.0) tocando solo este paquete.
+ * Ningun otro paquete de este monorepo debe importar @zkpassport/sdk
+ * directamente. Todo pasa por aqui, para poder sustituir el proveedor en el
+ * futuro (p.ej. por la Cartera Europea de Identidad Digital / eIDAS 2.0)
+ * tocando solo este paquete.
  *
- * NOTA: esto es un esqueleto de PoC. La integración real con
- * @zkpassport/sdk (escaneo NFC/MRZ, generación de la prueba, verificación
- * on-chain) queda pendiente de implementar.
+ * LIMITACION IMPORTANTE (ver docs/modelo-amenazas.md): el chip NFC del
+ * DNIe/pasaporte no contiene datos de empadronamiento ni de anios de
+ * residencia - solo nacionalidad, edad, nombre y algunos campos mas. Esta
+ * capa prueba nacionalidad espaniola y mayoria de edad sin revelarlas. El
+ * empadronamiento y los 5 anios de residencia siguen requiriendo un oraculo
+ * externo (convenio con el INE / Padron), pendiente de implementar.
  */
 
-export interface ResultadoVerificacionIdentidad {
-  /** true si la prueba es válida y cumple los requisitos de elegibilidad. */
+const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
+
+export interface SolicitudVerificacion {
+  url: string;
+  requestId: string;
+}
+
+export async function crearSolicitudVerificacion(
+  elegibilidad: Eligibility
+): Promise<SolicitudVerificacion> {
+  const zkPassport = new ZKPassport(APP_DOMAIN);
+
+  const queryBuilder = await zkPassport.request({
+    name: "Voto Anonimo",
+    logo: "https://voto-anonimo.example/logo.png",
+    purpose: "Verificar que puedes votar sin revelar tu identidad",
+    scope: "voto-anonimo-elegibilidad",
+  });
+
+  let query = queryBuilder;
+
+  if (elegibilidad.edadMinima > 0) {
+    query = query.gte("age", elegibilidad.edadMinima);
+  }
+  if (elegibilidad.requiereDniEspanol) {
+    // TODO: confirmar en docs.zkpassport.id el codigo de pais exacto
+    // (alpha-3 "ESP") antes de pasar a produccion.
+    query = query.eq("nationality", "ESP");
+  }
+
+  const { url, requestId } = query.done();
+
+  return { url, requestId };
+}
+
+export interface ResultadoVerificacionServidor {
   valido: boolean;
-  /** Identificador único no vinculable a la identidad real, para evitar doble voto. */
-  nullifier: string;
-  /** La prueba ZK en sí, para adjuntar al voto. */
-  pruebaZk: string;
+  identificadorUnico: string | null;
+  errores?: unknown;
 }
 
-/**
- * Solicita al votante que escanee su documento (DNIe/pasaporte) y genere una
- * prueba ZK de que cumple los requisitos de elegibilidad, sin revelar sus
- * datos personales.
- */
-export async function verificarIdentidad(
-  _elegibilidad: Eligibility
-): Promise<ResultadoVerificacionIdentidad> {
-  throw new Error(
-    "TODO: integrar @zkpassport/sdk aqui. Ver docs.zkpassport.id para el flujo de escaneo NFC/MRZ y generacion de prueba."
-  );
-}
+export async function verificarPruebaServidor(params: {
+  proofs: unknown;
+  query: unknown;
+  queryResult: unknown;
+}): Promise<ResultadoVerificacionServidor> {
+  const zkPassport = new ZKPassport(APP_DOMAIN);
 
-/** Verifica, del lado del servidor/contrato, que una prueba ZK es válida. */
-export async function verificarPrueba(_pruebaZk: string): Promise<boolean> {
-  throw new Error("TODO: verificacion server-side de la prueba ZK.");
+  // TODO: sustituir `any` por los tipos reales exportados por @zkpassport/sdk
+  // (Proofs, QueryResult, Query) en cuanto se confirmen en la documentacion.
+  const { verified, queryResultErrors, uniqueIdentifier } = await zkPassport.verify({
+    proofs: params.proofs,
+    originalQuery: params.query,
+    queryResult: params.queryResult,
+  } as any);
+
+  return {
+    valido: verified,
+    identificadorUnico: uniqueIdentifier ?? null,
+    errores: queryResultErrors,
+  };
 }

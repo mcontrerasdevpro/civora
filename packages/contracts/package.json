@@ -1,0 +1,12 @@
+{
+  "name": "@voto-anonimo/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.0"
+  }
+}

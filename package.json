@@ -1,0 +1,13 @@
+{
+  "name": "voto-anonimo",
+  "private": true,
+  "version": "0.0.1",
+  "description": "PoC de sistema de voto anonimo y verificable para presentar a organismos y ciudadania.",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

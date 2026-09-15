@@ -1,0 +1,14 @@
+{
+  "name": "@voto-anonimo/zk-identity",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@voto-anonimo/shared-types": "workspace:*",
+    "@zkpassport/sdk": "PENDIENTE_FIJAR_VERSION"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

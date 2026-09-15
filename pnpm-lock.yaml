@@ -56,6 +56,10 @@ importers:
       '@zkpassport/sdk':
         specifier: ^0.16.2
         version: 0.16.2(typescript@5.9.3)(zod@3.25.76)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.12.0
+        version: 20.19.43
 
 packages:
 

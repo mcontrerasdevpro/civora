@@ -31,9 +31,10 @@ contract VotacionAnonima {
 
     mapping(bytes32 => Propuesta) public propuestas;
     mapping(bytes32 => mapping(bytes32 => bool)) public nullifierUsado; // propuestaId => nullifier => usado
+    mapping(bytes32 => mapping(bytes32 => Opcion)) public votoDeNullifier; // propuestaId => nullifier => opcion
 
     event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 cierre);
-    event VotoEmitido(bytes32 indexed propuestaId, Opcion opcion);
+    event VotoEmitido(bytes32 indexed propuestaId, bytes32 indexed nullifier, Opcion opcion);
 
     constructor(address _verificadorZk) {
         verificadorZk = _verificadorZk;
@@ -66,6 +67,7 @@ contract VotacionAnonima {
         pruebaZk;
 
         nullifierUsado[propuestaId][nullifier] = true;
+        votoDeNullifier[propuestaId][nullifier] = opcion;
 
         if (opcion == Opcion.AFavor) {
             p.aFavor += 1;
@@ -75,7 +77,7 @@ contract VotacionAnonima {
             p.abstenciones += 1;
         }
 
-        emit VotoEmitido(propuestaId, opcion);
+        emit VotoEmitido(propuestaId, nullifier, opcion);
     }
 
     function resultados(bytes32 propuestaId)
@@ -86,5 +88,16 @@ contract VotacionAnonima {
         Propuesta storage p = propuestas[propuestaId];
         require(p.existe, "Propuesta inexistente");
         return (p.aFavor, p.enContra, p.abstenciones);
+    }
+
+    /// @notice Recibo publico: permite a un votante comprobar, con su nullifier,
+    ///         que su voto quedo contado y como. No revela su identidad real.
+    function votoDe(bytes32 propuestaId, bytes32 nullifier)
+        external
+        view
+        returns (bool registrado, Opcion opcion)
+    {
+        registrado = nullifierUsado[propuestaId][nullifier];
+        opcion = votoDeNullifier[propuestaId][nullifier];
     }
 }

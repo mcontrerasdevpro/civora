@@ -1,7 +1,7 @@
-# Voto Anonimo
+# CÍVORA
 
-Prueba de concepto de un sistema de voto anonimo y verificable, pensada para
-presentar a organismos y ciudadania: demostrar que es posible construir un
+Infraestructura de votación verificable — prueba de concepto pensada para
+presentar a organismos y ciudadanía: demostrar que es posible construir un
 mecanismo de voto fiable, resistente al fraude y con la identidad del
 votante certificada sin quedar nunca vinculada a su voto.
 
@@ -23,10 +23,10 @@ unico que llega al voto.
 
 | Componente | Ubicacion | Estado |
 |---|---|---|
-| Landing / web | apps/web | Pagina de inicio terminada; /votar, /resultados, /verificar son esqueletos |
+| Landing / web | apps/web | Landing, /votar, /resultados y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
-| Identidad ZK | packages/zk-identity | Interfaz propia sobre ZKPassport, integracion real pendiente |
-| Contratos | packages/contracts | VotacionAnonima.sol - voto por nullifier, sin doble voto, verificacion ZK pendiente |
+| Identidad ZK | packages/zk-identity | Interfaz propia sobre ZKPassport, integracion real pendiente; /votar deriva un nullifier localmente en el navegador a modo de demo |
+| Contratos | packages/contracts | VotacionAnonima.sol - voto por nullifier, sin doble voto, recuento y recibo por nullifier; verificacion ZK on-chain pendiente |
 | Documentacion | docs/ | Especificacion publica y modelo de amenazas |
 
 Ver docs/especificacion-publica.md para el detalle de cada componente y
@@ -39,13 +39,27 @@ Este repo esta preparado para abrirse directamente en GitHub Codespaces
 (.devcontainer ya configurado) o en local con pnpm:
 
 pnpm install
+
+El contrato necesita un nodo Ethereum local corriendo antes de arrancar la
+web (en dos terminales):
+
+pnpm --filter @civora/contracts node
+pnpm --filter @civora/contracts deploy:localhost
+
+El script de despliegue crea la propuesta de ejemplo y escribe la
+direccion + ABI en apps/web/lib/generated/despliegue-localhost.json
+(se regenera en cada despliegue, no se versiona). Con eso ya se puede
+arrancar la web:
+
 pnpm dev
 
-La web queda disponible en http://localhost:3000
+La web queda disponible en http://localhost:3000. Si reinicias el nodo de
+Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
+cambia con cada nodo nuevo).
 
 ## Estructura
 
-voto-anonimo/
+civora/
   apps/web         -> Next.js: landing, formulario, resultados, verificador
   packages/contracts    -> Contrato de votacion (Solidity)
   packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)

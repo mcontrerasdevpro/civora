@@ -5,8 +5,10 @@ build/
 .env
 .env.local
 *.log
+*.tsbuildinfo
 .turbo/
 coverage/
 artifacts/
 cache/
 typechain-types/
+apps/web/lib/generated/

@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import "./globals.css";
+import { SiteHeader } from "./components/SiteHeader";
+import { SiteFooter } from "./components/SiteFooter";
 
 export const metadata = {
-  title: "Voto Anónimo — Prueba de concepto",
+  title: "CÍVORA — Infraestructura de votación verificable",
   description:
-    "Sistema de voto anónimo y verificable, con identificación por DNI o certificado digital y voto desvinculado de la identidad real.",
+    "Votación digital con identidad certificada (DNIe o certificado digital) y pruebas criptográficas: tu identidad acredita que puedes votar, nunca revela qué has votado.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -18,11 +20,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <SiteHeader />
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

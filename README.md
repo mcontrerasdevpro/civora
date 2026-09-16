@@ -57,6 +57,33 @@ La web queda disponible en http://localhost:3000. Si reinicias el nodo de
 Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
 cambia con cada nodo nuevo).
 
+## Desplegar en Sepolia + Vercel
+
+Para una demo publica (Vercel) el contrato no puede vivir en un nodo
+Hardhat local: se despliega en la testnet Sepolia, gratuita (ver
+docs/especificacion-publica.md).
+
+1. Consigue una URL de RPC de Sepolia (Alchemy o Infura, plan gratuito) y
+   una cuenta con ETH de Sepolia de un faucet.
+2. En `packages/contracts/.env` (no se versiona):
+
+   SEPOLIA_RPC_URL=...
+   SEPOLIA_PRIVATE_KEY=...   # clave de la cuenta del paso anterior, sin 0x opcional
+
+3. Despliega:
+
+   pnpm --filter @civora/contracts deploy:sepolia
+
+   El script imprime la direccion del contrato desplegado.
+4. En Vercel (Settings -> Environment Variables del proyecto), define:
+
+   CONTRATO_DIRECCION=<direccion impresa en el paso anterior>
+   HARDHAT_RPC_URL=<la misma SEPOLIA_RPC_URL>
+   HARDHAT_RELAYER_PRIVATE_KEY=<una clave con ETH de Sepolia; paga el gas de los votos>
+
+   Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
+   local y busca el despliegue de Hardhat.
+
 ## Estructura
 
 civora/

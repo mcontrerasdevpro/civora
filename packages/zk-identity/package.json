@@ -1,11 +1,11 @@
 {
-  "name": "@voto-anonimo/zk-identity",
+  "name": "@civora/zk-identity",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "dependencies": {
-    "@voto-anonimo/shared-types": "workspace:*",
+    "@civora/shared-types": "workspace:*",
     "@zkpassport/sdk": "^0.16.2"
   },
   "scripts": {

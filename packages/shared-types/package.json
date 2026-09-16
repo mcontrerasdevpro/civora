@@ -1,5 +1,5 @@
 {
-  "name": "@voto-anonimo/shared-types",
+  "name": "@civora/shared-types",
   "version": "0.0.1",
   "private": true,
   "main": "./src/index.ts",

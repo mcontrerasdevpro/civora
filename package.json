@@ -1,8 +1,8 @@
 {
-  "name": "voto-anonimo",
+  "name": "civora",
   "private": true,
   "version": "0.0.1",
-  "description": "PoC de sistema de voto anonimo y verificable para presentar a organismos y ciudadania.",
+  "description": "CIVORA: infraestructura de votacion verificable, PoC para presentar a organismos y ciudadania.",
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "dev": "pnpm --filter web dev",

@@ -1,5 +1,5 @@
 import { ZKPassport } from "@zkpassport/sdk";
-import type { Eligibility } from "@voto-anonimo/shared-types";
+import type { Eligibility } from "@civora/shared-types";
 
 /**
  * Capa de abstraccion sobre el proveedor de identidad ZK.
@@ -30,10 +30,10 @@ export async function crearSolicitudVerificacion(
   const zkPassport = new ZKPassport(APP_DOMAIN);
 
   const queryBuilder = await zkPassport.request({
-    name: "Voto Anonimo",
-    logo: "https://voto-anonimo.example/logo.png",
+    name: "CIVORA",
+    logo: "https://civora.example/logo.png",
     purpose: "Verificar que puedes votar sin revelar tu identidad",
-    scope: "voto-anonimo-elegibilidad",
+    scope: "civora-elegibilidad",
   });
 
   let query = queryBuilder;

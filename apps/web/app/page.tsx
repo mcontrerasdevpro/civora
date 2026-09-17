@@ -136,30 +136,32 @@ export default function Home() {
           <div className="hero-overlay" />
         </div>
 
-        <div className="wrap hero-contenido">
-          <div className="hero-kicker">
-            <LogoMark size={40} />
-            <span className="brand-text">
-              <span className="brand-name">CÍVORA</span>
-              <span className="brand-tagline">Infraestructura de votación verificable</span>
-            </span>
-          </div>
-          <h1>
-            Tu identidad acredita que puedes votar.
-            <br />
-            <span className="acento">Nunca revela qué has votado.</span>
-          </h1>
-          <p className="lede">
-            Una nueva generación de votación digital basada en identidad
-            certificada y pruebas criptográficas.
-          </p>
-          <div className="hero-actions">
-            <Link className="btn-primary" href="/propuestas">
-              Probar demostración →
-            </Link>
-            <a className="btn-ghost" href="#como-funciona">
-              Cómo funciona
-            </a>
+        <div className="wrap">
+          <div className="hero-contenido">
+            <div className="hero-kicker">
+              <LogoMark size={56} />
+              <span className="brand-text">
+                <span className="brand-name">CÍVORA</span>
+                <span className="brand-tagline">Infraestructura de votación verificable</span>
+              </span>
+            </div>
+            <h1>
+              Tu identidad acredita que puedes votar.
+              <br />
+              <span className="acento">Nunca revela qué has votado.</span>
+            </h1>
+            <p className="lede">
+              Una nueva generación de votación digital basada en identidad
+              certificada y pruebas criptográficas.
+            </p>
+            <div className="hero-actions">
+              <Link className="btn-primary" href="/propuestas">
+                Probar demostración →
+              </Link>
+              <a className="btn-ghost" href="#como-funciona">
+                Cómo funciona
+              </a>
+            </div>
           </div>
         </div>
       </section>

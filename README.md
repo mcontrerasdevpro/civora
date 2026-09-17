@@ -26,7 +26,7 @@ unico que llega al voto.
 | Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad ZK | packages/zk-identity | Integracion real con ZKPassport: /votar ofrece DNIe/pasaporte por NFC (prueba ZK real contra el dominio demo de ZKPassport), certificado digital (pendiente, requiere TLS mutuo) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
-| Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; verificacion ZK on-chain pendiente |
+| Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; la via DNIe verifica la prueba ZKPassport dentro del propio contrato, contra el RootVerifier oficial |
 | Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Especificacion publica y modelo de amenazas |
 
@@ -110,18 +110,37 @@ docs/especificacion-publica.md).
    Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
    local y busca el despliegue de Hardhat.
 
-## Identidad con ZKPassport
+## Identidad con ZKPassport (verificacion on-chain)
 
-La via de DNIe/pasaporte de /votar usa el dominio de pruebas de ZKPassport
-por defecto (`demo.zkpassport.id`, en `devMode`), que acepta pruebas mock
-sin necesidad de un documento fisico. Variables de entorno opcionales
-(`apps/web/.env.local`):
+La via de DNIe/pasaporte genera una prueba en modo `compressed-evm` y la
+envia, sin verificarla en ningun servidor, a
+`VotacionAnonima.votarConPruebaZk`: el contrato la verifica el mismo,
+llamando al **RootVerifier oficial de ZKPassport**
+(`0x1D000001000EFD9a6371f4d90bB8920D5431c0D8`, mismo address en Ethereum,
+Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
+genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
+Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
+prueba criptografica valida. En redes locales de Hardhat se despliega en su
+lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
+verificador real solo existe en redes publicas.
 
+Por defecto se usa el dominio de pruebas de ZKPassport (`demo.zkpassport.id`,
+en `devMode`), que acepta pruebas mock sin necesidad de un documento fisico.
+Variables de entorno (deben coincidir en la web y en el despliegue del
+contrato, o `votarConPruebaZk` rechaza toda prueba):
+
+    # apps/web/.env.local
     NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
     NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
 
+    # packages/contracts/.env
+    ZKPASSPORT_DOMAIN=tu-dominio.com
+    ZKPASSPORT_DEV_MODE=false
+
 Para una demo publica con documentos reales, registra el dominio del
-despliegue de Vercel en el dashboard de ZKPassport y desactiva `devMode`.
+despliegue de Vercel en el dashboard de ZKPassport, desactiva `devMode` en
+ambos sitios y vuelve a desplegar el contrato (`devModeZk` es inmutable,
+fijado en el constructor).
 
 ## Estructura
 
@@ -142,6 +161,10 @@ civora/
   tocar el resto del sistema.
 - Voto por nullifier: cada prueba de elegibilidad genera un identificador
   unico que impide votar dos veces sin revelar quien voto.
+- Verificacion ZK dentro del contrato, no en un servidor de confianza:
+  `votarConPruebaZk` llama directamente al RootVerifier oficial de
+  ZKPassport, así que no hay que confiar en que el operador de este sistema
+  verifique honestamente antes de aceptar un voto.
 
 ## Aviso legal
 

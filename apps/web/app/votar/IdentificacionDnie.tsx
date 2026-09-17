@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { crearSolicitudVerificacion } from "@civora/zk-identity";
+import { crearSolicitudVerificacion, obtenerParametrosVerificacionOnChain } from "@civora/zk-identity";
 import type { Propuesta } from "@civora/shared-types";
+import type { Identificacion } from "./identificacion";
 
-type Estado = "iniciando" | "esperando" | "generando" | "verificando" | "error";
+type Estado = "iniciando" | "esperando" | "generando" | "preparando" | "error";
 
 const MENSAJES: Record<Estado, string> = {
   iniciando: "Preparando la solicitud de verificación…",
   esperando: "Escanea el código con la app de ZKPassport en tu móvil.",
   generando: "Generando la prueba de elegibilidad en tu móvil…",
-  verificando: "Verificando la prueba en el servidor…",
+  preparando: "Prueba generada. Preparando tu voto…",
   error: "No se ha podido completar la verificación.",
 };
 
@@ -21,7 +22,7 @@ export function IdentificacionDnie({
   onCambiarMetodo,
 }: {
   propuesta: Propuesta;
-  onVerificado: (nullifier: string) => void;
+  onVerificado: (identificacion: Identificacion) => void;
   onCambiarMetodo: () => void;
 }) {
   const [estado, setEstado] = useState<Estado>("iniciando");
@@ -66,10 +67,10 @@ export function IdentificacionDnie({
           setEstado("error");
         });
 
-        solicitud.onResult(async ({ verified, uniqueIdentifier, proofs, result }) => {
+        solicitud.onResult(({ verified, proofs }) => {
           if (cancelado) return;
 
-          if (!verified || !uniqueIdentifier) {
+          if (!verified) {
             setMensajeError(
               "No se ha podido generar una prueba válida. Comprueba que cumples los requisitos (mayoría de edad, DNI español)."
             );
@@ -77,31 +78,21 @@ export function IdentificacionDnie({
             return;
           }
 
-          setEstado("verificando");
+          setEstado("preparando");
           try {
-            const respuesta = await fetch("/api/identidad/zkpassport/verificar", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                propuestaId: propuesta.id,
-                proofs,
-                query: solicitud.query,
-                queryResult: result,
-              }),
+            const parametrosVerificacion = obtenerParametrosVerificacionOnChain({
+              proofs,
+              propuestaId: propuesta.id,
             });
-            const cuerpo = await respuesta.json();
-            if (cancelado) return;
-            if (!respuesta.ok || !cuerpo.nullifier) {
-              setMensajeError(cuerpo.error ?? "No se ha podido verificar la prueba en el servidor.");
-              setEstado("error");
-              return;
-            }
-            onVerificado(cuerpo.nullifier);
-          } catch {
-            if (!cancelado) {
-              setMensajeError("No se ha podido contactar con el servidor.");
-              setEstado("error");
-            }
+            // La verificacion real ocurre dentro del contrato al votar
+            // (VotacionAnonima.votarConPruebaZk): aqui solo se preparan los
+            // parametros, sin confiar en nada todavia.
+            onVerificado({ tipo: "zk", parametrosVerificacion });
+          } catch (err) {
+            setMensajeError(
+              err instanceof Error ? err.message : "No se ha podido preparar la prueba para el contrato."
+            );
+            setEstado("error");
           }
         });
       } catch (err) {
@@ -142,7 +133,8 @@ export function IdentificacionDnie({
         </a>{" "}
         tras leer el chip NFC de tu DNIe o pasaporte. La app genera una
         prueba de que cumples los requisitos (edad, nacionalidad) sin enviar
-        tu documento ni tus datos personales a este servidor.
+        tu documento ni tus datos personales a este servidor: la prueba se
+        verifica dentro del propio contrato al emitir el voto.
       </p>
 
       {estado === "error" ? (

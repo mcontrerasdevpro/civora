@@ -2,14 +2,33 @@ const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
+// Mismo address en Ethereum, Sepolia y Base (ver https://docs.zkpassport.id).
+const ROOT_VERIFIER_ZKPASSPORT = "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8";
+
+// Deben coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN / NEXT_PUBLIC_ZKPASSPORT_DEV_MODE
+// de la web (ver README): de lo contrario votarConPruebaZk rechaza toda prueba.
+const DOMINIO_ZK = process.env.ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
+const DEV_MODE_ZK = process.env.ZKPASSPORT_DEV_MODE !== "false";
+
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
 
+  let direccionVerificador;
+  if (hre.network.name === "localhost" || hre.network.name === "hardhat") {
+    // En redes locales no existe el RootVerifier real: se despliega un mock
+    // que permite fijar de antemano el resultado de la verificacion (ver
+    // contracts/zkpassport/MockRootVerifier.sol y test/VotacionAnonima.test.js).
+    const MockRootVerifier = await hre.ethers.getContractFactory("MockRootVerifier");
+    const mock = await MockRootVerifier.deploy();
+    await mock.waitForDeployment();
+    direccionVerificador = await mock.getAddress();
+    console.log("MockRootVerifier (solo test local) desplegado en", direccionVerificador);
+  } else {
+    direccionVerificador = ROOT_VERIFIER_ZKPASSPORT;
+  }
+
   const VotacionAnonima = await hre.ethers.getContractFactory("VotacionAnonima");
-  // Verificador ZK real pendiente (ver docs/modelo-amenazas.md): se usa la
-  // direccion del propio deployer como placeholder, sin efecto todavia
-  // porque el contrato aun no llama al verificador.
-  const contrato = await VotacionAnonima.deploy(deployer.address);
+  const contrato = await VotacionAnonima.deploy(direccionVerificador, DOMINIO_ZK, DEV_MODE_ZK);
   await contrato.waitForDeployment();
 
   const artifact = await hre.artifacts.readArtifact("VotacionAnonima");
@@ -30,6 +49,7 @@ async function main() {
   );
 
   console.log("VotacionAnonima desplegado en", deployment.address);
+  console.log(`Verificador ZK: ${direccionVerificador} · dominio: ${DOMINIO_ZK} · devMode: ${DEV_MODE_ZK}`);
   console.log(
     "Las propuestas ya no se crean aqui: usa el formulario /propuestas/nueva de la web " +
       "(necesita DATABASE_URL configurada, ver README)."

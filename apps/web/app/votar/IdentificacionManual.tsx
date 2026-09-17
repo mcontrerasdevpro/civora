@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Propuesta } from "@civora/shared-types";
 import { derivarNullifierManual } from "../../lib/nullifier-manual";
 import { dniValido, edadCumplida, normalizarDni } from "../../lib/validacion-dni";
+import type { Identificacion } from "./identificacion";
 
 export function IdentificacionManual({
   propuesta,
@@ -11,7 +12,7 @@ export function IdentificacionManual({
   onCambiarMetodo,
 }: {
   propuesta: Propuesta;
-  onVerificado: (nullifier: string) => void;
+  onVerificado: (identificacion: Identificacion) => void;
   onCambiarMetodo: () => void;
 }) {
   const [dni, setDni] = useState("");
@@ -41,7 +42,7 @@ export function IdentificacionManual({
     }
 
     const nullifier = await derivarNullifierManual(propuesta.id, normalizarDni(dni));
-    onVerificado(nullifier);
+    onVerificado({ tipo: "manual", nullifier });
   }
 
   return (

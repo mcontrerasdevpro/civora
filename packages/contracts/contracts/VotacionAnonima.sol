@@ -1,15 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.30;
+
+import {IRootVerifier, IVerifierHelper} from "./zkpassport/IRootVerifier.sol";
+import {ProofVerificationParams} from "./zkpassport/Types.sol";
 
 /// @title VotacionAnonima
-/// @notice Esqueleto de PoC. Registra votos identificados solo por un
-///         "nullifier" derivado de una prueba ZK (ver packages/zk-identity),
-///         de forma que el mismo documento no puede votar dos veces sin que
-///         el contrato conozca la identidad real del votante.
-/// @dev Inspirado en el patron IDCardVoting/BioPassportVoting visto en
-///      council-dao, simplificado y con logica de elegibilidad propia
-///      (empadronamiento + 5 anios de residencia) pendiente de anadir en el
-///      verificador de pruebas.
+/// @notice Registra votos identificados solo por un "nullifier", de forma
+///         que el mismo documento no puede votar dos veces sin que el
+///         contrato conozca la identidad real del votante.
+/// @dev Dos vias de voto:
+///      - votarConPruebaZk: la prueba de elegibilidad (DNIe/pasaporte via
+///        ZKPassport) se verifica aqui mismo, contra el verificador oficial
+///        de ZKPassport (`verificadorZk`). Ni el operador de este sistema ni
+///        nadie mas puede aceptar un voto por esta via sin una prueba
+///        criptografica valida.
+///      - votarManual: via de respaldo sin prueba criptografica (ver
+///        docs/modelo-amenazas.md), para cuando no se dispone de DNIe/NFC.
+///      Empadronamiento y 5 anios de residencia siguen sin verificacion real
+///      (el chip del documento no los contiene, ver README/modelo-amenazas).
 contract VotacionAnonima {
     enum Opcion {
         AFavor,
@@ -27,8 +35,23 @@ contract VotacionAnonima {
         bool existe;
     }
 
-    /// @dev Verificador externo de pruebas ZK (pendiente de implementar).
-    address public verificadorZk;
+    /// @dev Requisitos de elegibilidad fijos para toda la instancia (iguales a los
+    ///      que ya usa el formulario de creacion de propuestas). Personalizar
+    ///      la edad/nacionalidad por propuesta queda pendiente.
+    uint8 public constant EDAD_MINIMA = 18;
+    /// @dev Antiguedad maxima aceptada de una prueba, para que no se pueda
+    ///      reutilizar una prueba generada hace mucho tiempo.
+    uint256 public constant FRESCURA_PRUEBA = 1 days;
+
+    /// @notice Verificador oficial de pruebas ZKPassport (mismo address en
+    ///         Ethereum, Sepolia y Base). En redes locales de test se usa un
+    ///         MockRootVerifier (ver contracts/zkpassport/MockRootVerifier.sol).
+    IRootVerifier public immutable verificadorZk;
+    /// @notice Debe coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN en la web.
+    string public dominioZk;
+    /// @notice Si es false, este contrato rechaza pruebas generadas en modo
+    ///         desarrollo (documentos simulados / mock).
+    bool public immutable devModeZk;
 
     mapping(bytes32 => Propuesta) public propuestas;
     mapping(bytes32 => mapping(bytes32 => bool)) public nullifierUsado; // propuestaId => nullifier => usado
@@ -37,8 +60,17 @@ contract VotacionAnonima {
     event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 apertura, uint256 cierre);
     event VotoEmitido(bytes32 indexed propuestaId, bytes32 indexed nullifier, Opcion opcion);
 
-    constructor(address _verificadorZk) {
-        verificadorZk = _verificadorZk;
+    error PruebaInvalida();
+    error AmbitoIncorrecto();
+    error PruebaCaducada();
+    error ModoDesarrolloNoPermitido();
+    error NoCumpleEdadMinima();
+    error NacionalidadNoValida();
+
+    constructor(address _verificadorZk, string memory _dominioZk, bool _devModeZk) {
+        verificadorZk = IRootVerifier(_verificadorZk);
+        dominioZk = _dominioZk;
+        devModeZk = _devModeZk;
     }
 
     function crearPropuesta(
@@ -61,19 +93,60 @@ contract VotacionAnonima {
         emit PropuestaCreada(propuestaId, contenidoHash, apertura, cierre);
     }
 
-    /// @param nullifier Identificador único derivado de la prueba ZK del votante.
-    /// @param pruebaZk Prueba de que el votante cumple los requisitos de elegibilidad
-    ///        (DNI español, empadronamiento, 5 años de residencia, edad >= 18)
-    ///        sin revelar su identidad. La verificacion real queda pendiente.
-    function votar(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata pruebaZk) external {
+    /// @notice Vota con datos introducidos a mano, sin prueba criptografica
+    ///         (ver docs/modelo-amenazas.md: solo formato/edad autodeclarados).
+    /// @param nullifier Identificador derivado localmente en el navegador a partir del DNI.
+    /// @param nota Rastro informativo (p.ej. de que via viene el voto); no se verifica.
+    function votarManual(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata nota) external {
+        nota;
+        _registrarVoto(propuestaId, nullifier, opcion);
+    }
+
+    /// @notice Vota presentando una prueba ZKPassport, verificada aqui mismo contra
+    ///         el verificador oficial antes de aceptar el voto.
+    /// @param propuestaIdTexto El uuid de la propuesta tal cual (no su hash): hace
+    ///        falta el texto para reconstruir el mismo ambito ("scope") con el que
+    ///        se genero la prueba y comprobar que coincide.
+    /// @param params Parametros de verificacion que entrega el SDK de ZKPassport
+    ///        (`getSolidityVerifierParameters`), generados en modo `compressed-evm`.
+    function votarConPruebaZk(
+        string calldata propuestaIdTexto,
+        Opcion opcion,
+        ProofVerificationParams calldata params
+    ) external {
+        if (params.serviceConfig.devMode && !devModeZk) revert ModoDesarrolloNoPermitido();
+
+        (bool valida, bytes32 identificadorUnico, IVerifierHelper helper) = verificadorZk.verify(params);
+        if (!valida) revert PruebaInvalida();
+
+        string memory ambito = string.concat("civora-voto-", propuestaIdTexto);
+        if (!helper.verifyScopes(params.proofVerificationData.publicInputs, dominioZk, ambito)) {
+            revert AmbitoIncorrecto();
+        }
+
+        if (helper.getProofTimestamp(params.proofVerificationData.publicInputs) + FRESCURA_PRUEBA < block.timestamp) {
+            revert PruebaCaducada();
+        }
+
+        if (!helper.isAgeAboveOrEqual(EDAD_MINIMA, params.committedInputs)) {
+            revert NoCumpleEdadMinima();
+        }
+
+        string[] memory nacionalidadesValidas = new string[](1);
+        nacionalidadesValidas[0] = "ESP";
+        if (!helper.isNationalityIn(nacionalidadesValidas, params.committedInputs)) {
+            revert NacionalidadNoValida();
+        }
+
+        _registrarVoto(keccak256(bytes(propuestaIdTexto)), identificadorUnico, opcion);
+    }
+
+    function _registrarVoto(bytes32 propuestaId, bytes32 nullifier, Opcion opcion) internal {
         Propuesta storage p = propuestas[propuestaId];
         require(p.existe, "Propuesta inexistente");
         require(block.timestamp >= p.apertura, "La votacion todavia no ha comenzado");
         require(block.timestamp < p.cierre, "Votacion cerrada");
         require(!nullifierUsado[propuestaId][nullifier], "Este documento ya ha votado en esta propuesta");
-
-        // TODO: llamar a verificadorZk para validar `pruebaZk` antes de aceptar el voto.
-        pruebaZk;
 
         nullifierUsado[propuestaId][nullifier] = true;
         votoDeNullifier[propuestaId][nullifier] = opcion;

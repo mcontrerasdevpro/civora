@@ -1,4 +1,4 @@
-import { ZKPassport, type ProofResult, type Query, type QueryBuilderResult, type QueryResult } from "@zkpassport/sdk";
+import { ZKPassport, type ProofResult, type QueryBuilderResult, type SolidityVerifierParameters } from "@zkpassport/sdk";
 import type { Eligibility } from "@civora/shared-types";
 
 /**
@@ -16,26 +16,35 @@ import type { Eligibility } from "@civora/shared-types";
  * empadronamiento y los 5 anios de residencia siguen requiriendo un oraculo
  * externo (convenio con el INE / Padron), pendiente de implementar.
  *
+ * La prueba se verifica dentro del propio contrato VotacionAnonima
+ * (votarConPruebaZk, contra el RootVerifier oficial de ZKPassport), no en
+ * este servidor: ni el operador de este sistema puede aceptar un voto sin
+ * una prueba criptografica valida. Por eso la solicitud se genera en modo
+ * "compressed-evm" (unico modo verificable en una cadena EVM) y esta capa
+ * solo prepara los parametros que el contrato espera, sin verificar nada
+ * ella misma.
+ *
  * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
  * movil de ZKPassport que debe permanecer viva mientras se espera la
  * respuesta: solo puede llamarse desde el navegador (componente cliente),
  * nunca desde una ruta de servidor serverless, o los callbacks nunca
- * llegarian. verificarPruebaServidor() sí corre en el servidor: repite la
- * verificacion de las pruebas recibidas del cliente para no confiar en el
- * "verified" que el propio navegador podria falsear.
+ * llegarian.
  */
 
 const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
 
 // demo.zkpassport.id solo acepta pruebas de prueba (mock). Al desplegar con
-// un dominio propio real, fijar NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false.
+// un dominio propio real, fijar NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false. Debe
+// coincidir con el `devModeZk` del contrato desplegado (ver deploy.js).
 const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE !== "false";
 
+/** Debe coincidir exactamente con el ambito que reconstruye VotacionAnonima.votarConPruebaZk. */
 function scopeDePropuesta(propuestaId: string): string {
   return `civora-voto-${propuestaId}`;
 }
 
 export type SolicitudVerificacionZk = QueryBuilderResult;
+export type { SolidityVerifierParameters };
 
 export async function crearSolicitudVerificacion(params: {
   elegibilidad: Eligibility;
@@ -53,6 +62,9 @@ export async function crearSolicitudVerificacion(params: {
     // posible correlacionar sus votos entre propuestas.
     scope: scopeDePropuesta(propuestaId),
     devMode: DEV_MODE,
+    // Unico modo que genera una prueba ("outer_evm") verificable en una
+    // cadena EVM; ver obtenerParametrosVerificacionOnChain.
+    mode: "compressed-evm",
   });
 
   let query = queryBuilder;
@@ -61,52 +73,38 @@ export async function crearSolicitudVerificacion(params: {
     query = query.gte("age", elegibilidad.edadMinima);
   }
   if (elegibilidad.requiereDniEspanol) {
-    query = query.eq("nationality", "ESP");
+    // .in() (no .eq()) es la que empareja con el helper on-chain
+    // isNationalityIn que usa VotacionAnonima.votarConPruebaZk.
+    query = query.in("nationality", ["ESP"]);
   }
 
   return query.done();
 }
 
-export interface ResultadoVerificacionServidor {
-  valido: boolean;
-  identificadorUnico: string | null;
-  errores?: unknown;
-}
-
-export async function verificarPruebaServidor(params: {
+/**
+ * A partir de las pruebas que entrega el callback `onResult` de la
+ * solicitud, prepara los parametros que espera
+ * VotacionAnonima.votarConPruebaZk (mismo formato que devuelve
+ * `getSolidityVerifierParameters` del SDK). No verifica nada: la
+ * verificacion real la hace el contrato al votar.
+ */
+export function obtenerParametrosVerificacionOnChain(params: {
   proofs: ProofResult[];
-  query: Query;
-  queryResult: QueryResult;
   propuestaId: string;
-}): Promise<ResultadoVerificacionServidor> {
+}): SolidityVerifierParameters {
   const zkPassport = new ZKPassport(APP_DOMAIN);
 
-  const { verified, queryResultErrors, uniqueIdentifier } = await zkPassport.verify({
-    proofs: params.proofs,
-    originalQuery: params.query,
-    queryResult: params.queryResult,
+  const proof = params.proofs.find((p) => p.name?.startsWith("outer_evm"));
+  if (!proof) {
+    throw new Error(
+      "La prueba generada no es verificable en una cadena EVM (falta el proof 'outer_evm')."
+    );
+  }
+
+  return zkPassport.getSolidityVerifierParameters({
+    proof,
+    domain: APP_DOMAIN,
     scope: scopeDePropuesta(params.propuestaId),
     devMode: DEV_MODE,
-    // Vercel solo permite escribir en /tmp; en local, dejar que el SDK use
-    // su directorio por defecto.
-    writingDirectory: process.env.VERCEL ? "/tmp" : undefined,
   });
-
-  return {
-    valido: verified,
-    identificadorUnico: uniqueIdentifier ?? null,
-    errores: queryResultErrors,
-  };
-}
-
-/**
- * Deriva el nullifier final a partir del identificador unico que entrega
- * ZKPassport tras verificar la prueba. Nunca se expone `identificadorUnico`
- * fuera de esta funcion: lo unico que sale al cliente y al contrato es este
- * hash.
- */
-export async function derivarNullifierZk(propuestaId: string, identificadorUnico: string): Promise<string> {
-  const datos = new TextEncoder().encode(`${propuestaId}:${identificadorUnico}`);
-  const hash = await crypto.subtle.digest("SHA-256", datos);
-  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

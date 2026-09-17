@@ -5,10 +5,50 @@
         "internalType": "address",
         "name": "_verificadorZk",
         "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_dominioZk",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "_devModeZk",
+        "type": "bool"
       }
     ],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "AmbitoIncorrecto",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ModoDesarrolloNoPermitido",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NacionalidadNoValida",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoCumpleEdadMinima",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PruebaCaducada",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PruebaInvalida",
+    "type": "error"
   },
   {
     "anonymous": false,
@@ -67,6 +107,32 @@
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "EDAD_MINIMA",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "FRESCURA_PRUEBA",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -92,6 +158,32 @@
     "name": "crearPropuesta",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "devModeZk",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "dominioZk",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -201,12 +293,96 @@
     "name": "verificadorZk",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract IRootVerifier",
         "name": "",
         "type": "address"
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "propuestaIdTexto",
+        "type": "string"
+      },
+      {
+        "internalType": "enum VotacionAnonima.Opcion",
+        "name": "opcion",
+        "type": "uint8"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "version",
+            "type": "bytes32"
+          },
+          {
+            "components": [
+              {
+                "internalType": "bytes32",
+                "name": "vkeyHash",
+                "type": "bytes32"
+              },
+              {
+                "internalType": "bytes",
+                "name": "proof",
+                "type": "bytes"
+              },
+              {
+                "internalType": "bytes32[]",
+                "name": "publicInputs",
+                "type": "bytes32[]"
+              }
+            ],
+            "internalType": "struct ProofVerificationData",
+            "name": "proofVerificationData",
+            "type": "tuple"
+          },
+          {
+            "internalType": "bytes",
+            "name": "committedInputs",
+            "type": "bytes"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "validityPeriodInSeconds",
+                "type": "uint256"
+              },
+              {
+                "internalType": "string",
+                "name": "domain",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "scope",
+                "type": "string"
+              },
+              {
+                "internalType": "bool",
+                "name": "devMode",
+                "type": "bool"
+              }
+            ],
+            "internalType": "struct ServiceConfig",
+            "name": "serviceConfig",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct ProofVerificationParams",
+        "name": "params",
+        "type": "tuple"
+      }
+    ],
+    "name": "votarConPruebaZk",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -228,11 +404,11 @@
       },
       {
         "internalType": "bytes",
-        "name": "pruebaZk",
+        "name": "nota",
         "type": "bytes"
       }
     ],
-    "name": "votar",
+    "name": "votarManual",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

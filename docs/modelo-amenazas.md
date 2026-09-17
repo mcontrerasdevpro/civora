@@ -12,9 +12,12 @@ y ya es seguro".
 - **Manipulación del resultado**: el recuento vive en un contrato público,
   auditable por cualquiera; nadie (ni el operador del sistema) puede alterar
   los votos ya emitidos.
-- **Vinculación voto-identidad**: la prueba ZK certifica que el votante
-  cumple los requisitos (DNI español, empadronamiento, 5 años de residencia,
-  mayoría de edad) sin revelar quién es.
+- **Vinculación voto-identidad**: en la vía ZKPassport, el propio contrato
+  `VotacionAnonima.votarConPruebaZk` verifica la prueba contra el
+  RootVerifier oficial de ZKPassport y comprueba nacionalidad española y
+  mayoría de edad antes de aceptar el voto — no hay que confiar en que el
+  servidor lo haya hecho honestamente. Empadronamiento y 5 años de
+  residencia siguen sin comprobarse (ver más abajo).
 - **Voto por otra persona**: solo puede generar una prueba válida quien
   posea físicamente el documento de identidad (DNIe/pasaporte con chip NFC),
   cuando se usa la vía ZKPassport. La vía de "datos manuales" (ver más abajo)
@@ -31,7 +34,19 @@ y ya es seguro".
   mano. Solo se valida el formato (letra de control del DNI) y que la edad
   declarada sea suficiente; no hay ninguna comprobación de que el
   documento exista o pertenezca a quien lo introduce. Es una vía de
-  respaldo para la demo, no una via de identificacion segura.
+  respaldo para la demo, no una via de identificacion segura. Ademas,
+  comparte el mismo espacio de nullifiers que la vía ZKPassport: en teoría,
+  alguien que conociera de antemano el identificador único que un DNIe
+  concreto generaría para una propuesta podría "reservarlo" por la vía
+  manual y bloquear ese voto — requeriría conocer ese identificador sin
+  poseer el documento, algo que hoy no se sabe hacer, pero es una
+  simplificación de diseño, no una garantía demostrada.
+- **Requisitos de elegibilidad fijos en el contrato**: `EDAD_MINIMA` y la
+  nacionalidad exigida (España) están fijados como constantes en
+  `VotacionAnonima.sol`, iguales para todas las propuestas. Personalizar
+  estos requisitos por propuesta (como ya permite el esquema de datos)
+  requeriría guardarlos también on-chain y pasarlos a
+  `votarConPruebaZk`, pendiente.
 - **Certificado digital**: pendiente. Requiere que el servidor negocie TLS
   mutuo con el navegador para leer el certificado (FNMT, Cl@ve...), no
   soportado por la infraestructura serverless actual (Vercel).

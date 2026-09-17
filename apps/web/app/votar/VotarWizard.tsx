@@ -6,14 +6,18 @@ import type { OpcionVoto, Propuesta } from "@civora/shared-types";
 import { MetodoSelector, type MetodoIdentificacion } from "./MetodoSelector";
 import { IdentificacionDnie } from "./IdentificacionDnie";
 import { IdentificacionManual } from "./IdentificacionManual";
+import type { Identificacion } from "./identificacion";
 
 /**
  * Flujo de voto, en 3 pasos, para una propuesta concreta:
- *  1. Identificación -> el votante elige DNIe/pasaporte (ZKPassport, real) o
- *     datos manuales (solo validación de formato) y se deriva un nullifier.
- *     El certificado digital está pendiente (requiere TLS mutuo, ver
+ *  1. Identificación -> el votante elige DNIe/pasaporte (ZKPassport, prueba
+ *     verificada dentro del contrato al votar) o datos manuales (solo
+ *     validación de formato, nullifier calculado en el navegador). El
+ *     certificado digital está pendiente (requiere TLS mutuo, ver
  *     MetodoSelector).
- *  2. Emisión del voto, enviado con el nullifier, no con la identidad.
+ *  2. Emisión del voto, enviado con el nullifier (o, en la vía ZK, con la
+ *     prueba que el contrato verifica y convierte en nullifier), nunca con
+ *     la identidad.
  *  3. Recibo, para verificar el voto más tarde en /verificar.
  */
 
@@ -28,6 +32,7 @@ type Paso = "identificacion" | "voto" | "recibo";
 export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const [paso, setPaso] = useState<Paso>("identificacion");
   const [metodo, setMetodo] = useState<MetodoIdentificacion | null>(null);
+  const [identificacion, setIdentificacion] = useState<Identificacion | null>(null);
   const [nullifier, setNullifier] = useState<string | null>(null);
   const [opcion, setOpcion] = useState<OpcionVoto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,34 +42,46 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const noAbierta = ahora < Date.parse(propuesta.fechaApertura);
   const cerrada = ahora >= Date.parse(propuesta.fechaCierre);
 
-  function identificacionCompletada(valor: string) {
+  function identificacionCompletada(valor: Identificacion) {
     setError(null);
-    setNullifier(valor);
+    setIdentificacion(valor);
     setPaso("voto");
   }
 
   async function votar(evento: React.FormEvent) {
     evento.preventDefault();
-    if (!opcion || !nullifier) return;
+    if (!opcion || !identificacion) return;
     setError(null);
     setEnviando(true);
     try {
-      const respuesta = await fetch("/api/propuesta/votos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          schema: "voto/v1",
-          propuestaId: propuesta.id,
-          opcion,
-          nullifier,
-          pruebaZk: `zk:${metodo ?? "manual"}:${nullifier}`,
-        }),
-      });
+      const respuesta =
+        identificacion.tipo === "zk"
+          ? await fetch("/api/propuesta/votos/zk", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                propuestaId: propuesta.id,
+                opcion,
+                parametrosVerificacion: identificacion.parametrosVerificacion,
+              }),
+            })
+          : await fetch("/api/propuesta/votos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                schema: "voto/v1",
+                propuestaId: propuesta.id,
+                opcion,
+                nullifier: identificacion.nullifier,
+                pruebaZk: `manual:${identificacion.nullifier}`,
+              }),
+            });
       const cuerpo = await respuesta.json();
       if (!respuesta.ok) {
         setError(cuerpo.error ?? "No se ha podido registrar el voto.");
         return;
       }
+      setNullifier(cuerpo.nullifier);
       setPaso("recibo");
     } catch {
       setError("No se ha podido contactar con el servidor.");

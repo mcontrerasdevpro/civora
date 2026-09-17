@@ -219,18 +219,22 @@ nav.site-nav a:hover {
   position: relative;
   z-index: 1;
   max-width: 620px;
-  padding: 88px 32px;
+  padding: 88px 0;
 }
 
 .hero-kicker {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   margin-bottom: 28px;
 }
 
 .hero-kicker .brand-name {
-  font-size: 24px;
+  font-size: 28px;
+}
+
+.hero-kicker .brand-tagline {
+  font-size: 13px;
 }
 
 .hero h1 {
@@ -1001,7 +1005,7 @@ footer.site-footer {
   }
   .hero-contenido {
     max-width: none;
-    padding: 56px 24px;
+    padding: 56px 0;
   }
   .hero-overlay {
     background: linear-gradient(

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
   try {
     const contrato = contratoEscritura();
-    const tx = await contrato.votar(
+    const tx = await contrato.votarManual(
       propuestaIdBytes32(voto.propuestaId),
       nullifierBytes32,
       opcionIndex,

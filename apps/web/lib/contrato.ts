@@ -100,6 +100,70 @@ export async function crearPropuestaOnChain(params: {
   return { txHash: tx.hash };
 }
 
+/**
+ * Ethers no decodifica solo los errores personalizados de Solidity
+ * (PruebaInvalida, NacionalidadNoValida...): el selector de 4 bytes llega en
+ * `error.data` (o anidado en `error.info.error.data`, segun el proveedor
+ * RPC). Aqui se decodifica contra el ABI del propio contrato y se relanza
+ * como un Error normal con el nombre tal cual, para que el resto del codigo
+ * (p.ej. las rutas API) lo distinga por texto igual que un require() normal.
+ */
+function relanzarErrorDecodificado(error: unknown, contrato: Contract): never {
+  const bruto = error as { data?: unknown; info?: { error?: { data?: unknown } } };
+  const candidato = bruto.data ?? bruto.info?.error?.data;
+  const selector = typeof candidato === "string" ? candidato : (candidato as { data?: string })?.data;
+
+  if (typeof selector === "string") {
+    let decodificado = null;
+    try {
+      decodificado = contrato.interface.parseError(selector);
+    } catch {
+      // no era un error del ABI de este contrato; se relanza el original
+    }
+    if (decodificado) throw new Error(decodificado.name);
+  }
+  throw error;
+}
+
+/**
+ * Envia un voto verificado on-chain: el contrato verifica la prueba contra
+ * el RootVerifier oficial de ZKPassport dentro de la misma transaccion (ver
+ * VotacionAnonima.votarConPruebaZk) y usa el identificador que esa prueba
+ * entrega como nullifier. Aqui no se verifica ni se calcula ningun
+ * nullifier: solo se relaya la transaccion y se lee el que el contrato
+ * emitio en el evento VotoEmitido.
+ */
+export async function votarConPruebaZkOnChain(params: {
+  propuestaId: string;
+  opcionIndex: number;
+  parametrosVerificacion: unknown;
+}): Promise<{ nullifier: string }> {
+  const contrato = contratoEscritura();
+  let recibo;
+  try {
+    const tx = await contrato.votarConPruebaZk(
+      params.propuestaId,
+      params.opcionIndex,
+      params.parametrosVerificacion
+    );
+    recibo = await tx.wait();
+  } catch (error) {
+    relanzarErrorDecodificado(error, contrato);
+  }
+
+  for (const log of recibo.logs) {
+    try {
+      const evento = contrato.interface.parseLog(log);
+      if (evento?.name === "VotoEmitido") {
+        return { nullifier: evento.args.nullifier as string };
+      }
+    } catch {
+      // log de otro contrato/evento; se ignora
+    }
+  }
+  throw new Error("El voto se envio pero no se pudo leer el nullifier del recibo.");
+}
+
 export async function leerResultados(propuestaId: string): Promise<ResultadoPropuesta> {
   const contrato = contratoLectura();
   const [aFavor, enContra, abstenciones]: bigint[] = await contrato.resultados(

@@ -215,6 +215,13 @@ nav.site-nav a:hover {
   );
 }
 
+/* .hero es flex: sin esto, .wrap se encoge al ancho de su contenido en vez
+   de ocupar los 1100px completos como hace el de la cabecera (un bloque
+   normal), y el texto queda descentrado respecto al logo de arriba. */
+.hero .wrap {
+  width: 100%;
+}
+
 .hero-contenido {
   position: relative;
   z-index: 1;
@@ -230,17 +237,17 @@ nav.site-nav a:hover {
 }
 
 .hero-kicker .brand-name {
-  font-size: 28px;
+  font-size: 34px;
 }
 
 .hero-kicker .brand-tagline {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .hero h1 {
   font-family: var(--sans);
   font-weight: 800;
-  font-size: clamp(30px, 3.6vw, 44px);
+  font-size: clamp(28px, 3.1vw, 39px);
   line-height: 1.18;
   letter-spacing: -0.01em;
   margin: 0 0 22px;

@@ -138,7 +138,7 @@ export default function Home() {
         <div className="wrap">
           <div className="hero-contenido">
             <div className="hero-kicker">
-              <LogoMark size={56} />
+              <LogoMark size={64} />
               <span className="brand-text">
                 <span className="brand-name">CÍVORA</span>
                 <span className="brand-tagline">Infraestructura de votación verificable</span>

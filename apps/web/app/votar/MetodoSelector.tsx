@@ -1,4 +1,4 @@
-export type MetodoIdentificacion = "dnie" | "manual";
+export type MetodoIdentificacion = "dnie" | "certificado" | "manual";
 
 export function MetodoSelector({
   onElegir,
@@ -20,16 +20,14 @@ export function MetodoSelector({
         </span>
       </button>
 
-      <div className="metodo-card metodo-card-disabled" aria-disabled="true">
-        <span className="metodo-card-title">
-          Certificado digital <span className="metodo-card-badge">Próximamente</span>
-        </span>
+      <button type="button" className="metodo-card" onClick={() => onElegir("certificado")}>
+        <span className="metodo-card-title">Certificado digital</span>
         <span className="metodo-card-desc">
-          Requiere que el servidor negocie TLS mutuo con tu navegador para
-          leer el certificado (FNMT, Cl@ve...); no soportado todavía en este
-          despliegue.
+          Firma un código con tu certificado digital (FNMT, DNIe...) usando
+          Autofirma. Prueba tu identidad de verdad, pero no tu edad (el
+          certificado no la contiene), así que se acepta autodeclarada.
         </span>
-      </div>
+      </button>
 
       <button type="button" className="metodo-card" onClick={() => onElegir("manual")}>
         <span className="metodo-card-title">Introducir mis datos</span>

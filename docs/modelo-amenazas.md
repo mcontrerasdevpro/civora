@@ -20,7 +20,9 @@ y ya es seguro".
   residencia siguen sin comprobarse (ver más abajo).
 - **Voto por otra persona**: solo puede generar una prueba válida quien
   posea físicamente el documento de identidad (DNIe/pasaporte con chip NFC),
-  cuando se usa la vía ZKPassport. La vía de "datos manuales" (ver más abajo)
+  cuando se usa la vía ZKPassport, o quien posea el certificado digital
+  instalado, cuando se usa esa vía (firma verificada contra la FNMT/DGP en
+  `lib/certificado-digital.ts`). La vía de "datos manuales" (ver más abajo)
   no ofrece esta garantía.
 
 ## Qué NO resuelve todavía esta PoC
@@ -47,20 +49,27 @@ y ya es seguro".
   estos requisitos por propuesta (como ya permite el esquema de datos)
   requeriría guardarlos también on-chain y pasarlos a
   `votarConPruebaZk`, pendiente.
-- **Certificado digital**: pendiente. Requiere que el servidor negocie TLS
-  mutuo con el navegador para leer el certificado (FNMT, Cl@ve...), no
-  soportado por la infraestructura serverless actual (Vercel).
+- **Certificado digital: no prueba la edad**. Un certificado personal
+  (FNMT, DNIe) no lleva la fecha de nacimiento, así que esta vía solo prueba
+  identidad (con fuerza real, vía firma verificada), no mayoría de edad; se
+  acepta autodeclarada, igual que en la vía manual.
+- **Certificado digital: sin comprobación de revocación**. La verificación
+  comprueba que el certificado encadena hasta la FNMT o la DGP y que no ha
+  caducado, pero no consulta OCSP/CRL: un certificado revocado (p.ej. tras
+  perder el DNIe) seguiría siendo aceptado hasta que caduque por sí solo.
+- **Certificado digital: requiere Autofirma instalada**, la herramienta de
+  escritorio del Gobierno de España; no funciona sin ella.
 - **Dominio de ZKPassport sin registrar**: por defecto se usa el dominio de
   pruebas `demo.zkpassport.id` en modo `devMode`, que acepta pruebas mock.
   Antes de cualquier uso real hay que registrar el dominio propio y
   desactivar `devMode` (ver README).
-- **Creación de propuestas sin control de acceso**: cualquiera puede crear
-  una propuesta desde `/propuestas/nueva`. Cada creación paga gas con la
-  cuenta "relayer" del servidor, así que en un despliegue público alguien
-  podría crear propuestas repetidamente y agotar esos fondos. Aceptable
-  para una demo en testnet; antes de cualquier uso real hace falta algún
-  control (autenticación, límite de tasa, o que solo una cuenta autorizada
-  pueda crear propuestas).
+- **Creación de propuestas protegida por una única clave compartida**:
+  `/propuestas/nueva` exige `ADMIN_SECRET`, pero es una clave compartida sin
+  usuarios individuales ni caducidad — quien la tenga puede crear
+  propuestas indefinidamente, y no hay forma de revocar el acceso a una
+  sola persona sin cambiar la clave para todos. Suficiente para una demo
+  con un solo operador; antes de varios administradores reales haría falta
+  un sistema de cuentas de verdad.
 - **Coacción o compra de voto**: el sistema no puede impedir que alguien
   vote bajo presión en el momento de emitir el voto (problema abierto en
   todo el e-voting remoto, no exclusivo de este proyecto).
@@ -74,6 +83,7 @@ y ya es seguro".
 
 - Auditoría externa de los contratos y del circuito ZK antes de cualquier
   uso real.
+- Comprobación de revocación (OCSP/CRL) de los certificados digitales.
 - Verificación con el Padrón Municipal / INE mediante convenio oficial.
 - Estudio de mitigación de coacción (p.ej. permitir revotar hasta el cierre,
   ocultando cuál es el voto "definitivo").

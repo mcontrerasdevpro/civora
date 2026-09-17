@@ -5,19 +5,20 @@ import Link from "next/link";
 import type { OpcionVoto, Propuesta } from "@civora/shared-types";
 import { MetodoSelector, type MetodoIdentificacion } from "./MetodoSelector";
 import { IdentificacionDnie } from "./IdentificacionDnie";
+import { IdentificacionCertificado } from "./IdentificacionCertificado";
 import { IdentificacionManual } from "./IdentificacionManual";
 import type { Identificacion } from "./identificacion";
 
 /**
  * Flujo de voto, en 3 pasos, para una propuesta concreta:
  *  1. Identificación -> el votante elige DNIe/pasaporte (ZKPassport, prueba
- *     verificada dentro del contrato al votar) o datos manuales (solo
- *     validación de formato, nullifier calculado en el navegador). El
- *     certificado digital está pendiente (requiere TLS mutuo, ver
- *     MetodoSelector).
+ *     verificada dentro del contrato al votar), certificado digital
+ *     (Autofirma, firma verificada en el servidor) o datos manuales (solo
+ *     validación de formato, nullifier calculado en el navegador).
  *  2. Emisión del voto, enviado con el nullifier (o, en la vía ZK, con la
- *     prueba que el contrato verifica y convierte en nullifier), nunca con
- *     la identidad.
+ *     prueba que el contrato verifica y convierte en nullifier; en la vía
+ *     de certificado, con la firma que el servidor verifica y convierte en
+ *     nullifier), nunca con la identidad.
  *  3. Recibo, para verificar el voto más tarde en /verificar.
  */
 
@@ -54,28 +55,43 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
     setError(null);
     setEnviando(true);
     try {
-      const respuesta =
-        identificacion.tipo === "zk"
-          ? await fetch("/api/propuesta/votos/zk", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                propuestaId: propuesta.id,
-                opcion,
-                parametrosVerificacion: identificacion.parametrosVerificacion,
-              }),
-            })
-          : await fetch("/api/propuesta/votos", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                schema: "voto/v1",
-                propuestaId: propuesta.id,
-                opcion,
-                nullifier: identificacion.nullifier,
-                pruebaZk: `manual:${identificacion.nullifier}`,
-              }),
-            });
+      let respuesta: Response;
+      if (identificacion.tipo === "zk") {
+        respuesta = await fetch("/api/propuesta/votos/zk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            propuestaId: propuesta.id,
+            opcion,
+            parametrosVerificacion: identificacion.parametrosVerificacion,
+          }),
+        });
+      } else if (identificacion.tipo === "certificado") {
+        respuesta = await fetch("/api/propuesta/votos/certificado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            propuestaId: propuesta.id,
+            opcion,
+            timestamp: identificacion.timestamp,
+            reto: identificacion.reto,
+            signatureB64: identificacion.signatureB64,
+            certB64: identificacion.certB64,
+          }),
+        });
+      } else {
+        respuesta = await fetch("/api/propuesta/votos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            schema: "voto/v1",
+            propuestaId: propuesta.id,
+            opcion,
+            nullifier: identificacion.nullifier,
+            pruebaZk: `manual:${identificacion.nullifier}`,
+          }),
+        });
+      }
       const cuerpo = await respuesta.json();
       if (!respuesta.ok) {
         setError(cuerpo.error ?? "No se ha podido registrar el voto.");
@@ -129,6 +145,14 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
 
       {paso === "identificacion" && metodo === "dnie" && (
         <IdentificacionDnie
+          propuesta={propuesta}
+          onVerificado={identificacionCompletada}
+          onCambiarMetodo={() => setMetodo(null)}
+        />
+      )}
+
+      {paso === "identificacion" && metodo === "certificado" && (
+        <IdentificacionCertificado
           propuesta={propuesta}
           onVerificado={identificacionCompletada}
           onCambiarMetodo={() => setMetodo(null)}

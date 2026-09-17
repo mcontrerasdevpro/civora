@@ -25,7 +25,7 @@ unico que llega al voto.
 |---|---|---|
 | Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
-| Identidad ZK | packages/zk-identity | Integracion real con ZKPassport: /votar ofrece DNIe/pasaporte por NFC (prueba ZK real contra el dominio demo de ZKPassport), certificado digital (pendiente, requiere TLS mutuo) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
+| Identidad | packages/zk-identity + apps/web/lib | /votar ofrece tres vias: DNIe/pasaporte por NFC (ZKPassport, prueba verificada dentro del contrato), certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
 | Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; la via DNIe verifica la prueba ZKPassport dentro del propio contrato, contra el RootVerifier oficial |
 | Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Especificacion publica y modelo de amenazas |
@@ -106,6 +106,8 @@ docs/especificacion-publica.md).
    HARDHAT_RPC_URL=<la misma SEPOLIA_RPC_URL>
    HARDHAT_RELAYER_PRIVATE_KEY=<una clave con ETH de Sepolia; paga el gas de los votos>
    DATABASE_URL=<cadena de conexion "pooled" de tu proyecto Neon>
+   ADMIN_SECRET=<clave para poder crear propuestas desde /propuestas/nueva>
+   RETO_CERTIFICADO_SECRET=<clave para la via de certificado digital>
 
    Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
    local y busca el despliegue de Hardhat.
@@ -141,6 +143,39 @@ Para una demo publica con documentos reales, registra el dominio del
 despliegue de Vercel en el dashboard de ZKPassport, desactiva `devMode` en
 ambos sitios y vuelve a desplegar el contrato (`devModeZk` es inmutable,
 fijado en el constructor).
+
+## Identidad con certificado digital (Autofirma)
+
+La via de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
+la herramienta oficial del Gobierno de España (hay que tenerla instalada):
+el navegador le pide que firme un código aleatorio con el certificado
+instalado (FNMT, DNIe...) y el servidor comprueba, en
+`apps/web/lib/certificado-digital.ts`, que la firma es válida, que cubre
+exactamente ese código, y que el certificado encadena hasta una autoridad
+real (la FNMT-RCM o la Dirección General de la Policía). Las raíces de
+confianza están en `apps/web/lib/certificados-raiz/` (descargadas de sus
+webs oficiales).
+
+A diferencia de ZKPassport, aquí no hay verificador on-chain: la
+verificación ocurre en este servidor, y el voto se envía al contrato por la
+vía "manual" existente (`votarManual`) con el nullifier ya calculado a
+partir del certificado verificado. Tampoco se comprueba la edad (un
+certificado no lleva la fecha de nacimiento) ni la revocación del
+certificado (OCSP/CRL) — ver docs/modelo-amenazas.md.
+
+Variable de entorno necesaria (`apps/web/.env.local`):
+
+    RETO_CERTIFICADO_SECRET=<una cadena aleatoria larga>
+
+## Crear propuestas
+
+Como todas las transacciones las firma la misma cuenta "relayer" del
+servidor (el contrato no puede distinguir usuarios de la web), el control
+de acceso a `/propuestas/nueva` vive a nivel de aplicación: hace falta una
+clave de administrador. Variable de entorno necesaria
+(`apps/web/.env.local` y Vercel):
+
+    ADMIN_SECRET=<una cadena aleatoria larga>
 
 ## Estructura
 

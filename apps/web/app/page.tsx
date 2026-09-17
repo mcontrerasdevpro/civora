@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatedNumber } from "./components/AnimatedNumber";
 import { LogoMark } from "./components/LogoMark";
@@ -123,49 +124,42 @@ export default function Home() {
   return (
     <main>
       <section className="hero" id="top">
-        <div className="wrap">
-          <div>
-            <div className="hero-kicker">
-              <LogoMark size={40} />
-              <span className="brand-text">
-                <span className="brand-name">CÍVORA</span>
-                <span className="brand-tagline">Infraestructura de votación verificable</span>
-              </span>
-            </div>
-            <h1>
-              Tu identidad acredita que puedes votar.
-              <br />
-              <span className="acento">Nunca revela qué has votado.</span>
-            </h1>
-            <p className="lede">
-              Una nueva generación de votación digital basada en identidad
-              certificada y pruebas criptográficas.
-            </p>
-            <div className="hero-actions">
-              <Link className="btn-primary" href="/votar">
-                Probar demostración →
-              </Link>
-              <a className="btn-ghost" href="#como-funciona">
-                Cómo funciona
-              </a>
-            </div>
-          </div>
+        <div className="hero-bg">
+          <Image
+            src="/images/civora-hero-bg.webp"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="hero-bg-img"
+          />
+          <div className="hero-overlay" />
+        </div>
 
-          <div className="hero-visual">
-            <div className="scan-card">
-              <div className="scan-card-chip" />
-              <div className="scan-card-lines">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className="scan-beam" />
-            </div>
-            <div className="scan-check">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--oscuro)" strokeWidth={2.4}>
-                <path d="M5 13l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+        <div className="wrap hero-contenido">
+          <div className="hero-kicker">
+            <LogoMark size={40} />
+            <span className="brand-text">
+              <span className="brand-name">CÍVORA</span>
+              <span className="brand-tagline">Infraestructura de votación verificable</span>
+            </span>
+          </div>
+          <h1>
+            Tu identidad acredita que puedes votar.
+            <br />
+            <span className="acento">Nunca revela qué has votado.</span>
+          </h1>
+          <p className="lede">
+            Una nueva generación de votación digital basada en identidad
+            certificada y pruebas criptográficas.
+          </p>
+          <div className="hero-actions">
+            <Link className="btn-primary" href="/propuestas">
+              Probar demostración →
+            </Link>
+            <a className="btn-ghost" href="#como-funciona">
+              Cómo funciona
+            </a>
           </div>
         </div>
       </section>
@@ -287,7 +281,7 @@ export default function Home() {
             </div>
             <div className="ledger-foot">
               Datos de ejemplo — ver el panel real en{" "}
-              <Link className="link-quiet" href="/resultados">
+              <Link className="link-quiet" href="/propuestas">
                 /resultados
               </Link>
               .

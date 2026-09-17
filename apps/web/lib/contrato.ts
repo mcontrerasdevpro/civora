@@ -23,12 +23,13 @@ export const OPCIONES: OpcionVoto[] = ["a_favor", "en_contra", "abstencion"];
  * (identificacion real via zk-identity pendiente). En local se usa una
  * cuenta de prueba de Hardhat (well-known, nunca usar fuera de un nodo
  * local); en cualquier otra red hay que definir HARDHAT_RELAYER_PRIVATE_KEY.
+ *
+ * Las propuestas ya no son un dato fijo del despliegue: cada una se crea
+ * dinamicamente (ver app/api/propuestas) y se identifica por su propio uuid,
+ * que aqui se convierte a bytes32 con `propuestaIdBytes32`.
  */
 const RPC_URL_HARDHAT_LOCAL = "http://127.0.0.1:8545";
 const CLAVE_HARDHAT_LOCAL = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-
-/** Debe coincidir con PROPUESTA_ID en packages/contracts/scripts/deploy.js */
-const PROPUESTA_ID = "b3f1a2c4-4d5e-4a6b-8c7d-9e0f1a2b3c4d";
 
 const RPC_URL = process.env.HARDHAT_RPC_URL ?? RPC_URL_HARDHAT_LOCAL;
 
@@ -40,11 +41,9 @@ if (RPC_URL !== RPC_URL_HARDHAT_LOCAL && !process.env.HARDHAT_RELAYER_PRIVATE_KE
 }
 
 let direccionContrato: string;
-let propuestaId: string;
 
 if (process.env.CONTRATO_DIRECCION) {
   direccionContrato = process.env.CONTRATO_DIRECCION;
-  propuestaId = PROPUESTA_ID;
 } else {
   const rutaDespliegue = path.join(process.cwd(), "lib", "generated", "despliegue-localhost.json");
   if (!fs.existsSync(rutaDespliegue)) {
@@ -55,7 +54,6 @@ if (process.env.CONTRATO_DIRECCION) {
   }
   const despliegue = JSON.parse(fs.readFileSync(rutaDespliegue, "utf8"));
   direccionContrato = despliegue.address;
-  propuestaId = despliegue.propuestaId;
 }
 
 const CLAVE_RELAYER = process.env.HARDHAT_RELAYER_PRIVATE_KEY ?? CLAVE_HARDHAT_LOCAL;
@@ -63,7 +61,9 @@ const CLAVE_RELAYER = process.env.HARDHAT_RELAYER_PRIVATE_KEY ?? CLAVE_HARDHAT_L
 const provider = new JsonRpcProvider(RPC_URL);
 const relayer = new Wallet(CLAVE_RELAYER, provider);
 
-export const PROPUESTA_ID_BYTES32 = ethersId(propuestaId);
+export function propuestaIdBytes32(propuestaId: string): string {
+  return ethersId(propuestaId);
+}
 
 export function contratoLectura(): Contract {
   return new Contract(direccionContrato, abi, provider);
@@ -81,10 +81,29 @@ export function nullifierABytes32(nullifierHex: string): string {
   return conPrefijo;
 }
 
-export async function leerResultados(): Promise<ResultadoPropuesta> {
+export async function crearPropuestaOnChain(params: {
+  propuestaId: string;
+  contenidoHash: string;
+  fechaApertura: string;
+  fechaCierre: string;
+}): Promise<{ txHash: string }> {
+  const contrato = contratoEscritura();
+  const apertura = Math.floor(new Date(params.fechaApertura).getTime() / 1000);
+  const cierre = Math.floor(new Date(params.fechaCierre).getTime() / 1000);
+  const tx = await contrato.crearPropuesta(
+    propuestaIdBytes32(params.propuestaId),
+    params.contenidoHash,
+    apertura,
+    cierre
+  );
+  await tx.wait();
+  return { txHash: tx.hash };
+}
+
+export async function leerResultados(propuestaId: string): Promise<ResultadoPropuesta> {
   const contrato = contratoLectura();
   const [aFavor, enContra, abstenciones]: bigint[] = await contrato.resultados(
-    PROPUESTA_ID_BYTES32
+    propuestaIdBytes32(propuestaId)
   );
   return {
     propuestaId,

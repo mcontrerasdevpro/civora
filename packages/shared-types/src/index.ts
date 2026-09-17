@@ -29,9 +29,12 @@ export const PropuestaSchema = z.object({
   descripcion: z.string().default(""),
   pregunta: z.string().min(1),
   opciones: z.array(OpcionVotoSchema).min(2),
-  duracionDias: z.number().int().positive(),
+  /** Instante desde el que se puede votar (ISO 8601). */
+  fechaApertura: z.string().datetime(),
+  /** Instante de cierre de la votacion (ISO 8601). Debe ser posterior a fechaApertura. */
+  fechaCierre: z.string().datetime(),
   elegibilidad: EligibilitySchema,
-  /** Hash del contenido (para publicar en IPFS / registro on-chain, integridad verificable). */
+  /** Hash del contenido, anclado on-chain para integridad verificable. */
   contenidoHash: z.string().optional(),
 });
 export type Propuesta = z.infer<typeof PropuestaSchema>;

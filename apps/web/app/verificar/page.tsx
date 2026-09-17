@@ -25,16 +25,18 @@ type Resultado =
 
 function FormularioVerificacion() {
   const parametros = useSearchParams();
+  const [propuestaId, setPropuestaId] = useState(parametros.get("propuestaId") ?? "");
   const [nullifier, setNullifier] = useState(parametros.get("nullifier") ?? "");
   const [resultado, setResultado] = useState<Resultado>({ estado: "idle" });
 
   async function verificar(evento: React.FormEvent) {
     evento.preventDefault();
-    if (!nullifier.trim()) return;
+    if (!nullifier.trim() || !propuestaId.trim()) return;
     setResultado({ estado: "buscando" });
     try {
       const respuesta = await fetch(
-        `/api/propuesta/votos/${encodeURIComponent(nullifier.trim())}`,
+        `/api/propuesta/votos/${encodeURIComponent(nullifier.trim())}` +
+          `?propuestaId=${encodeURIComponent(propuestaId.trim())}`,
         { cache: "no-store" }
       );
       const cuerpo = await respuesta.json();
@@ -54,6 +56,17 @@ function FormularioVerificacion() {
 
   return (
     <form className="panel" onSubmit={verificar}>
+      <div className="form-field">
+        <label htmlFor="propuestaId">Propuesta</label>
+        <input
+          id="propuestaId"
+          type="text"
+          value={propuestaId}
+          onChange={(evento) => setPropuestaId(evento.target.value)}
+          placeholder="Id de la propuesta (lo trae el enlace del recibo)"
+          autoComplete="off"
+        />
+      </div>
       <div className="form-field">
         <label htmlFor="nullifier">Recibo (nullifier)</label>
         <input

@@ -28,6 +28,12 @@
       {
         "indexed": false,
         "internalType": "uint256",
+        "name": "apertura",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
         "name": "cierre",
         "type": "uint256"
       }
@@ -74,7 +80,12 @@
       },
       {
         "internalType": "uint256",
-        "name": "duracionSegundos",
+        "name": "apertura",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "cierre",
         "type": "uint256"
       }
     ],
@@ -121,6 +132,11 @@
         "internalType": "string",
         "name": "contenidoHash",
         "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "apertura",
+        "type": "uint256"
       },
       {
         "internalType": "uint256",

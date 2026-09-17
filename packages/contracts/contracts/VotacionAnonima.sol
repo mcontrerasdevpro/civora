@@ -19,6 +19,7 @@ contract VotacionAnonima {
 
     struct Propuesta {
         string contenidoHash; // hash del JSON de la propuesta (integridad verificable)
+        uint256 apertura; // timestamp desde el que se puede votar
         uint256 cierre; // timestamp de cierre
         uint256 aFavor;
         uint256 enContra;
@@ -33,24 +34,31 @@ contract VotacionAnonima {
     mapping(bytes32 => mapping(bytes32 => bool)) public nullifierUsado; // propuestaId => nullifier => usado
     mapping(bytes32 => mapping(bytes32 => Opcion)) public votoDeNullifier; // propuestaId => nullifier => opcion
 
-    event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 cierre);
+    event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 apertura, uint256 cierre);
     event VotoEmitido(bytes32 indexed propuestaId, bytes32 indexed nullifier, Opcion opcion);
 
     constructor(address _verificadorZk) {
         verificadorZk = _verificadorZk;
     }
 
-    function crearPropuesta(bytes32 propuestaId, string calldata contenidoHash, uint256 duracionSegundos) external {
+    function crearPropuesta(
+        bytes32 propuestaId,
+        string calldata contenidoHash,
+        uint256 apertura,
+        uint256 cierre
+    ) external {
         require(!propuestas[propuestaId].existe, "La propuesta ya existe");
+        require(cierre > apertura, "El cierre debe ser posterior a la apertura");
         propuestas[propuestaId] = Propuesta({
             contenidoHash: contenidoHash,
-            cierre: block.timestamp + duracionSegundos,
+            apertura: apertura,
+            cierre: cierre,
             aFavor: 0,
             enContra: 0,
             abstenciones: 0,
             existe: true
         });
-        emit PropuestaCreada(propuestaId, contenidoHash, block.timestamp + duracionSegundos);
+        emit PropuestaCreada(propuestaId, contenidoHash, apertura, cierre);
     }
 
     /// @param nullifier Identificador único derivado de la prueba ZK del votante.
@@ -60,6 +68,7 @@ contract VotacionAnonima {
     function votar(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata pruebaZk) external {
         Propuesta storage p = propuestas[propuestaId];
         require(p.existe, "Propuesta inexistente");
+        require(block.timestamp >= p.apertura, "La votacion todavia no ha comenzado");
         require(block.timestamp < p.cierre, "Votacion cerrada");
         require(!nullifierUsado[propuestaId][nullifier], "Este documento ya ha votado en esta propuesta");
 

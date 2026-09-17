@@ -1,13 +1,13 @@
 import { toUtf8Bytes } from "ethers";
 import { NextResponse } from "next/server";
 import { VotoSchema } from "@civora/shared-types";
-import { PROPUESTA_DEMO } from "../../../../lib/propuesta-demo";
+import { obtenerPropuesta } from "../../../../lib/propuestas-store";
 import {
   OPCIONES,
-  PROPUESTA_ID_BYTES32,
   contratoEscritura,
   leerResultados,
   nullifierABytes32,
+  propuestaIdBytes32,
 } from "../../../../lib/contrato";
 
 const CuerpoVotoSchema = VotoSchema.omit({ timestamp: true });
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const voto = parseo.data;
 
-  if (voto.propuestaId !== PROPUESTA_DEMO.id) {
+  if (!(await obtenerPropuesta(voto.propuestaId))) {
     return NextResponse.json({ error: "Propuesta inexistente" }, { status: 404 });
   }
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   try {
     const contrato = contratoEscritura();
     const tx = await contrato.votar(
-      PROPUESTA_ID_BYTES32,
+      propuestaIdBytes32(voto.propuestaId),
       nullifierBytes32,
       opcionIndex,
       toUtf8Bytes(voto.pruebaZk)
@@ -56,7 +56,11 @@ export async function POST(request: Request) {
     if (razon.includes("ya ha votado")) {
       return NextResponse.json({ error: razon }, { status: 409 });
     }
-    if (razon.includes("Propuesta inexistente") || razon.includes("Votacion cerrada")) {
+    if (
+      razon.includes("Propuesta inexistente") ||
+      razon.includes("Votacion cerrada") ||
+      razon.includes("todavia no ha comenzado")
+    ) {
       return NextResponse.json({ error: razon }, { status: 400 });
     }
     throw error;
@@ -65,6 +69,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     nullifier: voto.nullifier,
-    resultados: await leerResultados(),
+    resultados: await leerResultados(voto.propuestaId),
   });
 }

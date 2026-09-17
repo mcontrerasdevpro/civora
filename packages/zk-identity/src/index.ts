@@ -1,4 +1,4 @@
-import { ZKPassport } from "@zkpassport/sdk";
+import { ZKPassport, type ProofResult, type Query, type QueryBuilderResult, type QueryResult } from "@zkpassport/sdk";
 import type { Eligibility } from "@civora/shared-types";
 
 /**
@@ -15,25 +15,44 @@ import type { Eligibility } from "@civora/shared-types";
  * capa prueba nacionalidad espaniola y mayoria de edad sin revelarlas. El
  * empadronamiento y los 5 anios de residencia siguen requiriendo un oraculo
  * externo (convenio con el INE / Padron), pendiente de implementar.
+ *
+ * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
+ * movil de ZKPassport que debe permanecer viva mientras se espera la
+ * respuesta: solo puede llamarse desde el navegador (componente cliente),
+ * nunca desde una ruta de servidor serverless, o los callbacks nunca
+ * llegarian. verificarPruebaServidor() sí corre en el servidor: repite la
+ * verificacion de las pruebas recibidas del cliente para no confiar en el
+ * "verified" que el propio navegador podria falsear.
  */
 
 const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
 
-export interface SolicitudVerificacion {
-  url: string;
-  requestId: string;
+// demo.zkpassport.id solo acepta pruebas de prueba (mock). Al desplegar con
+// un dominio propio real, fijar NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false.
+const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE !== "false";
+
+function scopeDePropuesta(propuestaId: string): string {
+  return `civora-voto-${propuestaId}`;
 }
 
-export async function crearSolicitudVerificacion(
-  elegibilidad: Eligibility
-): Promise<SolicitudVerificacion> {
+export type SolicitudVerificacionZk = QueryBuilderResult;
+
+export async function crearSolicitudVerificacion(params: {
+  elegibilidad: Eligibility;
+  propuestaId: string;
+}): Promise<SolicitudVerificacionZk> {
+  const { elegibilidad, propuestaId } = params;
   const zkPassport = new ZKPassport(APP_DOMAIN);
 
   const queryBuilder = await zkPassport.request({
-    name: "CIVORA",
+    name: "CÍVORA",
     logo: "https://civora.example/logo.png",
     purpose: "Verificar que puedes votar sin revelar tu identidad",
-    scope: "civora-elegibilidad",
+    // El scope ata el identificador unico a esta propuesta concreta: la
+    // misma persona genera un nullifier distinto en cada propuesta, y no es
+    // posible correlacionar sus votos entre propuestas.
+    scope: scopeDePropuesta(propuestaId),
+    devMode: DEV_MODE,
   });
 
   let query = queryBuilder;
@@ -42,14 +61,10 @@ export async function crearSolicitudVerificacion(
     query = query.gte("age", elegibilidad.edadMinima);
   }
   if (elegibilidad.requiereDniEspanol) {
-    // TODO: confirmar en docs.zkpassport.id el codigo de pais exacto
-    // (alpha-3 "ESP") antes de pasar a produccion.
     query = query.eq("nationality", "ESP");
   }
 
-  const { url, requestId } = query.done();
-
-  return { url, requestId };
+  return query.done();
 }
 
 export interface ResultadoVerificacionServidor {
@@ -59,23 +74,39 @@ export interface ResultadoVerificacionServidor {
 }
 
 export async function verificarPruebaServidor(params: {
-  proofs: unknown;
-  query: unknown;
-  queryResult: unknown;
+  proofs: ProofResult[];
+  query: Query;
+  queryResult: QueryResult;
+  propuestaId: string;
 }): Promise<ResultadoVerificacionServidor> {
   const zkPassport = new ZKPassport(APP_DOMAIN);
 
-  // TODO: sustituir `any` por los tipos reales exportados por @zkpassport/sdk
-  // (Proofs, QueryResult, Query) en cuanto se confirmen en la documentacion.
   const { verified, queryResultErrors, uniqueIdentifier } = await zkPassport.verify({
     proofs: params.proofs,
     originalQuery: params.query,
     queryResult: params.queryResult,
-  } as any);
+    scope: scopeDePropuesta(params.propuestaId),
+    devMode: DEV_MODE,
+    // Vercel solo permite escribir en /tmp; en local, dejar que el SDK use
+    // su directorio por defecto.
+    writingDirectory: process.env.VERCEL ? "/tmp" : undefined,
+  });
 
   return {
     valido: verified,
     identificadorUnico: uniqueIdentifier ?? null,
     errores: queryResultErrors,
   };
+}
+
+/**
+ * Deriva el nullifier final a partir del identificador unico que entrega
+ * ZKPassport tras verificar la prueba. Nunca se expone `identificadorUnico`
+ * fuera de esta funcion: lo unico que sale al cliente y al contrato es este
+ * hash.
+ */
+export async function derivarNullifierZk(propuestaId: string, identificadorUnico: string): Promise<string> {
+  const datos = new TextEncoder().encode(`${propuestaId}:${identificadorUnico}`);
+  const hash = await crypto.subtle.digest("SHA-256", datos);
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

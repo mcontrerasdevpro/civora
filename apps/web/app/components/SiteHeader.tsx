@@ -18,7 +18,7 @@ export function SiteHeader() {
           <Link href="/#seguridad">Seguridad</Link>
           <Link href="/#faq">FAQ</Link>
         </nav>
-        <Link className="btn-primary btn-small" href="/votar">
+        <Link className="btn-primary btn-small" href="/propuestas">
           Probar demo →
         </Link>
       </div>

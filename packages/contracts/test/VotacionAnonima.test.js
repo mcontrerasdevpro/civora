@@ -9,9 +9,12 @@ describe("VotacionAnonima", function () {
     await contrato.waitForDeployment();
 
     const propuestaId = ethers.id("propuesta-demo");
-    await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), 3600)).wait();
+    const bloque = await ethers.provider.getBlock("latest");
+    const apertura = bloque.timestamp;
+    const cierre = apertura + 3600;
+    await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre)).wait();
 
-    return { contrato, propuestaId };
+    return { contrato, propuestaId, apertura, cierre };
   }
 
   it("cuenta un voto y lo hace consultable por nullifier", async function () {
@@ -38,6 +41,23 @@ describe("VotacionAnonima", function () {
 
     await expect(contrato.votar(propuestaId, nullifier, 1, "0x")).to.be.revertedWith(
       "Este documento ya ha votado en esta propuesta"
+    );
+  });
+
+  it("rechaza votos antes de la apertura", async function () {
+    const [deployer] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory("VotacionAnonima");
+    const contrato = await Factory.deploy(deployer.address);
+    await contrato.waitForDeployment();
+
+    const propuestaId = ethers.id("propuesta-futura");
+    const bloque = await ethers.provider.getBlock("latest");
+    const apertura = bloque.timestamp + 3600;
+    const cierre = apertura + 3600;
+    await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre)).wait();
+
+    await expect(contrato.votar(propuestaId, ethers.id("documento-1"), 0, "0x")).to.be.revertedWith(
+      "La votacion todavia no ha comenzado"
     );
   });
 

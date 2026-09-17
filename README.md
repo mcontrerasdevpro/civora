@@ -23,10 +23,11 @@ unico que llega al voto.
 
 | Componente | Ubicacion | Estado |
 |---|---|---|
-| Landing / web | apps/web | Landing, /votar, /resultados y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
+| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
-| Identidad ZK | packages/zk-identity | Interfaz propia sobre ZKPassport, integracion real pendiente; /votar deriva un nullifier localmente en el navegador a modo de demo |
-| Contratos | packages/contracts | VotacionAnonima.sol - voto por nullifier, sin doble voto, recuento y recibo por nullifier; verificacion ZK on-chain pendiente |
+| Identidad ZK | packages/zk-identity | Integracion real con ZKPassport: /votar ofrece DNIe/pasaporte por NFC (prueba ZK real contra el dominio demo de ZKPassport), certificado digital (pendiente, requiere TLS mutuo) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
+| Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; verificacion ZK on-chain pendiente |
+| Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Especificacion publica y modelo de amenazas |
 
 Ver docs/especificacion-publica.md para el detalle de cada componente y
@@ -46,16 +47,40 @@ web (en dos terminales):
 pnpm --filter @civora/contracts node
 pnpm --filter @civora/contracts deploy:localhost
 
-El script de despliegue crea la propuesta de ejemplo y escribe la
-direccion + ABI en apps/web/lib/generated/despliegue-localhost.json
-(se regenera en cada despliegue, no se versiona). Con eso ya se puede
-arrancar la web:
+El script de despliegue escribe la direccion + ABI en
+apps/web/lib/generated/despliegue-localhost.json (se regenera en cada
+despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
+desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
+siguiente seccion).
+
+## Base de datos (Neon)
+
+El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
+cierre) se guarda en Postgres; el contrato solo ancla el hash de ese
+contenido para poder verificar su integridad. Cualquier Postgres vale, pero
+esta pensado para [Neon](https://neon.tech) (capa gratuita, sin necesidad
+de gestionar un servidor):
+
+1. Crea una cuenta y un proyecto en Neon.
+2. Copia la cadena de conexion "pooled" (la que trae `-pooler` en el host,
+   pensada para entornos serverless como Vercel).
+3. En `apps/web/.env.local` (no se versiona):
+
+   DATABASE_URL=postgresql://usuario:contraseña@host-pooler.neon.tech/neondb?sslmode=require
+
+La tabla `propuestas` se crea sola la primera vez que la web la necesita
+(no hace falta ejecutar ninguna migracion a mano).
+
+Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
+ya se puede arrancar la web:
 
 pnpm dev
 
-La web queda disponible en http://localhost:3000. Si reinicias el nodo de
+La web queda disponible en http://localhost:3000. Crea tu primera propuesta
+en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
 Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
-cambia con cada nodo nuevo).
+cambia con cada nodo nuevo; las propuestas guardadas en Neon quedan
+huerfanas hasta que las recrees).
 
 ## Desplegar en Sepolia + Vercel
 
@@ -80,14 +105,28 @@ docs/especificacion-publica.md).
    CONTRATO_DIRECCION=<direccion impresa en el paso anterior>
    HARDHAT_RPC_URL=<la misma SEPOLIA_RPC_URL>
    HARDHAT_RELAYER_PRIVATE_KEY=<una clave con ETH de Sepolia; paga el gas de los votos>
+   DATABASE_URL=<cadena de conexion "pooled" de tu proyecto Neon>
 
    Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
    local y busca el despliegue de Hardhat.
 
+## Identidad con ZKPassport
+
+La via de DNIe/pasaporte de /votar usa el dominio de pruebas de ZKPassport
+por defecto (`demo.zkpassport.id`, en `devMode`), que acepta pruebas mock
+sin necesidad de un documento fisico. Variables de entorno opcionales
+(`apps/web/.env.local`):
+
+    NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
+    NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
+
+Para una demo publica con documentos reales, registra el dominio del
+despliegue de Vercel en el dashboard de ZKPassport y desactiva `devMode`.
+
 ## Estructura
 
 civora/
-  apps/web         -> Next.js: landing, formulario, resultados, verificador
+  apps/web         -> Next.js: landing, propuestas, voto, resultados, verificador
   packages/contracts    -> Contrato de votacion (Solidity)
   packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)
   packages/shared-types  -> Esquema compartido de propuesta/voto/resultados

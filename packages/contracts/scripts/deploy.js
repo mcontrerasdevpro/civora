@@ -5,16 +5,21 @@ const path = require("path");
 // Mismo address en Ethereum, Sepolia y Base (ver https://docs.zkpassport.id).
 const ROOT_VERIFIER_ZKPASSPORT = "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8";
 
-// Deben coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN / NEXT_PUBLIC_ZKPASSPORT_DEV_MODE
-// de la web (ver README): de lo contrario votarConPruebaZk rechaza toda prueba.
-const DOMINIO_ZK = process.env.ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
-const DEV_MODE_ZK = process.env.ZKPASSPORT_DEV_MODE !== "false";
-
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
 
+  const esLocal = hre.network.name === "localhost" || hre.network.name === "hardhat";
+
+  // Deben coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN / NEXT_PUBLIC_ZKPASSPORT_DEV_MODE
+  // de la web (ver README): de lo contrario votarConPruebaZk rechaza toda prueba. En
+  // local se ignora ZKPASSPORT_DOMAIN/DEV_MODE del .env (que es para Sepolia/mainnet):
+  // el MockRootVerifier no comprueba nada de esto, y así coincide con los valores por
+  // defecto que usa la web en local (demo.zkpassport.id / devMode true).
+  const DOMINIO_ZK = esLocal ? "demo.zkpassport.id" : process.env.ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
+  const DEV_MODE_ZK = esLocal ? true : process.env.ZKPASSPORT_DEV_MODE !== "false";
+
   let direccionVerificador;
-  if (hre.network.name === "localhost" || hre.network.name === "hardhat") {
+  if (esLocal) {
     // En redes locales no existe el RootVerifier real: se despliega un mock
     // que permite fijar de antemano el resultado de la verificacion (ver
     // contracts/zkpassport/MockRootVerifier.sol y test/VotacionAnonima.test.js).

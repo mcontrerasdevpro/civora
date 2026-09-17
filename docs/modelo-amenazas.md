@@ -53,10 +53,18 @@ y ya es seguro".
   (FNMT, DNIe) no lleva la fecha de nacimiento, así que esta vía solo prueba
   identidad (con fuerza real, vía firma verificada), no mayoría de edad; se
   acepta autodeclarada, igual que en la vía manual.
-- **Certificado digital: sin comprobación de revocación**. La verificación
-  comprueba que el certificado encadena hasta la FNMT o la DGP y que no ha
-  caducado, pero no consulta OCSP/CRL: un certificado revocado (p.ej. tras
-  perder el DNIe) seguiría siendo aceptado hasta que caduque por sí solo.
+- **Certificado digital: revocación solo por OCSP, sin CRL de respaldo**.
+  Se consulta el respondedor OCSP que declara el propio certificado
+  (extensión Authority Information Access) y se rechaza el voto si consta
+  como revocado. Por defecto, si esa consulta no se puede completar
+  (certificado sin URL de OCSP, respondedor caído, tiempo agotado...) el
+  voto también se rechaza (fallo cerrado) — más seguro, pero significa que
+  un respondedor OCSP caído bloquearía esta vía por completo. Esto no se ha
+  podido probar contra los respondedores reales de la FNMT/DGP, solo con
+  certificados sintéticos: si en producción resulta poco fiable, hay una
+  variable de entorno (`FALLO_ABIERTO_REVOCACION=true`) para aceptar el
+  voto cuando la comprobación no se pueda completar, sin dejar de rechazar
+  un certificado que sí conste como revocado.
 - **Certificado digital: requiere Autofirma instalada**, la herramienta de
   escritorio del Gobierno de España; no funciona sin ella.
 - **Dominio de ZKPassport sin registrar**: por defecto se usa el dominio de
@@ -83,7 +91,9 @@ y ya es seguro".
 
 - Auditoría externa de los contratos y del circuito ZK antes de cualquier
   uso real.
-- Comprobación de revocación (OCSP/CRL) de los certificados digitales.
+- Probar la comprobación OCSP contra los respondedores reales de la
+  FNMT/DGP (solo probada con certificados sintéticos) y añadir CRL como
+  respaldo cuando OCSP no esté disponible.
 - Verificación con el Padrón Municipal / INE mediante convenio oficial.
 - Estudio de mitigación de coacción (p.ej. permitir revotar hasta el cierre,
   ocultando cuál es el voto "definitivo").

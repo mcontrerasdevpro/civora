@@ -150,22 +150,26 @@ La via de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clie
 la herramienta oficial del Gobierno de España (hay que tenerla instalada):
 el navegador le pide que firme un código aleatorio con el certificado
 instalado (FNMT, DNIe...) y el servidor comprueba, en
-`apps/web/lib/certificado-digital.ts`, que la firma es válida, que cubre
-exactamente ese código, y que el certificado encadena hasta una autoridad
-real (la FNMT-RCM o la Dirección General de la Policía). Las raíces de
-confianza están en `apps/web/lib/certificados-raiz/` (descargadas de sus
-webs oficiales).
+`apps/web/lib/certificado-digital.ts`:
+
+1. Que la firma CMS/CAdES es criptográficamente válida y cubre exactamente
+   ese código.
+2. Que el certificado encadena hasta una autoridad real (la FNMT-RCM o la
+   Dirección General de la Policía). Las raíces de confianza están en
+   `apps/web/lib/certificados-raiz/` (descargadas de sus webs oficiales).
+3. Que el certificado no está revocado, consultando por OCSP al
+   respondedor que el propio certificado declara.
 
 A diferencia de ZKPassport, aquí no hay verificador on-chain: la
 verificación ocurre en este servidor, y el voto se envía al contrato por la
 vía "manual" existente (`votarManual`) con el nullifier ya calculado a
 partir del certificado verificado. Tampoco se comprueba la edad (un
-certificado no lleva la fecha de nacimiento) ni la revocación del
-certificado (OCSP/CRL) — ver docs/modelo-amenazas.md.
+certificado no lleva la fecha de nacimiento) — ver docs/modelo-amenazas.md.
 
-Variable de entorno necesaria (`apps/web/.env.local`):
+Variables de entorno (`apps/web/.env.local`):
 
     RETO_CERTIFICADO_SECRET=<una cadena aleatoria larga>
+    FALLO_ABIERTO_REVOCACION=false   # true para aceptar el voto si OCSP no responde (no si SI consta revocado)
 
 ## Crear propuestas
 

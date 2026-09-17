@@ -26,7 +26,20 @@ import forge from "node-forge";
  * real: quien firma posee ese certificado). La edad se acepta autodeclarada,
  * igual que en la via manual.
  *
- * Tampoco se comprueba revocacion (OCSP/CRL) del certificado: pendiente.
+ *   5. Que el certificado no este revocado, consultando por OCSP al
+ *      respondedor que el propio certificado declara (extension Authority
+ *      Information Access). No hay fallback a CRL todavia.
+ *
+ * FALLO_ABIERTO_REVOCACION (variable de entorno, por defecto false): que
+ * hacer si no se puede completar la comprobacion OCSP (sin URL en el
+ * certificado, respondedor caido, tiempo agotado...). Por defecto se
+ * rechaza el voto (fallo cerrado): mas seguro, pero significa que un
+ * respondedor OCSP caido bloquea esta via de voto por completo. Esto no se
+ * ha podido probar contra los respondedores reales de la FNMT/DGP (solo
+ * con certificados sinteticos); si en producción resulta poco fiable,
+ * define FALLO_ABIERTO_REVOCACION=true para aceptar el voto cuando la
+ * comprobacion no se pueda completar (no cuando el certificado SI conste
+ * como revocado: eso siempre rechaza).
  */
 
 let motorConfigurado = false;
@@ -72,29 +85,93 @@ function raicesDeConfianza(): forge.pki.Certificate[] {
     .map((archivo) => forge.pki.certificateFromPem(fs.readFileSync(path.join(dir, archivo), "utf8")));
 }
 
+interface CertificadoPar {
+  forge: forge.pki.Certificate;
+  pkijs: pkijs.Certificate;
+}
+
 /**
  * Ordena la hoja seguida de sus emisores intermedios (buscando en la lista
  * de candidatos, no confiables por si solos, cual firma a cual) hasta llegar
  * a un certificado autofirmado o quedarse sin candidatos. El resultado se le
  * pasa a verifyCertificateChain junto con un almacen que solo tiene las
  * raices reales: eso es lo que impide que un intermedio (o la propia hoja)
- * se cuele como si fuera de confianza.
+ * se cuele como si fuera de confianza. Se conserva tambien la version pkijs
+ * de cada certificado (necesaria para la comprobacion OCSP).
  */
-function ordenarCadenaHastaRaiz(
-  hoja: forge.pki.Certificate,
-  candidatos: forge.pki.Certificate[]
-): forge.pki.Certificate[] {
+function ordenarCadenaHastaRaiz(hoja: CertificadoPar, candidatos: CertificadoPar[]): CertificadoPar[] {
   const cadena = [hoja];
   const restantes = [...candidatos];
   let actual = hoja;
-  while (!actual.isIssuer(actual)) {
-    const indice = restantes.findIndex((candidato) => actual.isIssuer(candidato));
+  while (!actual.forge.isIssuer(actual.forge)) {
+    const indice = restantes.findIndex((candidato) => actual.forge.isIssuer(candidato.forge));
     if (indice === -1) break;
     actual = restantes[indice];
     cadena.push(actual);
     restantes.splice(indice, 1);
   }
   return cadena;
+}
+
+/** URL del respondedor OCSP declarado en la extension Authority Information Access, si existe. */
+function urlOcsp(cert: pkijs.Certificate): string | null {
+  const extension = cert.extensions?.find((e) => e.extnID === pkijs.id_AuthorityInfoAccess);
+  const infoAccess = extension?.parsedValue as pkijs.InfoAccess | undefined;
+  const descripcion = infoAccess?.accessDescriptions.find((d) => d.accessMethod === pkijs.id_ad_ocsp);
+  const location = descripcion?.accessLocation;
+  return location && location.type === 6 && typeof location.value === "string" ? location.value : null;
+}
+
+/**
+ * Consulta OCSP para el certificado de la hoja contra su emisor inmediato.
+ * `comprobado` indica si se ha podido completar la consulta (URL presente,
+ * respuesta recibida y firmada correctamente); `revocado` solo es
+ * significativo cuando `comprobado` es true.
+ */
+async function comprobarRevocacion(
+  hoja: pkijs.Certificate,
+  emisor: pkijs.Certificate
+): Promise<{ comprobado: boolean; revocado: boolean }> {
+  const url = urlOcsp(hoja);
+  if (!url) return { comprobado: false, revocado: false };
+
+  try {
+    const solicitud = new pkijs.OCSPRequest();
+    await solicitud.createForCertificate(hoja, { hashAlgorithm: "SHA-1", issuerCertificate: emisor });
+    const cuerpoSolicitud = Buffer.from(solicitud.toSchema(true).toBER(false));
+
+    const respuesta = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/ocsp-request" },
+      body: cuerpoSolicitud,
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!respuesta.ok) return { comprobado: false, revocado: false };
+
+    const cuerpoRespuesta = Buffer.from(await respuesta.arrayBuffer());
+    const ocspResponse = new pkijs.OCSPResponse({
+      schema: asn1js.fromBER(new Uint8Array(cuerpoRespuesta).buffer).result,
+    });
+    if (ocspResponse.responseStatus.valueBlock.valueDec !== 0 || !ocspResponse.responseBytes) {
+      return { comprobado: false, revocado: false };
+    }
+
+    const basicResponse = new pkijs.BasicOCSPResponse({
+      schema: asn1js.fromBER(ocspResponse.responseBytes.response.valueBlock.valueHexView.slice().buffer).result,
+    });
+
+    const firmaOk = await basicResponse
+      .verify({ trustedCerts: [emisor, ...(basicResponse.certs ?? [])] })
+      .catch(() => false);
+    if (!firmaOk) return { comprobado: false, revocado: false };
+
+    const estado = await basicResponse.getCertificateStatus(hoja, emisor);
+    if (!estado.isForCertificate) return { comprobado: false, revocado: false };
+    // CertStatus segun RFC 6960: 0 good, 1 revoked, 2 unknown.
+    return { comprobado: estado.status === 0 || estado.status === 1, revocado: estado.status === 1 };
+  } catch {
+    return { comprobado: false, revocado: false };
+  }
 }
 
 /** DNI/NIF del titular si el certificado lo declara en el subject; si no, un identificador estable del propio certificado. */
@@ -183,36 +260,45 @@ export async function verificarFirmaCertificado(params: {
   }
 
   // Cadena de confianza: el certificado debe encadenar hasta la FNMT o la
-  // DGP (DNIe). No se comprueba revocacion (OCSP/CRL), ver modelo-amenazas.md.
-  let certificadoForge: forge.pki.Certificate;
+  // DGP (DNIe).
+  let hojaPar: CertificadoPar;
   try {
-    certificadoForge = forge.pki.certificateFromAsn1(
-      forge.asn1.fromDer(forge.util.createBuffer(certificadoLeafDer.toString("binary")))
-    );
+    hojaPar = {
+      pkijs: certificadoLeaf,
+      forge: forge.pki.certificateFromAsn1(
+        forge.asn1.fromDer(forge.util.createBuffer(certificadoLeafDer.toString("binary")))
+      ),
+    };
   } catch {
     return { valido: false, identificador: null, error: "No se ha podido leer el certificado (X.509)." };
   }
 
-  const intermedios: forge.pki.Certificate[] = [];
+  const candidatos: CertificadoPar[] = [];
   for (const cert of certificadosDeLaFirma) {
     try {
       const der = Buffer.from(cert.toSchema().toBER(false));
-      intermedios.push(forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(der.toString("binary")))));
+      candidatos.push({
+        pkijs: cert,
+        forge: forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(der.toString("binary")))),
+      });
     } catch {
       // certificado no parseable; se ignora, no participa en la cadena
     }
   }
 
-  // IMPORTANTE: los "intermedios" salen del propio CMS, es decir, los pone
+  // IMPORTANTE: los "candidatos" salen del propio CMS, es decir, los pone
   // quien firma. Solo sirven para completar la cadena hasta una raiz real;
   // nunca deben entrar en el mismo almacen de confianza que las raices, o
   // un certificado autofirmado (o cualquier cadena inventada) se
   // "confiaria a si mismo" y la verificacion no serviria de nada.
   const caStore = forge.pki.createCaStore(raicesDeConfianza());
-  const cadena = ordenarCadenaHastaRaiz(certificadoForge, intermedios);
+  const cadena = ordenarCadenaHastaRaiz(hojaPar, candidatos);
   let cadenaValida = false;
   try {
-    cadenaValida = forge.pki.verifyCertificateChain(caStore, cadena);
+    cadenaValida = forge.pki.verifyCertificateChain(
+      caStore,
+      cadena.map((par) => par.forge)
+    );
   } catch {
     cadenaValida = false;
   }
@@ -224,7 +310,29 @@ export async function verificarFirmaCertificado(params: {
     };
   }
 
-  return { valido: true, identificador: identificadorDeCertificado(certificadoForge) };
+  const emisorInmediato = cadena[1]?.pkijs;
+  const falloAbierto = process.env.FALLO_ABIERTO_REVOCACION === "true";
+  if (emisorInmediato) {
+    const { comprobado, revocado } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
+    if (revocado) {
+      return { valido: false, identificador: null, error: "El certificado ha sido revocado." };
+    }
+    if (!comprobado && !falloAbierto) {
+      return {
+        valido: false,
+        identificador: null,
+        error: "No se ha podido comprobar si el certificado está revocado (OCSP no disponible).",
+      };
+    }
+  } else if (!falloAbierto) {
+    return {
+      valido: false,
+      identificador: null,
+      error: "No se ha podido determinar el emisor del certificado para comprobar su revocación.",
+    };
+  }
+
+  return { valido: true, identificador: identificadorDeCertificado(hojaPar.forge) };
 }
 
 /** Nullifier final, propuesta-especifico, a partir del identificador del certificado ya verificado. */

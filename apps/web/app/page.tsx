@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { AnimatedNumber } from "./components/AnimatedNumber";
 import { LogoMark } from "./components/LogoMark";
 
 const PASOS = [
@@ -253,41 +252,21 @@ export default function Home() {
         <div className="wrap">
           <div className="section-head">
             <h2>Resultados, en abierto</h2>
-            <p>Público desde el minuto uno, auditable por cualquiera.</p>
+            <p>
+              El recuento de cada propuesta vive en un contrato público desde
+              el momento en que se crea: cualquiera puede consultarlo, votos
+              incluidos, sin esperar al cierre.
+            </p>
           </div>
 
-          <div className="ledger-frame">
-            <div className="ledger-top">
-              <span className="ledger-top-label">
-                propuesta de ejemplo — &quot;Presupuestos participativos 2027&quot;
-              </span>
-              <span className="ledger-top-badge">vista previa</span>
-            </div>
-            <div className="ledger-grid">
-              <div className="ledger-cell">
-                <AnimatedNumber value={48213} />
-                <div className="ledger-cell-label">Registrados</div>
-              </div>
-              <div className="ledger-cell favor">
-                <AnimatedNumber value={27904} />
-                <div className="ledger-cell-label">A favor</div>
-              </div>
-              <div className="ledger-cell contra">
-                <AnimatedNumber value={15332} />
-                <div className="ledger-cell-label">En contra</div>
-              </div>
-              <div className="ledger-cell">
-                <AnimatedNumber value={4977} />
-                <div className="ledger-cell-label">Abstenciones</div>
-              </div>
-            </div>
-            <div className="ledger-foot">
-              Datos de ejemplo — ver el panel real en{" "}
-              <Link className="link-quiet" href="/propuestas">
-                /resultados
-              </Link>
-              .
-            </div>
+          <div className="ledger-frame ledger-cta">
+            <p>
+              Sin cifras de mentira aquí: mejor entra a ver las propuestas
+              reales que hay abiertas ahora mismo.
+            </p>
+            <Link className="btn-primary" href="/propuestas">
+              Ver propuestas activas →
+            </Link>
           </div>
         </div>
       </section>
@@ -310,8 +289,9 @@ export default function Home() {
                 </li>
                 <li>Tu identidad nunca queda asociada a tu voto.</li>
                 <li>
-                  Solo puede votar quien posee físicamente su DNIe o
-                  pasaporte.
+                  Con DNIe/pasaporte o certificado digital, solo puede votar
+                  quien lo posee físicamente (la vía de respaldo sin ellos no
+                  ofrece esta garantía).
                 </li>
               </ul>
             </div>

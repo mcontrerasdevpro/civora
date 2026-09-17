@@ -43,9 +43,10 @@ export default function VotarPropuestaPage({ params }: { params: { id: string } 
 
       {estado.fase === "error" && (
         <div className="alert alert-error">
-          No se ha encontrado esta propuesta. Consulta el listado en{" "}
+          No se ha podido cargar esta propuesta. Comprueba el enlace o
+          consulta{" "}
           <a className="link-quiet" href="/propuestas">
-            /propuestas
+            el listado de propuestas
           </a>
           .
         </div>

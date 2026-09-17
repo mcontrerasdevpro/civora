@@ -11,10 +11,13 @@ import { AnimatedNumber } from "../../components/AnimatedNumber";
  */
 const INTERVALO_REFRESCO_MS = 4000;
 
+type Estado =
+  | { fase: "cargando" }
+  | { fase: "error" }
+  | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
+
 export default function ResultadosPropuestaPage({ params }: { params: { id: string } }) {
-  const [propuesta, setPropuesta] = useState<Propuesta | null>(null);
-  const [resultados, setResultados] = useState<ResultadoPropuesta | null>(null);
-  const [error, setError] = useState(false);
+  const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
 
   useEffect(() => {
     let cancelado = false;
@@ -24,13 +27,9 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
         const respuesta = await fetch(`/api/propuestas/${params.id}`, { cache: "no-store" });
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        if (!cancelado) {
-          setPropuesta(cuerpo.propuesta);
-          setResultados(cuerpo.resultados);
-          setError(false);
-        }
+        if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados });
       } catch {
-        if (!cancelado) setError(true);
+        if (!cancelado) setEstado((anterior) => (anterior.fase === "lista" ? anterior : { fase: "error" }));
       }
     }
 
@@ -46,40 +45,48 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
     <main className="wrap page-shell">
       <div className="page-head">
         <h1>Resultados</h1>
-        <p>{propuesta?.titulo ?? "Cargando…"}</p>
+        <p>{estado.fase === "lista" ? estado.propuesta.titulo : "Cargando…"}</p>
       </div>
 
-      {error && (
+      {estado.fase === "cargando" && <p className="form-hint">Cargando resultados…</p>}
+
+      {estado.fase === "error" && (
         <div className="alert alert-error">
-          No se han podido cargar los resultados. Reintentando…
+          No se ha podido cargar esta propuesta. Comprueba el enlace o consulta{" "}
+          <a className="link-quiet" href="/propuestas">
+            el listado de propuestas
+          </a>
+          .
         </div>
       )}
 
-      <div className="ledger-frame">
-        <div className="ledger-top">
-          <span className="ledger-top-label">{propuesta?.pregunta ?? ""}</span>
-          <span className="ledger-top-badge">en directo</span>
+      {estado.fase === "lista" && (
+        <div className="ledger-frame">
+          <div className="ledger-top">
+            <span className="ledger-top-label">{estado.propuesta.pregunta}</span>
+            <span className="ledger-top-badge">en directo</span>
+          </div>
+          <div className="ledger-grid">
+            <div className="ledger-cell">
+              <AnimatedNumber value={estado.resultados.registrados} />
+              <div className="ledger-cell-label">Registrados</div>
+            </div>
+            <div className="ledger-cell favor">
+              <AnimatedNumber value={estado.resultados.aFavor} />
+              <div className="ledger-cell-label">A favor</div>
+            </div>
+            <div className="ledger-cell contra">
+              <AnimatedNumber value={estado.resultados.enContra} />
+              <div className="ledger-cell-label">En contra</div>
+            </div>
+            <div className="ledger-cell">
+              <AnimatedNumber value={estado.resultados.abstenciones} />
+              <div className="ledger-cell-label">Abstenciones</div>
+            </div>
+          </div>
+          <div className="ledger-foot">Datos leídos directamente del contrato público.</div>
         </div>
-        <div className="ledger-grid">
-          <div className="ledger-cell">
-            <AnimatedNumber value={resultados?.registrados ?? 0} />
-            <div className="ledger-cell-label">Registrados</div>
-          </div>
-          <div className="ledger-cell favor">
-            <AnimatedNumber value={resultados?.aFavor ?? 0} />
-            <div className="ledger-cell-label">A favor</div>
-          </div>
-          <div className="ledger-cell contra">
-            <AnimatedNumber value={resultados?.enContra ?? 0} />
-            <div className="ledger-cell-label">En contra</div>
-          </div>
-          <div className="ledger-cell">
-            <AnimatedNumber value={resultados?.abstenciones ?? 0} />
-            <div className="ledger-cell-label">Abstenciones</div>
-          </div>
-        </div>
-        <div className="ledger-foot">Datos leídos directamente del contrato público.</div>
-      </div>
+      )}
     </main>
   );
 }

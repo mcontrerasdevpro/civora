@@ -3,25 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const CLAVE_ADMIN_STORAGE_KEY = "civora-clave-admin";
-
 function fechaLocalPorDefecto(): string {
   const dentroDeUnaHora = new Date(Date.now() + 60 * 60 * 1000);
   dentroDeUnaHora.setMinutes(dentroDeUnaHora.getMinutes() - dentroDeUnaHora.getTimezoneOffset());
   return dentroDeUnaHora.toISOString().slice(0, 16);
 }
 
-function claveAdminGuardada(): string {
-  try {
-    return sessionStorage.getItem(CLAVE_ADMIN_STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
 export default function NuevaPropuestaPage() {
   const router = useRouter();
-  const [claveAdmin, setClaveAdmin] = useState(claveAdminGuardada);
   const [titulo, setTitulo] = useState("");
   const [pregunta, setPregunta] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -34,10 +23,6 @@ export default function NuevaPropuestaPage() {
     evento.preventDefault();
     setError(null);
 
-    if (!claveAdmin.trim()) {
-      setError("Introduce la clave de administrador.");
-      return;
-    }
     if (!titulo.trim() || !pregunta.trim()) {
       setError("El título y la pregunta son obligatorios.");
       return;
@@ -47,7 +32,7 @@ export default function NuevaPropuestaPage() {
     try {
       const respuesta = await fetch("/api/propuestas", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-key": claveAdmin.trim() },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           titulo: titulo.trim(),
           pregunta: pregunta.trim(),
@@ -60,11 +45,6 @@ export default function NuevaPropuestaPage() {
       if (!respuesta.ok) {
         setError(cuerpo.error ?? "No se ha podido crear la propuesta.");
         return;
-      }
-      try {
-        sessionStorage.setItem(CLAVE_ADMIN_STORAGE_KEY, claveAdmin.trim());
-      } catch {
-        // almacenamiento no disponible (navegacion privada, etc.); no es critico
       }
       router.push(`/propuestas`);
     } catch {
@@ -85,18 +65,6 @@ export default function NuevaPropuestaPage() {
       </div>
 
       <form className="panel" onSubmit={enviar}>
-        <div className="form-field">
-          <label htmlFor="clave-admin">Clave de administrador</label>
-          <input
-            id="clave-admin"
-            type="password"
-            value={claveAdmin}
-            onChange={(evento) => setClaveAdmin(evento.target.value)}
-            autoComplete="off"
-          />
-          <p className="form-hint">Solo quien la tenga puede crear propuestas.</p>
-        </div>
-
         <div className="form-field">
           <label htmlFor="titulo">Título</label>
           <input

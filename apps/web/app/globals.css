@@ -1012,6 +1012,12 @@ footer.site-footer {
   background: #eafaf5;
 }
 
+.alert-info {
+  color: var(--tinta-suave);
+  border-color: var(--linea-fuerte);
+  background: var(--papel-raised);
+}
+
 .recibo {
   font-family: var(--mono);
   font-size: 13px;

@@ -186,6 +186,11 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
           <button className="btn-primary" type="submit" disabled={!opcion || enviando}>
             {enviando ? "Enviando…" : "Emitir voto"}
           </button>
+          {enviando && (
+            <div className="alert alert-info" style={{ marginTop: 20, marginBottom: 0 }}>
+              Un momento, estamos procesando tu voto. No cierres esta ventana.
+            </div>
+          )}
         </form>
       )}
 

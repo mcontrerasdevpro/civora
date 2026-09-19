@@ -136,6 +136,46 @@ function urlOcsp(cert: pkijs.Certificate): string | null {
 }
 
 /**
+ * Solo para diagnostico: repite la busqueda de certificado firmante y la
+ * validacion de cadena que hace BasicOCSPResponse.verify() por dentro, pero
+ * exponiendo el resultMessage real en vez del "Validation of signer's
+ * certificate failed" generico que lanza pkijs. No decide nada por si sola:
+ * el resultado de seguridad real sigue viniendo de basicResponse.verify().
+ */
+async function diagnosticarCadenaOcsp(
+  basicResponse: pkijs.BasicOCSPResponse,
+  trustedCerts: pkijs.Certificate[]
+): Promise<string> {
+  try {
+    const certs = basicResponse.certs;
+    if (!certs || certs.length === 0) return "la respuesta OCSP no incluye certificados";
+
+    const responderID = basicResponse.tbsResponseData.responderID;
+    let signerCert: pkijs.Certificate | undefined;
+    if (responderID instanceof pkijs.RelativeDistinguishedNames) {
+      signerCert = certs.find((cert) => cert.subject.isEqual(responderID));
+    } else {
+      for (const cert of certs) {
+        const hash = await webcrypto.subtle.digest("SHA-1", cert.subjectPublicKeyInfo.subjectPublicKey.valueBlock.valueHexView);
+        if (Buffer.compare(Buffer.from(hash), Buffer.from(responderID.valueBlock.valueHex)) === 0) {
+          signerCert = cert;
+          break;
+        }
+      }
+    }
+    if (!signerCert) return "no se encontro el certificado firmante dentro de la respuesta OCSP";
+
+    const cadena = new pkijs.CertificateChainValidationEngine({ certs, trustedCerts });
+    const resultado = await cadena.verify();
+    return resultado.result
+      ? "la cadena del firmante SI valida; el fallo esta en la comprobacion binaria de la firma"
+      : `cadena del firmante invalida: ${resultado.resultMessage}`;
+  } catch (error) {
+    return `excepcion al diagnosticar la cadena: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+/**
  * Consulta OCSP para el certificado de la hoja contra su emisor inmediato.
  * `comprobado` indica si se ha podido completar la consulta (URL presente,
  * respuesta recibida y firmada correctamente); `revocado` solo es
@@ -191,8 +231,12 @@ async function comprobarRevocacion(
         return false;
       });
     if (!firmaOk) {
+      const detalleCadena = await diagnosticarCadenaOcsp(
+        basicResponse,
+        [emisor, ...raicesDeConfianzaPkijs()]
+      );
       return fallo(
-        `La firma de la respuesta OCSP no ha verificado${errorFirma ? `: ${errorFirma instanceof Error ? errorFirma.message : String(errorFirma)}` : "."}`
+        `La firma de la respuesta OCSP no ha verificado${errorFirma ? `: ${errorFirma instanceof Error ? errorFirma.message : String(errorFirma)}` : "."} (${detalleCadena})`
       );
     }
 

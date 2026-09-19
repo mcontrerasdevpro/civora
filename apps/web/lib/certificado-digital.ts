@@ -85,6 +85,19 @@ function raicesDeConfianza(): forge.pki.Certificate[] {
     .map((archivo) => forge.pki.certificateFromPem(fs.readFileSync(path.join(dir, archivo), "utf8")));
 }
 
+/** Las mismas raices de confianza, en formato pkijs (para verificar la firma de la respuesta OCSP). */
+function raicesDeConfianzaPkijs(): pkijs.Certificate[] {
+  const dir = path.join(process.cwd(), "lib", "certificados-raiz");
+  return fs
+    .readdirSync(dir)
+    .filter((archivo) => archivo.endsWith(".pem"))
+    .map((archivo) => {
+      const pem = fs.readFileSync(path.join(dir, archivo), "utf8");
+      const der = Buffer.from(forge.pki.pemToDer(pem).getBytes(), "binary");
+      return new pkijs.Certificate({ schema: asn1js.fromBER(new Uint8Array(der).buffer).result });
+    });
+}
+
 interface CertificadoPar {
   forge: forge.pki.Certificate;
   pkijs: pkijs.Certificate;
@@ -165,9 +178,14 @@ async function comprobarRevocacion(
       schema: asn1js.fromBER(ocspResponse.responseBytes.response.valueBlock.valueHexView.slice().buffer).result,
     });
 
+    // El certificado que firma la respuesta OCSP no siempre es el mismo
+    // emisor directo de la hoja (a veces es una CA de OCSP delegada dentro
+    // de la misma jerarquia), asi que se admite como ancla de confianza
+    // tanto el emisor inmediato como las raices reales (FNMT/DGP): con eso
+    // basta para validar la respuesta sin confiar en nada ajeno a esa PKI.
     let errorFirma: unknown;
     const firmaOk = await basicResponse
-      .verify({ trustedCerts: [emisor, ...(basicResponse.certs ?? [])] })
+      .verify({ trustedCerts: [emisor, ...raicesDeConfianzaPkijs(), ...(basicResponse.certs ?? [])] })
       .catch((e) => {
         errorFirma = e;
         return false;

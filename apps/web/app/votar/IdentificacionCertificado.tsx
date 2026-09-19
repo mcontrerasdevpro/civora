@@ -102,8 +102,10 @@ export function IdentificacionCertificado({
           setEstado("error");
         }
       );
-    } catch {
-      setError("No se ha podido contactar con el servidor.");
+    } catch (error) {
+      console.error("Fallo al firmar con certificado digital:", error);
+      const detalle = error instanceof Error ? error.message : String(error);
+      setError(`No se ha podido contactar con el servidor (${detalle}).`);
       setEstado("error");
     }
   }

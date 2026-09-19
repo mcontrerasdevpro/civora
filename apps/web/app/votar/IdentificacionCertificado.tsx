@@ -9,6 +9,7 @@ import type { Identificacion } from "./identificacion";
 declare global {
   interface Window {
     AutoScript?: {
+      cargarAppAfirma: (clientAddress?: string, keystore?: string) => void;
       sign: (
         dataB64: string,
         algoritmo: string,
@@ -112,7 +113,14 @@ export function IdentificacionCertificado({
 
   return (
     <div className="panel">
-      <Script src="/js/autoscript.js" strategy="afterInteractive" onReady={() => setAutoscriptListo(true)} />
+      <Script
+        src="/js/autoscript.js"
+        strategy="afterInteractive"
+        onReady={() => {
+          window.AutoScript?.cargarAppAfirma();
+          setAutoscriptListo(true);
+        }}
+      />
 
       <button type="button" className="link-quiet metodo-volver" onClick={onCambiarMetodo}>
         ← Elegir otro método

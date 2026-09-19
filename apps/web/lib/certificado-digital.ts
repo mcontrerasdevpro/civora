@@ -142,6 +142,16 @@ function urlOcsp(cert: pkijs.Certificate): string | null {
  * certificate failed" generico que lanza pkijs. No decide nada por si sola:
  * el resultado de seguridad real sigue viniendo de basicResponse.verify().
  */
+function esCACandidataPara(cert: pkijs.Certificate, signerCert: pkijs.Certificate): pkijs.Certificate | null {
+  if (cert.issuer.isEqual(signerCert.issuer) && cert.serialNumber.isEqual(signerCert.serialNumber)) {
+    return null;
+  }
+  const basicConstraints = cert.extensions?.find((e) => e.extnID === pkijs.id_BasicConstraints);
+  const parsedValue = basicConstraints?.parsedValue;
+  const esCA = parsedValue instanceof pkijs.BasicConstraints && parsedValue.cA === true;
+  return esCA ? cert : null;
+}
+
 async function diagnosticarCadenaOcsp(
   basicResponse: pkijs.BasicOCSPResponse,
   trustedCerts: pkijs.Certificate[]
@@ -165,12 +175,25 @@ async function diagnosticarCadenaOcsp(
     }
     if (!signerCert) return "no se encontro el certificado firmante dentro de la respuesta OCSP";
 
-    const cadena = new pkijs.CertificateChainValidationEngine({ certs, trustedCerts });
+    // Replica fiel de lo que hace BasicOCSPResponse.verify() por dentro: solo
+    // se admiten como intermedios los certs de la respuesta marcados como CA
+    // (BasicConstraints.cA=true), no todos los certs incluidos.
+    const caCandidatos = certs
+      .map((cert) => esCACandidataPara(cert, signerCert as pkijs.Certificate))
+      .filter((cert): cert is pkijs.Certificate => cert !== null);
+    const additionalCerts = [signerCert, ...caCandidatos];
+
+    const cadena = new pkijs.CertificateChainValidationEngine({ certs: additionalCerts, trustedCerts });
     const resultado = await cadena.verify();
-    if (!resultado.result) return `cadena del firmante invalida: ${resultado.resultMessage}`;
+    if (!resultado.result) {
+      return (
+        `cadena del firmante invalida: ${resultado.resultMessage} ` +
+        `(certs en la respuesta=${certs.length}, candidatos CA encontrados=${caCandidatos.length})`
+      );
+    }
 
     return (
-      "cadena valida; algoritmo de la firma OCSP=" +
+      "cadena valida segun esta replica; algoritmo de la firma OCSP=" +
       `${basicResponse.signatureAlgorithm.algorithmId}, ` +
       "algoritmo de la clave del firmante=" +
       `${signerCert.subjectPublicKeyInfo.algorithm.algorithmId}`
@@ -228,18 +251,14 @@ async function comprobarRevocacion(
     // de la misma jerarquia), asi que se admite como ancla de confianza
     // tanto el emisor inmediato como las raices reales (FNMT/DGP): con eso
     // basta para validar la respuesta sin confiar en nada ajeno a esa PKI.
+    const trustedCertsOcsp = [emisor, ...raicesDeConfianzaPkijs(), ...(basicResponse.certs ?? [])];
     let errorFirma: unknown;
-    const firmaOk = await basicResponse
-      .verify({ trustedCerts: [emisor, ...raicesDeConfianzaPkijs(), ...(basicResponse.certs ?? [])] })
-      .catch((e) => {
-        errorFirma = e;
-        return false;
-      });
+    const firmaOk = await basicResponse.verify({ trustedCerts: trustedCertsOcsp }).catch((e) => {
+      errorFirma = e;
+      return false;
+    });
     if (!firmaOk) {
-      const detalleCadena = await diagnosticarCadenaOcsp(
-        basicResponse,
-        [emisor, ...raicesDeConfianzaPkijs()]
-      );
+      const detalleCadena = await diagnosticarCadenaOcsp(basicResponse, trustedCertsOcsp);
       return fallo(
         `La firma de la respuesta OCSP no ha verificado${errorFirma ? `: ${errorFirma instanceof Error ? errorFirma.message : String(errorFirma)}` : "."} (${detalleCadena})`
       );

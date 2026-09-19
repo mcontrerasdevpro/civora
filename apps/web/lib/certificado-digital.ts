@@ -444,18 +444,17 @@ export async function verificarFirmaCertificado(params: {
   const emisorInmediato = cadena[1]?.pkijs;
   const falloAbierto = process.env.FALLO_ABIERTO_REVOCACION === "true";
   if (emisorInmediato) {
-    const { comprobado, revocado, razon } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
+    const { comprobado, revocado } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
     if (revocado) {
       return { valido: false, identificador: null, error: "El certificado ha sido revocado." };
     }
     if (!comprobado && !falloAbierto) {
+      // La razon detallada del fallo ya queda registrada en el servidor via
+      // console.error dentro de comprobarRevocacion; no se expone al cliente.
       return {
         valido: false,
         identificador: null,
-        // TODO: quitar el detalle de `razon` del mensaje una vez diagnosticado
-        // por que falla el OCSP real en produccion; de momento ayuda a verlo
-        // sin acceso a los logs del servidor.
-        error: `No se ha podido comprobar si el certificado está revocado (OCSP no disponible): ${razon}`,
+        error: "No se ha podido comprobar si el certificado está revocado (OCSP no disponible).",
       };
     }
   } else if (!falloAbierto) {

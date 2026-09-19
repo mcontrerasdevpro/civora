@@ -167,9 +167,14 @@ async function diagnosticarCadenaOcsp(
 
     const cadena = new pkijs.CertificateChainValidationEngine({ certs, trustedCerts });
     const resultado = await cadena.verify();
-    return resultado.result
-      ? "la cadena del firmante SI valida; el fallo esta en la comprobacion binaria de la firma"
-      : `cadena del firmante invalida: ${resultado.resultMessage}`;
+    if (!resultado.result) return `cadena del firmante invalida: ${resultado.resultMessage}`;
+
+    return (
+      "cadena valida; algoritmo de la firma OCSP=" +
+      `${basicResponse.signatureAlgorithm.algorithmId}, ` +
+      "algoritmo de la clave del firmante=" +
+      `${signerCert.subjectPublicKeyInfo.algorithm.algorithmId}`
+    );
   } catch (error) {
     return `excepcion al diagnosticar la cadena: ${error instanceof Error ? error.message : String(error)}`;
   }

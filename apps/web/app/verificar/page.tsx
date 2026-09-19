@@ -20,7 +20,7 @@ type Resultado =
   | { estado: "idle" }
   | { estado: "buscando" }
   | { estado: "no_encontrado" }
-  | { estado: "encontrado"; opcion: OpcionVoto; timestamp: number }
+  | { estado: "encontrado"; opcion: OpcionVoto; timestamp: number | null }
   | { estado: "error" };
 
 function FormularioVerificacion() {
@@ -84,8 +84,10 @@ function FormularioVerificacion() {
 
       {resultado.estado === "encontrado" && (
         <div className="alert alert-ok" style={{ marginTop: 20, marginBottom: 0 }}>
-          Tu voto está contado: <strong>{ETIQUETAS_OPCION[resultado.opcion]}</strong>, registrado
-          el {new Date(resultado.timestamp).toLocaleString("es-ES")}.
+          Tu voto está contado: <strong>{ETIQUETAS_OPCION[resultado.opcion]}</strong>
+          {resultado.timestamp !== null
+            ? `, registrado el ${new Date(resultado.timestamp).toLocaleString("es-ES")}.`
+            : "."}
         </div>
       )}
       {resultado.estado === "no_encontrado" && (

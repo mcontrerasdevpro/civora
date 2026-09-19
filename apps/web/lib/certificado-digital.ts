@@ -131,9 +131,14 @@ function urlOcsp(cert: pkijs.Certificate): string | null {
 async function comprobarRevocacion(
   hoja: pkijs.Certificate,
   emisor: pkijs.Certificate
-): Promise<{ comprobado: boolean; revocado: boolean }> {
+): Promise<{ comprobado: boolean; revocado: boolean; razon?: string }> {
+  const fallo = (razon: string) => {
+    console.error("Comprobacion OCSP fallida:", razon);
+    return { comprobado: false, revocado: false, razon };
+  };
+
   const url = urlOcsp(hoja);
-  if (!url) return { comprobado: false, revocado: false };
+  if (!url) return fallo("El certificado no declara URL de OCSP (Authority Information Access).");
 
   try {
     const solicitud = new pkijs.OCSPRequest();
@@ -146,31 +151,42 @@ async function comprobarRevocacion(
       body: cuerpoSolicitud,
       signal: AbortSignal.timeout(5000),
     });
-    if (!respuesta.ok) return { comprobado: false, revocado: false };
+    if (!respuesta.ok) return fallo(`El respondedor OCSP (${url}) devolvio HTTP ${respuesta.status}.`);
 
     const cuerpoRespuesta = Buffer.from(await respuesta.arrayBuffer());
     const ocspResponse = new pkijs.OCSPResponse({
       schema: asn1js.fromBER(new Uint8Array(cuerpoRespuesta).buffer).result,
     });
     if (ocspResponse.responseStatus.valueBlock.valueDec !== 0 || !ocspResponse.responseBytes) {
-      return { comprobado: false, revocado: false };
+      return fallo(`Respuesta OCSP con responseStatus=${ocspResponse.responseStatus.valueBlock.valueDec}.`);
     }
 
     const basicResponse = new pkijs.BasicOCSPResponse({
       schema: asn1js.fromBER(ocspResponse.responseBytes.response.valueBlock.valueHexView.slice().buffer).result,
     });
 
+    let errorFirma: unknown;
     const firmaOk = await basicResponse
       .verify({ trustedCerts: [emisor, ...(basicResponse.certs ?? [])] })
-      .catch(() => false);
-    if (!firmaOk) return { comprobado: false, revocado: false };
+      .catch((e) => {
+        errorFirma = e;
+        return false;
+      });
+    if (!firmaOk) {
+      return fallo(
+        `La firma de la respuesta OCSP no ha verificado${errorFirma ? `: ${errorFirma instanceof Error ? errorFirma.message : String(errorFirma)}` : "."}`
+      );
+    }
 
     const estado = await basicResponse.getCertificateStatus(hoja, emisor);
-    if (!estado.isForCertificate) return { comprobado: false, revocado: false };
+    if (!estado.isForCertificate) return fallo("La respuesta OCSP no corresponde al certificado consultado.");
     // CertStatus segun RFC 6960: 0 good, 1 revoked, 2 unknown.
-    return { comprobado: estado.status === 0 || estado.status === 1, revocado: estado.status === 1 };
-  } catch {
-    return { comprobado: false, revocado: false };
+    if (estado.status !== 0 && estado.status !== 1) {
+      return fallo(`Estado OCSP desconocido (status=${estado.status}).`);
+    }
+    return { comprobado: true, revocado: estado.status === 1 };
+  } catch (error) {
+    return fallo(`Excepcion durante la consulta OCSP: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -323,7 +339,7 @@ export async function verificarFirmaCertificado(params: {
   const emisorInmediato = cadena[1]?.pkijs;
   const falloAbierto = process.env.FALLO_ABIERTO_REVOCACION === "true";
   if (emisorInmediato) {
-    const { comprobado, revocado } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
+    const { comprobado, revocado, razon } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
     if (revocado) {
       return { valido: false, identificador: null, error: "El certificado ha sido revocado." };
     }
@@ -331,7 +347,10 @@ export async function verificarFirmaCertificado(params: {
       return {
         valido: false,
         identificador: null,
-        error: "No se ha podido comprobar si el certificado está revocado (OCSP no disponible).",
+        // TODO: quitar el detalle de `razon` del mensaje una vez diagnosticado
+        // por que falla el OCSP real en produccion; de momento ayuda a verlo
+        // sin acceso a los logs del servidor.
+        error: `No se ha podido comprobar si el certificado está revocado (OCSP no disponible): ${razon}`,
       };
     }
   } else if (!falloAbierto) {

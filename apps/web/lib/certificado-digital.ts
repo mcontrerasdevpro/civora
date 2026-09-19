@@ -232,10 +232,22 @@ export async function verificarFirmaCertificado(params: {
     (cert): cert is pkijs.Certificate => cert instanceof pkijs.Certificate
   );
 
+  // Autofirma en modo "explicit" produce CAdES detached: el reto firmado
+  // no viaja dentro del CMS (no hay eContent), asi que hay que pasarselo a
+  // verify() como `data` para que pueda recalcular el hash; sin esto pkijs
+  // lanza "Missed detached data input array" y la firma se da por invalida
+  // aunque sea correcta.
+  const retoEsperado = Buffer.from(params.reto, "hex");
+  const retoEsperadoArrayBuffer = retoEsperado.buffer.slice(
+    retoEsperado.byteOffset,
+    retoEsperado.byteOffset + retoEsperado.byteLength
+  );
+
   let firmaValida: unknown;
   try {
     firmaValida = await signedData.verify({
       signer: 0,
+      data: retoEsperadoArrayBuffer,
       trustedCerts: [certificadoLeaf, ...certificadosDeLaFirma],
       checkChain: false,
     });
@@ -246,17 +258,15 @@ export async function verificarFirmaCertificado(params: {
     return { valido: false, identificador: null, error: "La firma no ha superado la verificación criptográfica." };
   }
 
-  // No basta con que la firma sea valida "sobre algo": tiene que cubrir
-  // exactamente el reto que emitimos, byte a byte.
+  // Si el CMS es "enveloping" (eContent presente) comprobamos ademas que
+  // ese contenido coincide con el reto; en el caso detached, que verify()
+  // haya aceptado la firma sobre `retoEsperado` ya lo garantiza.
   const eContent = signedData.encapContentInfo.eContent;
-  const contenidoFirmado = eContent ? Buffer.from(eContent.valueBlock.valueHexView) : null;
-  const retoEsperado = Buffer.from(params.reto, "hex");
-  if (
-    !contenidoFirmado ||
-    contenidoFirmado.length !== retoEsperado.length ||
-    !timingSafeEqual(contenidoFirmado, retoEsperado)
-  ) {
-    return { valido: false, identificador: null, error: "La firma no cubre el reto esperado." };
+  if (eContent) {
+    const contenidoFirmado = Buffer.from(eContent.valueBlock.valueHexView);
+    if (contenidoFirmado.length !== retoEsperado.length || !timingSafeEqual(contenidoFirmado, retoEsperado)) {
+      return { valido: false, identificador: null, error: "La firma no cubre el reto esperado." };
+    }
   }
 
   // Cadena de confianza: el certificado debe encadenar hasta la FNMT o la

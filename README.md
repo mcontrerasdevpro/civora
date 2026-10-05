@@ -1,23 +1,42 @@
 # CÍVORA
 
-Infraestructura de votación verificable — prueba de concepto pensada para
-presentar a organismos y ciudadanía: demostrar que es posible construir un
-mecanismo de voto fiable, resistente al fraude y con la identidad del
-votante certificada sin quedar nunca vinculada a su voto.
+Infraestructura de votación verificable — prueba de concepto para explorar
+verificación de elegibilidad y voto digital. Las garantías dependen de la
+vía de identificación: hoy no ofrece anonimato integral, censo verificable
+ni acreditación de todos los requisitos legales.
 
 ## La idea en una frase
 
-El votante se identifica con su DNIe o certificado digital, el sistema
-comprueba que cumple los requisitos legales, y genera una prueba
-criptografica de elegibilidad que no revela quien es. Esa prueba es lo
-unico que llega al voto.
+La vía ZKPassport puede acreditar edad mínima y nacionalidad española sin
+revelar esos atributos al contrato. La vía de certificado verifica una
+firma en el servidor y puede vincular certificado y opción. Consulta la
+tabla de garantías antes de interpretar los resultados de esta PoC.
 
-## Requisitos para votar
+## Requisitos objetivo
 
 - Estar empadronado en cualquier municipio de Espana.
 - Ser titular de un DNI espanol.
 - Residencia continuada en Espana de al menos 5 anios.
 - Tener 18 anios cumplidos.
+
+La lista expresa el objetivo del producto; no todos estos requisitos se
+verifican actualmente.
+
+## Garantías por requisito
+
+| Requisito | Estado | Qué se garantiza hoy |
+|---|---|---|
+| Edad mínima (18 años) | Parcial | ZKPassport genera una prueba comprobada on-chain. En la vía de certificado la edad se declara en el navegador y no se contrasta con una fuente oficial. |
+| Nacionalidad española | Parcial | La prueba ZK exige `ESP` on-chain. La vía de certificado valida una cadena FNMT/DNIe y un NIF, pero no presenta una prueba ZK de nacionalidad. |
+| Empadronamiento en España | Pendiente | Ninguna vía consulta el padrón ni una atestación equivalente. |
+| Residencia continuada de 5 años | Pendiente | Ninguna vía acredita duración de residencia. |
+| Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
+| Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
+
+Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
+publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
+los votos individuales y sus recuentos siguen siendo observables en la
+cadena pública.
 
 ## Que hay montado ahora mismo
 
@@ -25,8 +44,8 @@ unico que llega al voto.
 |---|---|---|
 | Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
-| Identidad | packages/zk-identity + apps/web/lib | /votar ofrece tres vias: DNIe/pasaporte por NFC (ZKPassport, prueba verificada dentro del contrato), certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
-| Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; la via DNIe verifica la prueba ZKPassport dentro del propio contrato, contra el RootVerifier oficial |
+| Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
+| Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
 | Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Especificacion publica y modelo de amenazas |
 
@@ -126,23 +145,27 @@ prueba criptografica valida. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes publicas.
 
-Por defecto se usa el dominio de pruebas de ZKPassport (`demo.zkpassport.id`,
-en `devMode`), que acepta pruebas mock sin necesidad de un documento fisico.
-Variables de entorno (deben coincidir en la web y en el despliegue del
-contrato, o `votarConPruebaZk` rechaza toda prueba):
+`DEV_MODE` está desactivado por defecto tanto en la web como en el contrato.
+En local, actívalo explícitamente solo para una demo con pruebas mock. Las
+variables deben coincidir entre web y despliegue, o el contrato rechazará
+las pruebas:
 
     # apps/web/.env.local
-    NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
-    NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
+   NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
+   NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
 
     # packages/contracts/.env
-    ZKPASSPORT_DOMAIN=tu-dominio.com
-    ZKPASSPORT_DEV_MODE=false
+   ZKPASSPORT_DOMAIN=tu-dominio.com
+   ZKPASSPORT_DEV_MODE=false
+   RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
 
-Para una demo publica con documentos reales, registra el dominio del
-despliegue de Vercel en el dashboard de ZKPassport, desactiva `devMode` en
-ambos sitios y vuelve a desplegar el contrato (`devModeZk` es inmutable,
-fijado en el constructor).
+En redes no locales el despliegue falla si no defines un dominio propio,
+`ZKPASSPORT_DEV_MODE=false` explícito y `RELAYER_ADDRESS`. La web aplica la
+misma validación en producción. `devModeZk` y el relayer son inmutables:
+para cambiarlos hay que desplegar otro contrato. Para demo local, define
+`NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true` en la web y
+`ZKPASSPORT_DEV_MODE=true` al desplegar; se mostrará el banner
+**MODO DEMOSTRACIÓN**.
 
 ## Identidad con certificado digital (Autofirma)
 
@@ -161,10 +184,12 @@ instalado (FNMT, DNIe...) y el servidor comprueba, en
    respondedor que el propio certificado declara.
 
 A diferencia de ZKPassport, aquí no hay verificador on-chain: la
-verificación ocurre en este servidor, y el voto se envía al contrato por la
-vía "manual" existente (`votarManual`) con el nullifier ya calculado a
-partir del certificado verificado. Tampoco se comprueba la edad (un
-certificado no lleva la fecha de nacimiento) — ver docs/modelo-amenazas.md.
+verificación ocurre en este servidor. Si el certificado no declara un NIF,
+se rechaza; no se usa el emisor y número de serie como respaldo. El voto se
+envía con `votarManual`, función que solo acepta transacciones del relayer
+inmutable. La opción llega al mismo servidor que verifica la identidad, por
+lo que esta vía no es anónima frente al operador. Tampoco se comprueba
+criptográficamente la edad (un certificado no lleva la fecha de nacimiento).
 
 Variables de entorno (`apps/web/.env.local`):
 
@@ -173,11 +198,10 @@ Variables de entorno (`apps/web/.env.local`):
 
 ## Crear propuestas
 
-Como todas las transacciones las firma la misma cuenta "relayer" del
-servidor (el contrato no puede distinguir usuarios de la web), el control
-de acceso a `/propuestas/nueva` vive a nivel de aplicación: hace falta una
-clave de administrador. Variable de entorno necesaria
-(`apps/web/.env.local` y Vercel):
+El endpoint `POST /api/propuestas` exige `ADMIN_SECRET` en una cabecera
+Bearer, la compara en tiempo constante y limita los intentos por IP. El
+contrato también restringe la creación al relayer inmutable. Variable de
+entorno necesaria (`apps/web/.env.local` y Vercel):
 
     ADMIN_SECRET=<una cadena aleatoria larga>
 
@@ -198,8 +222,9 @@ civora/
   de acoplar la app directamente al SDK de ZKPassport, para poder migrar
   en el futuro a la Cartera Europea de Identidad Digital (eIDAS 2.0) sin
   tocar el resto del sistema.
-- Voto por nullifier: cada prueba de elegibilidad genera un identificador
-  unico que impide votar dos veces sin revelar quien voto.
+- Voto por nullifier: el contrato impide repetir un mismo identificador
+   dentro de una propuesta. No garantiza deduplicación común entre métodos
+   ni secreto de papeleta: opción y nullifier son públicos en cadena.
 - Verificacion ZK dentro del contrato, no en un servidor de confianza:
   `votarConPruebaZk` llama directamente al RootVerifier oficial de
   ZKPassport, así que no hay que confiar en que el operador de este sistema

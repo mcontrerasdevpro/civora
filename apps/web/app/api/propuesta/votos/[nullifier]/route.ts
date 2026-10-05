@@ -5,6 +5,8 @@ import {
   nullifierABytes32,
   propuestaIdBytes32,
 } from "../../../../../lib/contrato";
+import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
+import { resultadosVisibles } from "../../../../../lib/resultados-visibles.mjs";
 
 export async function GET(
   request: Request,
@@ -13,6 +15,14 @@ export async function GET(
   const propuestaId = new URL(request.url).searchParams.get("propuestaId");
   if (!propuestaId) {
     return NextResponse.json({ error: "Falta propuestaId" }, { status: 400 });
+  }
+
+  const propuesta = await obtenerPropuesta(propuestaId);
+  if (!propuesta) {
+    return NextResponse.json({ error: "Propuesta inexistente" }, { status: 404 });
+  }
+  if (!resultadosVisibles(propuesta.fechaCierre)) {
+    return NextResponse.json({ error: "Los recibos estarán disponibles tras el cierre." }, { status: 423 });
   }
 
   let nullifierBytes32: string;

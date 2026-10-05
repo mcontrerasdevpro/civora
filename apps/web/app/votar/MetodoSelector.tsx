@@ -1,4 +1,4 @@
-export type MetodoIdentificacion = "dnie" | "certificado" | "manual";
+export type MetodoIdentificacion = "dnie" | "certificado";
 
 export function MetodoSelector({
   onElegir,
@@ -29,14 +29,6 @@ export function MetodoSelector({
         </span>
       </button>
 
-      <button type="button" className="metodo-card" onClick={() => onElegir("manual")}>
-        <span className="metodo-card-title">Introducir mis datos</span>
-        <span className="metodo-card-desc">
-          Solo si no dispones de DNIe con NFC. Se valida el formato del DNI y
-          tu edad declarada, pero no se contrasta con ningún registro
-          oficial.
-        </span>
-      </button>
     </div>
   );
 }

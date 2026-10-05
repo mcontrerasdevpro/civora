@@ -4,7 +4,7 @@ import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { derivarNullifierCertificado, verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
-import { OPCIONES, contratoEscritura, leerResultados, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
+import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
 
 /**
  * Voto con certificado digital (FNMT/DNIe vía Autofirma). A diferencia de
@@ -75,5 +75,5 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  return NextResponse.json({ ok: true, nullifier, resultados: await leerResultados(propuestaId) });
+  return NextResponse.json({ ok: true, nullifier });
 }

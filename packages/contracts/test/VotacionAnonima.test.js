@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { obtenerConfiguracionDespliegue } = require("../scripts/deployment-config");
 
 const DOMINIO_ZK = "demo.zkpassport.id";
 
@@ -23,15 +24,52 @@ function paramsVacios(overrides = {}) {
 }
 
 describe("VotacionAnonima", function () {
+  describe("configuracion de despliegue", function () {
+    it("desactiva demo por defecto en local y permite activarla explícitamente", function () {
+      const configuracion = obtenerConfiguracionDespliegue("localhost", {}, "0x0000000000000000000000000000000000000001");
+
+      expect(configuracion.devModeZk).to.equal(false);
+      expect(configuracion.dominioZk).to.equal(DOMINIO_ZK);
+      expect(configuracion.relayerAddress).to.equal("0x0000000000000000000000000000000000000001");
+
+      expect(
+        obtenerConfiguracionDespliegue(
+          "hardhat",
+          { ZKPASSPORT_DEV_MODE: "true" },
+          "0x0000000000000000000000000000000000000001"
+        ).devModeZk
+      ).to.equal(true);
+    });
+
+    it("falla en red publica si falta dominio propio, modo seguro explícito o relayer", function () {
+      const base = { ZKPASSPORT_DOMAIN: "votos.ejemplo.es", ZKPASSPORT_DEV_MODE: "false", RELAYER_ADDRESS: "0x0000000000000000000000000000000000000001" };
+
+      expect(() => obtenerConfiguracionDespliegue("sepolia", {}, base.RELAYER_ADDRESS)).to.throw("ZKPASSPORT_DOMAIN");
+      expect(() => obtenerConfiguracionDespliegue("sepolia", { ...base, ZKPASSPORT_DEV_MODE: undefined }, base.RELAYER_ADDRESS)).to.throw("ZKPASSPORT_DEV_MODE=false");
+      expect(() => obtenerConfiguracionDespliegue("sepolia", { ...base, RELAYER_ADDRESS: undefined }, base.RELAYER_ADDRESS)).to.throw("RELAYER_ADDRESS");
+    });
+
+    it("acepta solo una configuración pública explícita y segura", function () {
+      const configuracion = obtenerConfiguracionDespliegue(
+        "sepolia",
+        { ZKPASSPORT_DOMAIN: "votos.ejemplo.es", ZKPASSPORT_DEV_MODE: "false", RELAYER_ADDRESS: "0x0000000000000000000000000000000000000001" },
+        "0x0000000000000000000000000000000000000002"
+      );
+
+      expect(configuracion.devModeZk).to.equal(false);
+      expect(configuracion.relayerAddress).to.equal("0x0000000000000000000000000000000000000001");
+    });
+  });
+
   async function desplegar({ devModeZk = true } = {}) {
-    const [deployer] = await ethers.getSigners();
+    const [relayer, atacante] = await ethers.getSigners();
 
     const MockRootVerifier = await ethers.getContractFactory("MockRootVerifier");
     const mock = await MockRootVerifier.deploy();
     await mock.waitForDeployment();
 
     const Factory = await ethers.getContractFactory("VotacionAnonima");
-    const contrato = await Factory.deploy(await mock.getAddress(), DOMINIO_ZK, devModeZk);
+    const contrato = await Factory.deploy(await mock.getAddress(), DOMINIO_ZK, devModeZk, relayer.address);
     await contrato.waitForDeployment();
 
     const propuestaIdTexto = "propuesta-demo";
@@ -41,10 +79,27 @@ describe("VotacionAnonima", function () {
     const cierre = apertura + 3600;
     await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre)).wait();
 
-    return { contrato, mock, propuestaId, propuestaIdTexto, apertura, cierre };
+    return { contrato, mock, propuestaId, propuestaIdTexto, apertura, cierre, relayer, atacante };
   }
 
+  it("fija el relayer y restringe la creacion de propuestas", async function () {
+    const { contrato, propuestaId, atacante, relayer } = await desplegar();
+
+    expect(await contrato.relayer()).to.equal(relayer.address);
+    await expect(
+      contrato.connect(atacante).crearPropuesta(propuestaId, ethers.id("otra"), 1, 2)
+    ).to.be.revertedWithCustomError(contrato, "SoloRelayer");
+  });
+
   describe("votarManual", function () {
+    it("rechaza votos manuales que no firma el relayer", async function () {
+      const { contrato, propuestaId, atacante } = await desplegar();
+
+      await expect(
+        contrato.connect(atacante).votarManual(propuestaId, ethers.id("documento-1"), 0, "0x")
+      ).to.be.revertedWithCustomError(contrato, "SoloRelayer");
+    });
+
     it("cuenta un voto y lo hace consultable por nullifier", async function () {
       const { contrato, propuestaId } = await desplegar();
       const nullifier = ethers.id("documento-1");

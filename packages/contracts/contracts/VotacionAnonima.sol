@@ -47,6 +47,8 @@ contract VotacionAnonima {
     ///         Ethereum, Sepolia y Base). En redes locales de test se usa un
     ///         MockRootVerifier (ver contracts/zkpassport/MockRootVerifier.sol).
     IRootVerifier public immutable verificadorZk;
+    /// @notice Cuenta autorizada para crear propuestas y relajar votos de certificado.
+    address public immutable relayer;
     /// @notice Debe coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN en la web.
     string public dominioZk;
     /// @notice Si es false, este contrato rechaza pruebas generadas en modo
@@ -67,8 +69,11 @@ contract VotacionAnonima {
     error NoCumpleEdadMinima();
     error NacionalidadNoValida();
 
-    constructor(address _verificadorZk, string memory _dominioZk, bool _devModeZk) {
+    error SoloRelayer();
+
+    constructor(address _verificadorZk, string memory _dominioZk, bool _devModeZk, address _relayer) {
         verificadorZk = IRootVerifier(_verificadorZk);
+        relayer = _relayer;
         dominioZk = _dominioZk;
         devModeZk = _devModeZk;
     }
@@ -79,6 +84,7 @@ contract VotacionAnonima {
         uint256 apertura,
         uint256 cierre
     ) external {
+        if (msg.sender != relayer) revert SoloRelayer();
         require(!propuestas[propuestaId].existe, "La propuesta ya existe");
         require(cierre > apertura, "El cierre debe ser posterior a la apertura");
         propuestas[propuestaId] = Propuesta({
@@ -98,6 +104,7 @@ contract VotacionAnonima {
     /// @param nullifier Identificador derivado localmente en el navegador a partir del DNI.
     /// @param nota Rastro informativo (p.ej. de que via viene el voto); no se verifica.
     function votarManual(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata nota) external {
+        if (msg.sender != relayer) revert SoloRelayer();
         nota;
         _registrarVoto(propuestaId, nullifier, opcion);
     }

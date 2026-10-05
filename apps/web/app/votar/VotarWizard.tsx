@@ -6,15 +6,13 @@ import type { OpcionVoto, Propuesta } from "@civora/shared-types";
 import { MetodoSelector, type MetodoIdentificacion } from "./MetodoSelector";
 import { IdentificacionDnie } from "./IdentificacionDnie";
 import { IdentificacionCertificado } from "./IdentificacionCertificado";
-import { IdentificacionManual } from "./IdentificacionManual";
 import type { Identificacion } from "./identificacion";
 
 /**
  * Flujo de voto, en 3 pasos, para una propuesta concreta:
  *  1. Identificación -> el votante elige DNIe/pasaporte (ZKPassport, prueba
  *     verificada dentro del contrato al votar), certificado digital
- *     (Autofirma, firma verificada en el servidor) o datos manuales (solo
- *     validación de formato, nullifier calculado en el navegador).
+ *     (Autofirma, firma verificada en el servidor).
  *  2. Emisión del voto, enviado con el nullifier (o, en la vía ZK, con la
  *     prueba que el contrato verifica y convierte en nullifier; en la vía
  *     de certificado, con la firma que el servidor verifica y convierte en
@@ -66,7 +64,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
             parametrosVerificacion: identificacion.parametrosVerificacion,
           }),
         });
-      } else if (identificacion.tipo === "certificado") {
+      } else {
         respuesta = await fetch("/api/propuesta/votos/certificado", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -77,18 +75,6 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
             reto: identificacion.reto,
             signatureB64: identificacion.signatureB64,
             certB64: identificacion.certB64,
-          }),
-        });
-      } else {
-        respuesta = await fetch("/api/propuesta/votos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            schema: "voto/v1",
-            propuestaId: propuesta.id,
-            opcion,
-            nullifier: identificacion.nullifier,
-            pruebaZk: `manual:${identificacion.nullifier}`,
           }),
         });
       }
@@ -153,14 +139,6 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
 
       {paso === "identificacion" && metodo === "certificado" && (
         <IdentificacionCertificado
-          propuesta={propuesta}
-          onVerificado={identificacionCompletada}
-          onCambiarMetodo={() => setMetodo(null)}
-        />
-      )}
-
-      {paso === "identificacion" && metodo === "manual" && (
-        <IdentificacionManual
           propuesta={propuesta}
           onVerificado={identificacionCompletada}
           onCambiarMetodo={() => setMetodo(null)}

@@ -9,7 +9,6 @@ import type { SolidityVerifierParameters } from "@civora/zk-identity";
  * verificación fuera de cadena.
  */
 export type Identificacion =
-  | { tipo: "manual"; nullifier: string }
   | { tipo: "zk"; parametrosVerificacion: SolidityVerifierParameters }
   | {
       tipo: "certificado";

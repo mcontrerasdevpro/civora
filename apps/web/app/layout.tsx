@@ -1,7 +1,23 @@
 import type { ReactNode } from "react";
+import { IBM_Plex_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "./components/SiteHeader";
 import { SiteFooter } from "./components/SiteFooter";
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
 
 export const metadata = {
   title: "CÍVORA — Infraestructura de votación verificable",
@@ -12,20 +28,11 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
+      <body className={`${montserrat.variable} ${ibmPlexMono.variable}`}>
         <SiteHeader />
+        {process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true" && (
+          <div className="demo-banner" role="status">MODO DEMOSTRACIÓN</div>
+        )}
         {children}
         <SiteFooter />
       </body>

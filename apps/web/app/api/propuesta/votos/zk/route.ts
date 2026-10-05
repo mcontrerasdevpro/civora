@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
-import { OPCIONES, leerResultados, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
+import { OPCIONES, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
 
 /**
  * Voto con prueba ZKPassport verificada dentro del propio contrato (ver
@@ -90,9 +90,5 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  return NextResponse.json({
-    ok: true,
-    nullifier,
-    resultados: await leerResultados(propuestaId),
-  });
+  return NextResponse.json({ ok: true, nullifier });
 }

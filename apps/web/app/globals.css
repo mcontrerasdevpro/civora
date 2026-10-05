@@ -16,8 +16,6 @@
   --linea-fuerte: #bfdad2;
   --contra: #d6544e;
   --contra-soft: #e79a95;
-  --sans: "Montserrat", -apple-system, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * {
@@ -29,6 +27,8 @@ html {
 }
 
 body {
+  --sans: var(--font-montserrat), sans-serif;
+  --mono: var(--font-ibm-plex-mono), monospace;
   margin: 0;
   background: var(--papel);
   color: var(--tinta-suave);
@@ -64,6 +64,19 @@ header.site {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.demo-banner {
+  position: sticky;
+  top: 76px;
+  z-index: 19;
+  padding: 8px 16px;
+  background: #f3c969;
+  color: #271d08;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .site-bar {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { adminSecretMatches, checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
 import { crearPropuesta, listarPropuestas } from "../../../lib/propuestas-store";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +17,25 @@ export async function GET() {
   return NextResponse.json({ propuestas: await listarPropuestas() });
 }
 
-// TODO: sin control de acceso de momento (ver historial de este archivo):
-// cualquiera puede crear una propuesta on-chain. Restaurar la comprobacion
-// de ADMIN_SECRET (o un flujo de aprobacion) antes de un uso real.
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
+  const rateLimit = checkAdminRateLimit(ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Inténtalo más tarde." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
+  }
+
+  if (!process.env.ADMIN_SECRET) {
+    return NextResponse.json({ error: "La creación de propuestas no está configurada." }, { status: 503 });
+  }
+  const autorizacion = request.headers.get("authorization");
+  const clave = autorizacion?.startsWith("Bearer ") ? autorizacion.slice(7) : null;
+  if (!adminSecretMatches(clave, process.env.ADMIN_SECRET)) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
   const cuerpo = await request.json().catch(() => null);
   const parseo = CuerpoCreacionSchema.safeParse(cuerpo);
 

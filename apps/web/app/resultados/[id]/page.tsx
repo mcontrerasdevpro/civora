@@ -14,6 +14,7 @@ const INTERVALO_REFRESCO_MS = 4000;
 type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
+  | { fase: "ocultos"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
 
 export default function ResultadosPropuestaPage({ params }: { params: { id: string } }) {
@@ -27,7 +28,13 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
         const respuesta = await fetch(`/api/propuestas/${params.id}`, { cache: "no-store" });
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados });
+        if (!cancelado) {
+          setEstado(
+            cuerpo.resultados
+              ? { fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados }
+              : { fase: "ocultos", propuesta: cuerpo.propuesta }
+          );
+        }
       } catch {
         if (!cancelado) setEstado((anterior) => (anterior.fase === "lista" ? anterior : { fase: "error" }));
       }
@@ -49,6 +56,13 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
       </div>
 
       {estado.fase === "cargando" && <p className="form-hint">Cargando resultados…</p>}
+
+      {estado.fase === "ocultos" && (
+        <p className="alert alert-info">
+          Los resultados se publicarán cuando cierre la votación, el{" "}
+          {new Date(estado.propuesta.fechaCierre).toLocaleString("es-ES")}.
+        </p>
+      )}
 
       {estado.fase === "error" && (
         <div className="alert alert-error">

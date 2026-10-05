@@ -4,6 +4,14 @@ import path from "path";
 import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
 import forge from "node-forge";
+import { validarFalloAbiertoRevocacion } from "./runtime-security.js";
+import { nifDeCertificado } from "./nif-certificado.mjs";
+
+validarFalloAbiertoRevocacion(
+  process.env.FALLO_ABIERTO_REVOCACION === "true",
+  process.env.HARDHAT_RPC_URL,
+  process.env.NODE_ENV
+);
 
 /**
  * Verificacion de identidad por certificado digital (FNMT / DNIe), via
@@ -295,15 +303,6 @@ async function comprobarRevocacion(
   }
 }
 
-/** DNI/NIF del titular si el certificado lo declara en el subject; si no, un identificador estable del propio certificado. */
-function identificadorDeCertificado(cert: forge.pki.Certificate): string {
-  const campoSerie =
-    cert.subject.getField({ shortName: "serialNumber" }) ?? cert.subject.getField({ type: "2.5.4.5" });
-  if (campoSerie?.value) return String(campoSerie.value);
-  const emisor = cert.issuer.attributes.map((a) => `${a.shortName ?? a.type}=${a.value}`).join(",");
-  return `${emisor}#${cert.serialNumber}`;
-}
-
 export interface ResultadoVerificacionCertificado {
   valido: boolean;
   identificador: string | null;
@@ -441,6 +440,11 @@ export async function verificarFirmaCertificado(params: {
     };
   }
 
+  const nif = nifDeCertificado(hojaPar.forge);
+  if (!nif) {
+    return { valido: false, identificador: null, error: "El certificado no declara un NIF del titular." };
+  }
+
   const emisorInmediato = cadena[1]?.pkijs;
   const falloAbierto = process.env.FALLO_ABIERTO_REVOCACION === "true";
   if (emisorInmediato) {
@@ -465,7 +469,7 @@ export async function verificarFirmaCertificado(params: {
     };
   }
 
-  return { valido: true, identificador: identificadorDeCertificado(hojaPar.forge) };
+  return { valido: true, identificador: nif };
 }
 
 /** Nullifier final, propuesta-especifico, a partir del identificador del certificado ya verificado. */

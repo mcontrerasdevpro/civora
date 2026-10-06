@@ -201,6 +201,9 @@ con contenido manipulado sin efecto.
 | Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
 | Retirar Vercel tras completar la migración | pendiente |
 | Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente |
+| Dependencias: Next 15.5.27 y React 19.2.8, sin `node-forge` en runtime, `pnpm audit --prod` limpio y Dependabot agrupado ([ADR 0012](decisiones/0012-next-15-react-19.md)) | hecho |
+| Revisar los 4 avisos de desarrollo sin parche (`braces`, `node-forge` en tests, `sprintf-js`, `elliptic`) al migrar a Hardhat 3 | pendiente |
+| Next 16 como tarea propia (versión mayor) | pendiente |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (PR obligatoria, checks requeridos) | pendiente |

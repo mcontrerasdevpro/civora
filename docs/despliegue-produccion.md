@@ -138,6 +138,7 @@ y comprueba cada punto. No fusiones si alguno falla.
 | 9 | Resultados ocultos hasta el cierre | Antes del cierre, `/resultados/<id>` y la API no muestran recuentos; tras el cierre, sí y coinciden con los votos emitidos |
 | 10 | Registros del contenedor | Ni IPs, ni cuerpos de petición, ni firmas, certificados o nullifiers; solo líneas `[civora] contexto: CÓDIGO` |
 | 11 | CI de la PR | Jobs «Tests, typecheck, build y E2E» e «Imagen Docker» en verde |
+| 12 | `pnpm audit --prod` en la rama | `No known vulnerabilities found` |
 
 ## 4. Fusionar
 

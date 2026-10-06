@@ -93,6 +93,12 @@ pnpm --filter @civora/contracts verificar:sepolia
 - Una rama nueva por tarea (`feat/…`, `fix/…`, `docs/…` o el nombre de la
   fase). Nunca trabajes directamente en `main`.
 - Tests para cada cambio y los comandos de verificación en verde.
+- **Antes de cada despliegue, `pnpm audit --prod` sin vulnerabilidades.** Si
+  aparece alguna, corrígela (actualización u override en
+  `pnpm.overrides` de `package.json`) o documéntala en la
+  [auditoría](docs/auditoria-seguridad.md#dependencias-2026-10-06-rama-actualizar-dependencias)
+  antes de desplegar. Las versiones mayores de Next y React son tareas
+  propias ([ADR 0012](docs/decisiones/0012-next-15-react-19.md)).
 - **`main` despliega a producción en Easypanel** (`civora.nexuraia.com`,
   [docs/despliegue-vps.md](docs/despliegue-vps.md)). No fusiones a `main`
   sin confirmación explícita del responsable y, si el cambio afecta al

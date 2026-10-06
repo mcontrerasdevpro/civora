@@ -17,6 +17,7 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0009](0009-limites-asistente-ia.md) | Límites del asistente de IA | aceptada (no implementado) |
 | [0010](0010-demo-publica-testnet.md) | Demo pública en Sepolia con opt-in explícito | aceptada |
 | [0011](0011-alojamiento-vps-propio.md) | Alojamiento en VPS propio con Easypanel | aceptada |
+| [0012](0012-next-15-react-19.md) | Next 15.5 y React 19.2 | aceptada |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

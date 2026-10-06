@@ -45,6 +45,38 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## Dependencias (2026-10-06, rama `actualizar-dependencias`)
+
+Punto de partida: 90 alertas de Dependabot; `pnpm audit` daba 69 avisos
+(2 críticos, 27 altos, 31 moderados, 9 bajos), 31 de ellos con `--prod`.
+Resultado: **`pnpm audit --prod` sin vulnerabilidades**; quedan 4 avisos solo
+de desarrollo, sin versión corregida.
+
+| Paquete | Uso | Avisos | Estado |
+|---|---|---|---|
+| `next` 14.2.35 | runtime | 2 críticos (RCE en el optimizador de imágenes con AVIF; RCE en Windows), 8 altos, 11 moderados, 2 bajos | **Corregido:** 15.5.27 ([ADR 0012](decisiones/0012-next-15-react-19.md)); además, optimizador desactivado (`images.unoptimized`, `/_next/image` da 404) |
+| `postcss` 8.4.31 (fijada por Next) | runtime | 2 altos, 2 moderados | **Corregido:** override a 8.5.29 |
+| `source-map-js` 1.2.1 | runtime | 1 alto | **Corregido:** override `^1.2.2` |
+| `ws` 8.17.1 y 8.18.0 (ethers, SDK de ZKPassport) | runtime | 1 alto, 1 moderado | **Corregido:** override `^8.21.0` |
+| `node-forge` 1.4.0 | runtime | 1 alto (GHSA-86w9-cpqp-85rv: firmas RSA PKCS#1 v1.5 falsificables con exponente bajo), **sin parche** | **Corregido en runtime:** la cadena del certificado se verifica con `crypto.X509Certificate` (`lib/cadena-certificados.mjs`); `node-forge` queda solo en los tests. Exposición previa baja: las raíces FNMT y DGP usan RSA 4096 con e=65537 |
+| `undici`, `@fastify/busboy`, `adm-zip`, `tmp`, `lodash`, `serialize-javascript`, `bn.js`, `cookie`, `diff`, `uuid` | desarrollo (Hardhat 2 y su toolbox) | 33 | **Corregido:** Hardhat 2.29.1 y overrides; verificado con compilación descargando `solc`, tests de contratos y despliegue por JSON-RPC en un nodo local |
+| `braces` 3.0.3 | desarrollo (`solidity-coverage` → `mocha`/`fast-glob`) | 1 alto, sin parche | **Riesgo aceptado:** solo se ejecuta en desarrollo con patrones del propio repositorio |
+| `node-forge` 1.4.0 | desarrollo (tests) | 1 alto, sin parche | **Riesgo aceptado:** solo fabrica certificados de prueba; no verifica nada |
+| `sprintf-js` 1.0.3 | desarrollo (`solidity-coverage`) | 1 moderado, sin parche | **Riesgo aceptado:** sin entrada externa |
+| `elliptic` 6.6.1 | desarrollo (`ethereumjs-util` de Hardhat) | 1 bajo, sin parche | **Riesgo aceptado:** solo firma con cuentas de prueba del nodo local; la web usa `ethers` |
+
+Ninguno de los paquetes con riesgo aceptado llega a la imagen Docker: la
+etapa de dependencias instala solo `--filter "web..."` y `node-forge` es
+`devDependency`. Los overrides están en `package.json` (`pnpm.overrides`),
+que es donde los lee pnpm 9.0.0 (`packageManager`) y quedan registrados en
+`pnpm-lock.yaml`. Regla nueva: revisar `pnpm audit --prod` antes de cada
+despliegue ([AGENTS.md](../AGENTS.md#reglas-de-trabajo)).
+
+Verificación: 20 tests de contratos, 46 de web, typecheck, build, 36 E2E
+con axe y revisión manual con Playwright del flujo de voto con certificado
+en modo normal (1280 px) y sencillo (375 px), sin errores ni avisos en la
+consola. La imagen Docker la verifica el job «Imagen Docker» del CI.
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.

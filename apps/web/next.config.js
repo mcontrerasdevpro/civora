@@ -27,6 +27,10 @@ const nextConfig = {
   ...salida,
   ...trazado,
   transpilePackages: ["@civora/shared-types"],
+  // Sin optimizador de imágenes: elimina la API /_next/image, que ha tenido
+  // RCE y DoS (GHSA-2xp9-vwfh-vxw4, GHSA-h64f-5h5j-jqjh). next/image sigue
+  // funcionando y sirve el archivo original desde public/.
+  images: { unoptimized: true },
   async headers() {
     return [
       {

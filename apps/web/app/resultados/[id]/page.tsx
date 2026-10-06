@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import type { Propuesta, ResultadoPropuesta } from "@civora/shared-types";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
@@ -17,7 +18,9 @@ type Estado =
   | { fase: "ocultos"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
 
-export default function ResultadosPropuestaPage({ params }: { params: { id: string } }) {
+export default function ResultadosPropuestaPage() {
+  // useParams funciona igual en Next 14 y 15 (en 15 la prop `params` es una promesa).
+  const { id } = useParams<{ id: string }>();
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
 
   useEffect(() => {
@@ -25,7 +28,7 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
 
     async function cargar() {
       try {
-        const respuesta = await fetch(`/api/propuestas/${params.id}`, { cache: "no-store" });
+        const respuesta = await fetch(`/api/propuestas/${id}`, { cache: "no-store" });
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
         if (!cancelado) {
@@ -46,7 +49,7 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
       cancelado = true;
       clearInterval(id);
     };
-  }, [params.id]);
+  }, [id]);
 
   return (
     <main className="wrap page-shell">

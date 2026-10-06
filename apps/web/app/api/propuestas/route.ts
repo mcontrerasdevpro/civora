@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminSecretMatches, checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
+import { registrarError } from "../../../lib/registro.mjs";
 import { crearPropuesta, listarPropuestas } from "../../../lib/propuestas-store";
 
 export const dynamic = "force-dynamic";
@@ -60,9 +61,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ propuesta }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message ?? "No se ha podido crear la propuesta." },
-      { status: 500 }
-    );
+    // El mensaje de ethers incluye la transacción y datos del proveedor RPC:
+    // ni se devuelve ni se registra entero.
+    registrarError("propuesta no creada", error);
+    return NextResponse.json({ error: "No se ha podido crear la propuesta." }, { status: 500 });
   }
 }

@@ -17,13 +17,9 @@ jobs:
     name: Tests, typecheck, build y E2E
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      # Sin despliegue local, lib/contrato.ts necesita una dirección para
-      # cargar en el build. Ninguna prueba llega a la cadena: los E2E simulan
-      # las API con page.route.
-      CONTRATO_DIRECCION: "0x0000000000000000000000000000000000000001"
-      # RPC local por defecto: NULLIFIER_CERTIFICADO_SECRET usa el valor de
-      # desarrollo y no hace falta ningún secreto real en CI.
+    # Sin variables: lib/contrato.ts se configura en el primer uso, así que el
+    # build no necesita CONTRATO_DIRECCION, y con RPC local no hace falta
+    # ningún secreto real. Los E2E simulan las API con page.route.
     steps:
       - uses: actions/checkout@v4
 
@@ -62,3 +58,68 @@ jobs:
           name: playwright-test-results
           path: apps/web/test-results/
           retention-days: 7
+
+  imagen:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen
+        run: >
+          docker build
+          --build-arg NEXT_PUBLIC_ZKPASSPORT_DOMAIN=civora.nexuraia.com
+          --build-arg NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true
+          -t civora-web:ci .
+
+      - name: Crear un .env de prueba (secretos aleatorios, nada real)
+        run: |
+          {
+            echo "HARDHAT_RPC_URL=https://rpc.sepolia.invalid"
+            echo "HARDHAT_RELAYER_PRIVATE_KEY=0x$(openssl rand -hex 32)"
+            echo "CONTRATO_DIRECCION=0x0000000000000000000000000000000000000001"
+            echo "CIVORA_DEMO_TESTNET=true"
+            echo "NULLIFIER_CERTIFICADO_SECRET=$(openssl rand -hex 32)"
+            echo "RETO_CERTIFICADO_SECRET=$(openssl rand -hex 32)"
+            echo "ADMIN_SECRET=$(openssl rand -hex 32)"
+            echo "DATABASE_URL=postgresql://prueba:prueba@127.0.0.1:5432/prueba"
+          } > prueba.env
+
+      - name: Arrancar y esperar al healthcheck
+        run: |
+          docker run -d --name civora --env-file prueba.env -p 3000:3000 civora-web:ci
+          for intento in $(seq 1 30); do
+            estado=$(docker inspect --format '{{.State.Health.Status}}' civora)
+            echo "healthcheck: $estado"
+            [ "$estado" = "healthy" ] && break
+            [ "$(docker inspect --format '{{.State.Running}}' civora)" = "true" ] || exit 1
+            sleep 3
+          done
+          [ "$estado" = "healthy" ]
+
+      - name: Comprobar /api/salud, CSP, usuario y ausencia de .env
+        run: |
+          curl -fsS http://127.0.0.1:3000/api/salud | tee salud.json
+          [ "$(cat salud.json)" = '{"estado":"ok"}' ]
+          csp=$(curl -fsSI http://127.0.0.1:3000/votar | grep -i '^content-security-policy:')
+          echo "$csp" | grep -q "nonce-"
+          if echo "$csp" | grep -q "unsafe-eval"; then echo "CSP con unsafe-eval" >&2; exit 1; fi
+          [ "$(docker exec civora id -u)" != "0" ]
+          [ -z "$(docker run --rm --entrypoint sh civora-web:ci -c 'find /app -name ".env*"')" ]
+          docker image ls civora-web:ci
+
+      - name: Sin NULLIFIER_CERTIFICADO_SECRET el contenedor no arranca
+        run: |
+          grep -v '^NULLIFIER_CERTIFICADO_SECRET=' prueba.env > incompleto.env
+          set +e
+          docker run --rm --env-file incompleto.env civora-web:ci > salida.txt 2>&1
+          codigo=$?
+          set -e
+          cat salida.txt
+          [ "$codigo" -eq 1 ]
+          grep -q "NULLIFIER_CERTIFICADO_SECRET" salida.txt
+
+      - name: Registros del contenedor si falla
+        if: failure()
+        run: docker logs civora || true

@@ -6,6 +6,7 @@ import * as pkijs from "pkijs";
 import forge from "node-forge";
 import { validarFalloAbiertoRevocacion } from "./runtime-security.js";
 import { nifDeCertificado } from "./nif-certificado.mjs";
+import { registrarAviso } from "./registro.mjs";
 
 validarFalloAbiertoRevocacion(
   process.env.FALLO_ABIERTO_REVOCACION === "true",
@@ -254,7 +255,9 @@ async function comprobarRevocacion(
   emisor: pkijs.Certificate
 ): Promise<{ comprobado: boolean; revocado: boolean; razon?: string }> {
   const fallo = (razon: string) => {
-    console.error("Comprobacion OCSP fallida:", razon);
+    // `razon` es texto fijo de este módulo (más el mensaje técnico de la
+    // excepción de red), sin datos del certificado ni del votante.
+    registrarAviso("comprobacion OCSP fallida", razon);
     return { comprobado: false, revocado: false, razon };
   };
 
@@ -465,7 +468,7 @@ export async function verificarFirmaCertificado(params: {
     }
     if (!comprobado && !falloAbierto) {
       // La razon detallada del fallo ya queda registrada en el servidor via
-      // console.error dentro de comprobarRevocacion; no se expone al cliente.
+      // registrarAviso dentro de comprobarRevocacion; no se expone al cliente.
       return {
         valido: false,
         identificador: null,

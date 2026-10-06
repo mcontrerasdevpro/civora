@@ -5,6 +5,7 @@ import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
 import { derivarNullifierCertificado, secretoNullifierCertificado } from "../../../../../lib/nullifier-certificado.mjs";
+import { registrarError } from "../../../../../lib/registro.mjs";
 import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
 
 /**
@@ -81,7 +82,10 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: razon }, { status: 400 });
     }
-    throw error;
+    // No se relanza: Next registraría el error entero, con la transacción
+    // (nullifier y opción).
+    registrarError("voto de certificado no registrado", error);
+    return NextResponse.json({ error: "No se ha podido registrar el voto." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, nullifier });

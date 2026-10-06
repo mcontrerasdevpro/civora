@@ -174,8 +174,12 @@ con contenido manipulado sin efecto.
 
 | Tarea | Estado |
 |---|---|
+| Procedimiento de despliegue y PR de Fase 0 + accesibilidad a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | en curso |
+| Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | hecho |
+| Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
+| Redesplegar el contrato en Sepolia y actualizar las variables en Vercel | pendiente |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
-| Redesplegar el contrato y actualizar las variables en Vercel antes de fusionar cambios de contrato | pendiente |
+| Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (PR obligatoria, checks requeridos) | pendiente |
 | CI con tests de contratos y web, typecheck, build y `test:e2e` | pendiente |
 | Rate limit compartido entre instancias (hoy en memoria) | pendiente |

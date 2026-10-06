@@ -11,6 +11,7 @@ ni acreditación de todos los requisitos legales.
 |---|---|
 | Comandos, convenciones y reglas para agentes de IA | [AGENTS.md](AGENTS.md) |
 | Fases, tareas y estado | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Desplegar en Sepolia y Vercel, y fusionar a `main` | [docs/despliegue-produccion.md](docs/despliegue-produccion.md) |
 | Decisiones de arquitectura y su porqué | [docs/decisiones/](docs/decisiones/README.md) |
 | Amenazas y limitaciones | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) |
 | Auditoría de seguridad | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) |
@@ -115,29 +116,12 @@ huerfanas hasta que las recrees).
 ## Desplegar en Sepolia + Vercel
 
 Para una demo publica (Vercel) el contrato no puede vivir en un nodo
-Hardhat local: se despliega en la testnet Sepolia, gratuita (ver
-docs/especificacion-publica.md).
-
-1. Consigue una URL de RPC de Sepolia (Alchemy o Infura, plan gratuito) y
-   una cuenta con ETH de Sepolia de un faucet.
-2. En `packages/contracts/.env` (no se versiona):
-
-   SEPOLIA_RPC_URL=...
-   SEPOLIA_PRIVATE_KEY=...   # clave de la cuenta del paso anterior, sin 0x opcional
-
-3. Despliega con `deploy:sepolia` ([AGENTS.md](AGENTS.md#comandos)). El
-   script imprime la direccion del contrato desplegado.
-4. En Vercel (Settings -> Environment Variables del proyecto), define:
-
-   CONTRATO_DIRECCION=<direccion impresa en el paso anterior>
-   HARDHAT_RPC_URL=<la misma SEPOLIA_RPC_URL>
-   HARDHAT_RELAYER_PRIVATE_KEY=<una clave con ETH de Sepolia; paga el gas de los votos>
-   DATABASE_URL=<cadena de conexion "pooled" de tu proyecto Neon>
-   ADMIN_SECRET=<clave para poder crear propuestas desde /propuestas/nueva>
-   RETO_CERTIFICADO_SECRET=<clave para la via de certificado digital>
-
-   Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
-   local y busca el despliegue de Hardhat.
+Hardhat local: se despliega en la testnet Sepolia, gratuita. El orden de
+pasos, las variables del contrato y de Vercel (obligatorias, entorno y
+cambios) y las comprobaciones antes de fusionar estan en
+[docs/despliegue-produccion.md](docs/despliegue-produccion.md). Sin
+CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
+busca el despliegue de Hardhat.
 
 ## Identidad con ZKPassport (verificacion on-chain)
 
@@ -169,7 +153,10 @@ las pruebas:
 
 En redes no locales el despliegue falla si no defines un dominio propio,
 `ZKPASSPORT_DEV_MODE=false` explícito y `RELAYER_ADDRESS`. La web aplica la
-misma validación en producción. `devModeZk` y el relayer son inmutables:
+misma validación en producción. Única excepción: la demo pública en
+Sepolia con `CIVORA_DEMO_TESTNET=true`
+([ADR 0010](docs/decisiones/0010-demo-publica-testnet.md)); pasos y
+variables en [docs/despliegue-produccion.md](docs/despliegue-produccion.md). `devModeZk` y el relayer son inmutables:
 para cambiarlos hay que desplegar otro contrato. Para demo local, define
 `NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true` en la web y
 `ZKPASSPORT_DEV_MODE=true` al desplegar; se mostrará el banner

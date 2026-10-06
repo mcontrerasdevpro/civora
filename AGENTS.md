@@ -12,6 +12,7 @@ enlazan):
 |---|---|
 | [AGENTS.md](AGENTS.md) | Comandos, convenciones, reglas de trabajo y cierre de tarea |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Fases, tareas con estado, dependencias y criterios de aceptación |
+| [docs/despliegue-produccion.md](docs/despliegue-produccion.md) | Pasos para desplegar en Sepolia y Vercel y fusionar a `main` |
 | [docs/decisiones/](docs/decisiones/README.md) | Decisiones de arquitectura (ADR) |
 | [README.md](README.md) | Qué es, garantías, componentes y configuración de entorno |
 | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) | Amenazas, lo que no está resuelto y mitigaciones |
@@ -54,11 +55,12 @@ pnpm --filter web test:e2e
   ([ADR 0007](docs/decisiones/0007-csp-con-nonce.md)); no la uses para
   validar la CSP de producción.
 
-Despliegue en Sepolia (variables de entorno en
-[README.md](README.md#desplegar-en-sepolia--vercel)):
+Despliegue en Sepolia y comprobación del contrato desplegado (variables y
+orden en [docs/despliegue-produccion.md](docs/despliegue-produccion.md)):
 
 ```powershell
 pnpm --filter @civora/contracts deploy:sepolia
+pnpm --filter @civora/contracts verificar:sepolia
 ```
 
 ## Convenciones

@@ -15,6 +15,7 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0007](0007-csp-con-nonce.md) | CSP con nonce y CSP de desarrollo | aceptada |
 | [0008](0008-audios-propios-confirmacion.md) | Audios propios para confirmar la opción, no speechSynthesis | aceptada |
 | [0009](0009-limites-asistente-ia.md) | Límites del asistente de IA | aceptada (no implementado) |
+| [0010](0010-demo-publica-testnet.md) | Demo pública en Sepolia con opt-in explícito | aceptada |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

@@ -8,7 +8,7 @@
 | Hallazgo | Estado Fase 0 | Alcance y riesgo pendiente |
 |---|---|---|
 | C-01 | Mitigado en la aplicación | Se eliminó la vía manual de UI/API; `votarManual` y `crearPropuesta` solo aceptan al relayer inmutable. No sustituye un censo ni resuelve la deduplicación entre vías. |
-| C-02 | Resuelto para configuración | `DEV_MODE` queda desactivado por defecto; web y despliegue públicos exigen dominio propio y `false` explícito. La demo requiere opt-in y muestra banner. |
+| C-02 | Resuelto para configuración | `DEV_MODE` queda desactivado por defecto; web y despliegue públicos exigen dominio propio y `false` explícito. Excepción con opt-in `CIVORA_DEMO_TESTNET=true`, solo desplegable en Sepolia ([ADR 0010](decisiones/0010-demo-publica-testnet.md)). La demo requiere opt-in y muestra banner. |
 | A-01 | Parcial | Se elimina el respaldo emisor+serie y se rechaza un certificado sin NIF. El servidor todavía recibe certificado y opción en el mismo flujo. |
 | M-01 | Mitigado en la aplicación | UI, API de resultados y respuestas de voto ocultan recuentos hasta el cierre. La cadena pública sigue exponiendo eventos y almacenamiento. |
 | M-03 | Parcial | Se autoalojan fuentes y se añade CSP con nonce. El SDK ZKPassport y el script de Autofirma siguen requiriendo control de cadena de suministro. |

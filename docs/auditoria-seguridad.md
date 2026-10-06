@@ -38,6 +38,13 @@ Cambios de interfaz sin tocar contratos, identidad ni rutas API:
 
 Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pnpm --filter web test:e2e` (26 pruebas: axe WCAG 2.1 A/AA en cada paso, modo normal y sencillo, 1280 y 375 px).
 
+## Despliegue en VPS (2026-10-06, rama `despliegue-vps`)
+
+- **Fuga del nullifier en registros (corregida):** `GET /api/propuesta/votos/[nullifier]` registraba el error completo de ethers, que incluye la petición `eth_getLogs` con el nullifier; las rutas de voto relanzaban errores del contrato que Next registra con la transacción (nullifier y opción), y `POST /api/propuestas` devolvía al cliente el mensaje de ethers. Ahora solo `lib/registro.mjs` escribe en la consola, con un contexto fijo y un código corto; un test falla si otro archivo del servidor usa `console.*` o si una ruta relanza errores.
+- **Validaciones de arranque en la imagen:** el servidor standalone de Next no ejecuta `next.config.js`; `arranque.js` repite las validaciones (`lib/validar-entorno.js`) y el contenedor no arranca si fallan. Test: sin `NULLIFIER_CERTIFICADO_SECRET` y con RPC público, `arranque.js` termina con código 1.
+- **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
+- **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.

@@ -12,7 +12,8 @@ enlazan):
 |---|---|
 | [AGENTS.md](AGENTS.md) | Comandos, convenciones, reglas de trabajo y cierre de tarea |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Fases, tareas con estado, dependencias y criterios de aceptación |
-| [docs/despliegue-produccion.md](docs/despliegue-produccion.md) | Pasos para desplegar en Sepolia y Vercel y fusionar a `main` |
+| [docs/despliegue-produccion.md](docs/despliegue-produccion.md) | Contrato, variables, comprobaciones, fusión a `main` y vuelta atrás |
+| [docs/despliegue-vps.md](docs/despliegue-vps.md) | DNS, Easypanel, imagen Docker y healthcheck en `civora.nexuraia.com` |
 | [docs/decisiones/](docs/decisiones/README.md) | Decisiones de arquitectura (ADR) |
 | [README.md](README.md) | Qué es, garantías, componentes y configuración de entorno |
 | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) | Amenazas, lo que no está resuelto y mitigaciones |
@@ -52,8 +53,10 @@ pnpm --filter web test:e2e
   `next build` + `next start` en el puerto 3100, con las API simuladas. La
   primera vez: `pnpm --filter web exec playwright install chromium`.
 - El CI (`.github/workflows/ci.yml`) ejecuta estos cinco pasos en cada PR y
-  en cada push a `main`, con un `CONTRATO_DIRECCION` ficticio para el
-  build.
+  en cada push a `main`, y además construye la imagen Docker, la arranca y
+  comprueba `/api/salud` (job «Imagen Docker»). En Windows no hay que
+  construir la imagen: la salida standalone solo se activa con
+  `CIVORA_STANDALONE=true` dentro del Dockerfile.
 - `pnpm dev` usa una CSP de desarrollo con `'unsafe-eval'`
   ([ADR 0007](docs/decisiones/0007-csp-con-nonce.md)); no la uses para
   validar la CSP de producción.
@@ -76,19 +79,25 @@ pnpm --filter @civora/contracts verificar:sepolia
 - Accesibilidad: todo cambio en el flujo de voto mantiene WCAG 2.1 AA y su
   comprobación con axe en `apps/web/e2e`.
 - Sin scripts inline: la CSP usa nonce. Medios solo del propio origen.
-- Secretos solo en variables de entorno (`.env`, `.env.local`, Vercel);
-  nunca en código, documentación versionada ni commits. No leas ni muestres
-  archivos `.env`.
+- Secretos solo en variables de entorno (`.env`, `.env.local`, Easypanel);
+  nunca en código, documentación versionada ni commits, ni como `ARG` del
+  Dockerfile. No leas ni muestres archivos `.env`.
+- Registros del servidor solo con `lib/registro.mjs` (contexto fijo y
+  código corto); nunca IPs, cuerpos, firmas, certificados ni nullifiers.
+- Rutas dinámicas: el parámetro se lee de la URL en las API
+  (`lib/parametros-ruta.mjs`) y con `useParams` en las páginas, para
+  funcionar igual en Next 14 y 15.
 
 ## Reglas de trabajo
 
 - Una rama nueva por tarea (`feat/…`, `fix/…`, `docs/…` o el nombre de la
   fase). Nunca trabajes directamente en `main`.
 - Tests para cada cambio y los comandos de verificación en verde.
-- **`main` despliega a producción en Vercel.** No fusiones a `main` sin
-  confirmación explícita del responsable y, si el cambio afecta al
+- **`main` despliega a producción en Easypanel** (`civora.nexuraia.com`,
+  [docs/despliegue-vps.md](docs/despliegue-vps.md)). No fusiones a `main`
+  sin confirmación explícita del responsable y, si el cambio afecta al
   contrato, sin redesplegarlo antes y actualizar `CONTRATO_DIRECCION` y
-  demás variables en Vercel.
+  demás variables del servicio.
 - No toques contratos ni la arquitectura de identidad fuera de la fase que
   les corresponde en el [ROADMAP](docs/ROADMAP.md).
 - Respeta las decisiones de [docs/decisiones/](docs/decisiones/README.md).

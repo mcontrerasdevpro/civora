@@ -18,7 +18,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 | [«Intenta hacer trampa» y script de auditoría](#intenta-hacer-trampa-y-script-de-auditoría) | pendiente | — |
 | [Idiomas](#idiomas) | pendiente | — |
 | [Asistente de IA](#asistente-de-ia) | pendiente (futuro) | — |
-| [Paso a producción](#paso-a-producción) | pendiente | — |
+| [Paso a producción](#paso-a-producción) | en curso | `despliegue-vps` |
 | [Fase 2: MACI y auditoría externa](#fase-2-maci-y-auditoría-externa) | pendiente | — |
 
 ## Fase 0: seguridad
@@ -195,7 +195,12 @@ con contenido manipulado sin efecto.
 | Procedimiento de despliegue y PR de Fase 0 + accesibilidad a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | en curso |
 | Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | hecho |
 | Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
-| Redesplegar el contrato en Sepolia y actualizar las variables en Vercel | pendiente |
+| Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; pendiente de la primera ejecución del job en GitHub |
+| Servicios de pruebas y producción en Easypanel en `civora.nexuraia.com` ([despliegue-vps.md](despliegue-vps.md)) | pendiente |
+| Redesplegar el contrato en Sepolia con `ZKPASSPORT_DOMAIN=civora.nexuraia.com` | pendiente |
+| Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
+| Retirar Vercel tras completar la migración | pendiente |
+| Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (PR obligatoria, checks requeridos) | pendiente |
@@ -208,8 +213,10 @@ con contenido manipulado sin efecto.
 la Fase 1 en producción.
 
 **Criterios de aceptación:** un PR a `main` no puede fusionarse sin CI en
-verde; el despliegue de Vercel apunta al contrato de la red elegida; dos
-instancias comparten el límite de intentos (test).
+verde; `https://civora.nexuraia.com/api/salud` responde y el servicio de
+producción apunta al contrato de la red elegida; los registros del proxy no
+contienen IPs de votantes; dos instancias comparten el límite de intentos
+(test).
 
 ## Fase 2: MACI y auditoría externa
 

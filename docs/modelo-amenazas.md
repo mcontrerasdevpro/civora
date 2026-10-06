@@ -48,6 +48,34 @@ detalle en la [auditoría](auditoria-seguridad.md).
 - El nullifier es un HMAC con un secreto del servidor (R-02): un tercero no
   puede recalcularlo enumerando DNI, pero el operador sí (A-01).
 
+### Registros del servidor y del proxy
+
+La aplicación no registra IPs, cuerpos de petición, firmas, certificados
+ni nullifiers: solo `lib/registro.mjs` escribe en la consola, y solo un
+contexto fijo y un código corto (lo comprueba
+`apps/web/test/despliegue.test.mjs`). La IP solo se usa en memoria para el
+rate limit de creación de propuestas.
+
+Fuera de la aplicación sí puede quedar rastro:
+
+- **Proxy de Easypanel (Traefik):** si tiene activados los *access logs*,
+  registra IP, ruta, user-agent y hora de cada petición. Combinados con la
+  hora de un voto en la cadena, permitirían relacionar una IP con un
+  nullifier. Mitigación: desactivar los access logs del proxy o, si se
+  necesitan, excluir la IP del cliente y las cabeceras, y retenerlos el
+  mínimo tiempo; revisarlo tras cada actualización de Easypanel.
+- **Docker:** la salida del contenedor se guarda en el servidor. Mitigación:
+  rotación de registros (`max-size` y `max-file` del controlador de logs) y
+  acceso al servidor restringido.
+- **Proveedor del VPS y DNS/CDN:** pueden registrar conexiones. Mitigación:
+  proveedor en la UE con contrato de encargo de tratamiento y sin CDN que
+  inspeccione el tráfico, o con sus registros desactivados.
+- **Proveedor RPC:** ve las transacciones del relayer, no la IP del
+  votante.
+
+Ver [ADR 0011](decisiones/0011-alojamiento-vps-propio.md) y
+[despliegue-vps.md](despliegue-vps.md).
+
 ### Otras limitaciones
 
 - **Verificación real de empadronamiento y de los 5 años de residencia**:

@@ -11,7 +11,8 @@ ni acreditación de todos los requisitos legales.
 |---|---|
 | Comandos, convenciones y reglas para agentes de IA | [AGENTS.md](AGENTS.md) |
 | Fases, tareas y estado | [docs/ROADMAP.md](docs/ROADMAP.md) |
-| Desplegar en Sepolia y Vercel, y fusionar a `main` | [docs/despliegue-produccion.md](docs/despliegue-produccion.md) |
+| Desplegar el contrato y fusionar a `main` | [docs/despliegue-produccion.md](docs/despliegue-produccion.md) |
+| Desplegar la web en el VPS (Easypanel, Docker) | [docs/despliegue-vps.md](docs/despliegue-vps.md) |
 | Decisiones de arquitectura y su porqué | [docs/decisiones/](docs/decisiones/README.md) |
 | Amenazas y limitaciones | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) |
 | Auditoría de seguridad | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) |
@@ -99,7 +100,7 @@ de gestionar un servidor):
 
 1. Crea una cuenta y un proyecto en Neon.
 2. Copia la cadena de conexion "pooled" (la que trae `-pooler` en el host,
-   pensada para entornos serverless como Vercel).
+   pensada para entornos con muchas conexiones cortas).
 3. En `apps/web/.env.local` (no se versiona):
 
    DATABASE_URL=postgresql://usuario:contraseña@host-pooler.neon.tech/neondb?sslmode=require
@@ -114,14 +115,17 @@ Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
 cambia con cada nodo nuevo; las propuestas guardadas en Neon quedan
 huerfanas hasta que las recrees).
 
-## Desplegar en Sepolia + Vercel
+## Desplegar en Sepolia + VPS
 
-Para una demo publica (Vercel) el contrato no puede vivir en un nodo
-Hardhat local: se despliega en la testnet Sepolia, gratuita. El orden de
-pasos, las variables del contrato y de Vercel (obligatorias, entorno y
-cambios) y las comprobaciones antes de fusionar estan en
-[docs/despliegue-produccion.md](docs/despliegue-produccion.md). Sin
-CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
+La demo pública se sirve en `https://civora.nexuraia.com` desde un VPS con
+Easypanel, con la imagen del [`Dockerfile`](Dockerfile)
+([ADR 0011](docs/decisiones/0011-alojamiento-vps-propio.md)); el contrato no
+puede vivir en un nodo Hardhat local y se despliega en la testnet Sepolia.
+El contrato, las variables (obligatorias, build arg o ejecución, cambios) y
+las comprobaciones antes de fusionar están en
+[docs/despliegue-produccion.md](docs/despliegue-produccion.md); DNS,
+Easypanel y la imagen, en [docs/despliegue-vps.md](docs/despliegue-vps.md).
+Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
 busca el despliegue de Hardhat.
 
 ## Identidad con ZKPassport (verificacion on-chain)
@@ -197,7 +201,7 @@ Variables de entorno (`apps/web/.env.local`):
 El endpoint `POST /api/propuestas` exige `ADMIN_SECRET` en una cabecera
 Bearer, la compara en tiempo constante y limita los intentos por IP. El
 contrato también restringe la creación al relayer inmutable. Variable de
-entorno necesaria (`apps/web/.env.local` y Vercel):
+entorno necesaria (`apps/web/.env.local` y Easypanel):
 
     ADMIN_SECRET=<una cadena aleatoria larga>
 

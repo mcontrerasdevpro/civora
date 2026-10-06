@@ -30,12 +30,12 @@ citaremos en el aviso y en la [auditoría](docs/auditoria-seguridad.md).
 ## Alcance
 
 **Incluido:** el código de este repositorio y la demo pública desplegada a
-partir de `main`.
+partir de `main` en `civora.nexuraia.com`.
 
 **Fuera de alcance:**
 
-- Fallos de terceros (ZKPassport, Autofirma, FNMT, proveedores RPC, Vercel,
-  Neon): repórtalos a sus responsables.
+- Fallos de terceros (ZKPassport, Autofirma, FNMT, proveedores RPC,
+  Easypanel, Neon): repórtalos a sus responsables.
 - Problemas ya documentados como abiertos en
   [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) y
   [docs/modelo-amenazas.md](docs/modelo-amenazas.md), salvo que aportes una

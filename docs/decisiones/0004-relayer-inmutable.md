@@ -25,7 +25,7 @@ el despliegue en redes no locales exige `RELAYER_ADDRESS`.
 ## Consecuencias
 
 - Rotar la clave del relayer exige desplegar otro contrato y actualizar
-  Vercel ([AGENTS.md](../../AGENTS.md#reglas-de-trabajo)).
+  el servicio de despliegue ([AGENTS.md](../../AGENTS.md#reglas-de-trabajo)).
 - El relayer concentra confianza y permite correlacionar metadatos
   (hallazgo M-02 de la [auditoría](../auditoria-seguridad.md)).
 - `votarManual` desaparece en la [Fase 1](../ROADMAP.md#fase-1-semaphore).

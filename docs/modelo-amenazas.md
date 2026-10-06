@@ -80,12 +80,88 @@ y ya es seguro".
   un sistema de cuentas de verdad.
 - **Coacción o compra de voto**: el sistema no puede impedir que alguien
   vote bajo presión en el momento de emitir el voto (problema abierto en
-  todo el e-voting remoto, no exclusivo de este proyecto).
+  todo el e-voting remoto, no exclusivo de este proyecto). La coacción
+  familiar o de cuidadores se trata en
+  [Inclusión y voto asistido](#inclusión-y-voto-asistido).
 - **Disponibilidad/DoS**: no se ha diseñado todavía la resiliencia de la
   infraestructura ante ataques de denegación de servicio.
 - **Legalidad**: el voto electrónico vinculante en España está limitado por
   la LOREG; esta PoC es una demostración técnica, no un sistema habilitado
   legalmente para elecciones oficiales.
+
+## Inclusión y voto asistido
+
+Diseño acordado; los canales y la asignación se implementan en la Fase 1
+(Semaphore). Hoy solo existe el canal digital autónomo.
+
+- **Tres canales**: digital autónomo, punto de voto asistido presencial y
+  papel. Cada persona queda asignada a **un único canal** al registrarse,
+  antes de congelar el censo, para que no pueda votar por dos vías.
+- **Punto de voto asistido**:
+  - Identificación con ayuda de personal acreditado y con el lector NFC del
+    propio punto, no con el móvil del votante.
+  - Voto en cabina privada, con el equipo en modo quiosco.
+  - La identidad Semaphore se genera y se destruye en la misma sesión; no
+    queda en el equipo ni la conserva el personal.
+  - Acompañante solo si lo elige el votante. Se registra como «voto
+    asistido», nunca el contenido del voto.
+- **Teléfono de ayuda**: resuelve dudas del proceso y nunca pregunta ni
+  registra el sentido del voto.
+- **Amenaza: coacción familiar o de cuidadores en el voto remoto.** Quien
+  convive con el votante o lo cuida puede presionarlo o votar en su lugar
+  desde casa.
+  - Mitigación actual (diseño, Fase 1): la asignación de canal permite que
+    la persona en riesgo vote en un punto asistido, fuera del entorno que
+    la presiona.
+  - Mitigación futura (Fase 2, MACI): el voto presencial prevalece sobre el
+    digital, de modo que un voto remoto forzado puede anularse en persona
+    sin que el coaccionador lo sepa.
+- **Síntesis de voz en la web**: el botón «Escuchar» del modo sencillo solo
+  usa voces del sistema marcadas como locales (`localService`). Las voces
+  en red de algunos navegadores (por ejemplo, las voces «Google» de Chrome)
+  envían el texto a servidores externos; si no hay voz local, el botón se
+  oculta con un aviso. La confirmación de la opción elegida no pasa nunca
+  por `speechSynthesis`: usa audios pregrabados servidos desde nuestro
+  propio origen. Los audios actuales son provisionales, generados con una
+  voz local; en producción se sustituirán por grabaciones profesionales.
+- **Caducidad del reto de certificado**: el servidor da 5 minutos para
+  firmar el reto. La interfaz no impone límites de tiempo y, si el reto
+  caduca, avisa y permite reintentar sin perder el progreso; eliminar ese
+  límite para el voto asistido queda pendiente para la Fase 1.
+- **Pendiente de decidir para producción**: la red de despliegue (Base u
+  otra red principal, o una red permisionada).
+
+## Asistente de IA (futuro, no implementado)
+
+Regla: **la IA ayuda con el proceso, nunca con la decisión, y nunca toca la
+papeleta.**
+
+- **Puede**: guiar la identificación, responder dudas del proceso, ayudar a
+  navegar y leer literalmente la propuesta o un resumen neutral aprobado de
+  antemano.
+- **No puede**: conocer, sugerir ni confirmar la opción; tener herramientas
+  para votar ni acceso a la identidad, al contrato o al relayer; opinar
+  sobre la propuesta.
+- **Arquitectura prevista**: servicio aislado de la aplicación de voto. Se
+  desconecta en el paso de votar y lo anuncia; la elección se hace con una
+  interfaz determinista sin IA. Modelo alojado en la UE o local, registros
+  sin datos de la sesión de voto y contenido de las propuestas firmado.
+- **Amenazas**:
+  - *Fuga del voto a proveedores de IA*: cualquier texto, audio o contexto
+    que llegue al modelo puede revelar la opción. Mitigación: desconexión
+    en el paso de votar y modelo en la UE o local.
+  - *Sesgo o persuasión*: el modelo puede inclinar la decisión al resumir o
+    responder. Mitigación: solo lectura literal o resúmenes neutrales
+    aprobados de antemano; prohibido opinar.
+  - *Inyección de instrucciones vía contenido*: un texto de propuesta
+    manipulado podría dar órdenes al modelo. Mitigación: contenido firmado
+    y ninguna herramienta con efecto sobre el voto.
+  - *Reglamento europeo de IA*: un sistema de IA que influya en el voto
+    entra en la categoría de alto riesgo. El diseño evita esa influencia;
+    si no pudiera garantizarse, el asistente no se despliega.
+- **Nota técnica**: el reconocimiento de voz de la Web Speech API en Chrome
+  envía el audio a servidores externos. No se usará nunca para seleccionar
+  la opción de voto.
 
 ## Próximos pasos de seguridad
 

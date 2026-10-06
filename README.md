@@ -32,11 +32,20 @@ verifican actualmente.
 | Residencia continuada de 5 años | Pendiente | Ninguna vía acredita duración de residencia. |
 | Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
+| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
+| Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy. Previstas: asignación de canal (Fase 1) y prevalencia del voto presencial sobre el digital (Fase 2, MACI). |
+| Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
+| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. |
 
 Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
 publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
 los votos individuales y sus recuentos siguen siendo observables en la
 cadena pública.
+
+La red de despliegue para producción está pendiente de decidir (Base u otra
+red principal, o una red permisionada). El detalle del voto asistido y del
+futuro asistente de IA está en
+[docs/modelo-amenazas.md](docs/modelo-amenazas.md#inclusión-y-voto-asistido).
 
 ## Que hay montado ahora mismo
 

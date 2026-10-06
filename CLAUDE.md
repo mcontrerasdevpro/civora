@@ -76,6 +76,16 @@ Riesgos abiertos:
 4. Mejorar accesibilidad e incorporar idiomas.
 5. **Fase 2, MACI:** integrar MACI y someter el sistema a auditoría externa.
 
+**Inclusión y voto asistido** (canales y asignación en Fase 1; detalle en [docs/modelo-amenazas.md](docs/modelo-amenazas.md#inclusión-y-voto-asistido)):
+
+- Tres canales: digital autónomo, punto de voto asistido presencial y papel. Cada persona queda asignada a **un** canal al registrarse, antes de congelar el censo.
+- Punto asistido: personal acreditado y lector NFC del punto; cabina privada en modo quiosco; identidad Semaphore creada y destruida en la misma sesión; acompañante solo si lo elige el votante, registrado como «voto asistido» sin el contenido del voto.
+- Coacción familiar o de cuidadores en el voto remoto: hoy se mitiga con la asignación de canal; en Fase 2 (MACI), el voto presencial prevalecerá sobre el digital.
+- Teléfono de ayuda que nunca pregunta ni registra el sentido del voto.
+- Pendiente para producción: red de despliegue (Base u otra principal, o red permisionada).
+
+**Asistente de IA (futuro, NO implementar ahora):** ayuda con el proceso, nunca con la decisión, y nunca toca la papeleta. Sin herramientas de voto ni acceso a identidad, contrato o relayer; servicio aislado que se desconecta, y lo anuncia, en el paso de votar. No usar nunca el reconocimiento de voz de la Web Speech API para elegir la opción: en Chrome envía el audio fuera. Reglas y amenazas: [docs/modelo-amenazas.md](docs/modelo-amenazas.md#asistente-de-ia-futuro-no-implementado).
+
 ## Decisiones de arquitectura
 
 - Verificar la prueba ZK dentro del contrato: el servidor/relayer no puede inventar una prueba válida ni aceptar una inválida.

@@ -107,6 +107,19 @@ describe("VotacionAnonima", function () {
     return { contrato, mock, propuestaId, propuestaIdTexto, apertura, cierre, relayer, atacante };
   }
 
+  it("rechaza la dirección cero como verificador o como relayer", async function () {
+    const [relayer] = await ethers.getSigners();
+    const mock = await (await ethers.getContractFactory("MockRootVerifier")).deploy();
+    const Factory = await ethers.getContractFactory("VotacionAnonima");
+
+    await expect(
+      Factory.deploy(ethers.ZeroAddress, DOMINIO_ZK, false, relayer.address)
+    ).to.be.revertedWithCustomError(Factory, "DireccionCero");
+    await expect(
+      Factory.deploy(await mock.getAddress(), DOMINIO_ZK, false, ethers.ZeroAddress)
+    ).to.be.revertedWithCustomError(Factory, "DireccionCero");
+  });
+
   it("fija el relayer y restringe la creacion de propuestas", async function () {
     const { contrato, propuestaId, atacante, relayer } = await desplegar();
 

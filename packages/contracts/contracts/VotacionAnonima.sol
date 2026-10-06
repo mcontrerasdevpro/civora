@@ -14,8 +14,10 @@ import {ProofVerificationParams} from "./zkpassport/Types.sol";
 ///        de ZKPassport (`verificadorZk`). Ni el operador de este sistema ni
 ///        nadie mas puede aceptar un voto por esta via sin una prueba
 ///        criptografica valida.
-///      - votarManual: via de respaldo sin prueba criptografica (ver
-///        docs/modelo-amenazas.md), para cuando no se dispone de DNIe/NFC.
+///      - votarManual: voto de la via de certificado digital. La firma se
+///        verifica fuera de cadena, en el servidor, y solo el relayer puede
+///        llamar a esta funcion (ver docs/decisiones/0004 y 0006). Se
+///        elimina en la Fase 1.
 ///      Empadronamiento y 5 anios de residencia siguen sin verificacion real
 ///      (el chip del documento no los contiene, ver README/modelo-amenazas).
 contract VotacionAnonima {
@@ -47,7 +49,7 @@ contract VotacionAnonima {
     ///         Ethereum, Sepolia y Base). En redes locales de test se usa un
     ///         MockRootVerifier (ver contracts/zkpassport/MockRootVerifier.sol).
     IRootVerifier public immutable verificadorZk;
-    /// @notice Cuenta autorizada para crear propuestas y relajar votos de certificado.
+    /// @notice Cuenta autorizada para crear propuestas y retransmitir votos de certificado.
     address public immutable relayer;
     /// @notice Debe coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN en la web.
     string public dominioZk;
@@ -70,8 +72,10 @@ contract VotacionAnonima {
     error NacionalidadNoValida();
 
     error SoloRelayer();
+    error DireccionCero();
 
     constructor(address _verificadorZk, string memory _dominioZk, bool _devModeZk, address _relayer) {
+        if (_verificadorZk == address(0) || _relayer == address(0)) revert DireccionCero();
         verificadorZk = IRootVerifier(_verificadorZk);
         relayer = _relayer;
         dominioZk = _dominioZk;
@@ -99,10 +103,14 @@ contract VotacionAnonima {
         emit PropuestaCreada(propuestaId, contenidoHash, apertura, cierre);
     }
 
-    /// @notice Vota con datos introducidos a mano, sin prueba criptografica
-    ///         (ver docs/modelo-amenazas.md: solo formato/edad autodeclarados).
-    /// @param nullifier Identificador derivado localmente en el navegador a partir del DNI.
-    /// @param nota Rastro informativo (p.ej. de que via viene el voto); no se verifica.
+    /// @notice Registra un voto de la via de certificado digital. El servidor
+    ///         verifica la firma CAdES y la cadena FNMT/DGP fuera de cadena y
+    ///         retransmite el voto como relayer; nadie mas puede llamarla.
+    /// @param nullifier HMAC-SHA256 calculado en el servidor con un secreto
+    ///        (NULLIFIER_CERTIFICADO_SECRET) sobre la propuesta y el DNI; no
+    ///        es enumerable sin ese secreto (ver docs/decisiones/0005).
+    /// @param nota Rastro informativo de la via ("certificado"); no se verifica
+    ///        y nunca contiene datos del votante.
     function votarManual(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata nota) external {
         if (msg.sender != relayer) revert SoloRelayer();
         nota;

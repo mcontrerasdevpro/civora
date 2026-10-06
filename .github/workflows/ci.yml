@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Tests, typecheck, build y E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Sin despliegue local, lib/contrato.ts necesita una dirección para
+      # cargar en el build. Ninguna prueba llega a la cadena: los E2E simulan
+      # las API con page.route.
+      CONTRATO_DIRECCION: "0x0000000000000000000000000000000000000001"
+      # RPC local por defecto: NULLIFIER_CERTIFICADO_SECRET usa el valor de
+      # desarrollo y no hace falta ningún secreto real en CI.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+
+      - name: Tests de contratos
+        run: pnpm --filter @civora/contracts test
+
+      - name: Tests de web
+        run: pnpm --filter web test
+
+      - name: Typecheck
+        run: pnpm --filter web typecheck
+
+      - name: Build
+        run: pnpm --filter web build
+
+      - name: Instalar Chromium para Playwright
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Tests E2E (Playwright + axe)
+        run: pnpm --filter web test:e2e
+
+      - name: Guardar trazas de Playwright si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/web/test-results/
+          retention-days: 7

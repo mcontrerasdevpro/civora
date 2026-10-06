@@ -71,6 +71,16 @@ test("genera CSP con nonce, strict-dynamic y sin ejecución inline insegura", ()
   assert.match(csp, /media-src 'self'(;|$)/);
 });
 
+test("la CSP de producción nunca permite 'unsafe-eval'; solo la de desarrollo", () => {
+  const produccion = crearCsp("n", "votos.ejemplo.es", "production");
+  assert.doesNotMatch(produccion, /unsafe-eval/);
+  assert.doesNotMatch(crearCsp("n", "votos.ejemplo.es", "test"), /unsafe-eval/);
+
+  const desarrollo = crearCsp("n", "votos.ejemplo.es", "development");
+  assert.match(desarrollo, /script-src 'self' 'nonce-n' 'strict-dynamic' 'unsafe-eval'(;|$)/);
+  assert.equal(desarrollo.replace(" 'unsafe-eval'", ""), produccion);
+});
+
 test("rechaza implícitamente certificados sin NIF en vez de usar emisor y serie", () => {
   const sinNif = {
     subject: { getField: () => null },

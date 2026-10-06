@@ -68,6 +68,7 @@ Accesibilidad y voto asistido, en la rama `accesibilidad-voto-asistido`:
 
 - Modo sencillo en `/votar` (recordado en `localStorage`), confirmación «Va a votar: X. ¿Es correcto?», avisos fijos, botón «Escuchar» solo con voces locales y audios propios en `public/audio/confirmacion` (provisionales).
 - WCAG 2.1 AA en el flujo de voto comprobado con axe en los E2E; CSP con `media-src 'self'`.
+- La CSP añade `'unsafe-eval'` solo con `NODE_ENV=development` (lo necesita `next dev`); un test unitario y otro E2E fallan si aparece en la de producción.
 
 Riesgos abiertos:
 
@@ -75,7 +76,6 @@ Riesgos abiertos:
 - La cadena pública expone opción y nullifier; el bloqueo de resultados solo cubre la aplicación.
 - No hay censo congelado ni deduplicación verificable común entre certificado y ZK; padrón y cinco años de residencia no se prueban. La edad de certificado es autodeclarada.
 - El rate limit no se comparte entre instancias; ZKPassport y Autofirma siguen siendo dependencias de terceros.
-- `pnpm dev` no hidrata las páginas: la CSP bloquea el `eval` que usa `next dev`. Pendiente decidir una CSP específica para desarrollo.
 - El reto de certificado caduca a los 5 minutos en el servidor; la UI permite reintentar sin perder progreso. Revisarlo para voto asistido en Fase 1.
 
 ## Hoja de ruta

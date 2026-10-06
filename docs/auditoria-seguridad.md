@@ -24,9 +24,9 @@ Cambios de interfaz sin tocar contratos, identidad ni rutas API:
 - **Síntesis de voz:** `speechSynthesis` solo con voces `localService`; la opción elegida no pasa nunca por la síntesis, se reproduce con audios propios (provisionales, voz local; se sustituirán por grabaciones profesionales). Detalle en [modelo-amenazas.md](modelo-amenazas.md#inclusión-y-voto-asistido).
 - **Confirmación explícita** antes de enviar el voto, en modo normal y sencillo.
 - **Reto de certificado caducado (5 min en servidor):** la interfaz avisa y permite firmar de nuevo conservando datos y opción. Eliminar el límite para voto asistido queda pendiente para la Fase 1.
-- **Pendiente detectado:** la CSP no permite `unsafe-eval`, que `next dev` necesita; en desarrollo las páginas no se hidratan. Los E2E usan `next build` + `next start`. Decidir si relajar la CSP solo en desarrollo.
+- **CSP de desarrollo:** `next dev` necesita `eval` y sin él las páginas no se hidrataban. `crearCsp` añade `'unsafe-eval'` solo con `NODE_ENV=development`; la política de build/start no cambia. Un test unitario y otro E2E (cabecera real de `next start`) fallan si aparece en producción.
 
-Verificación: `pnpm --filter web test` (14 pruebas), `typecheck`, `build` y `pnpm --filter web test:e2e` (26 pruebas: axe WCAG 2.1 A/AA en cada paso, modo normal y sencillo, 1280 y 375 px).
+Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pnpm --filter web test:e2e` (26 pruebas: axe WCAG 2.1 A/AA en cada paso, modo normal y sencillo, 1280 y 375 px).
 
 ## Resumen ejecutivo
 

@@ -112,9 +112,11 @@ test.describe("confirmación final", () => {
     expect(leido).toEqual([]);
   });
 
-  test("la CSP permite solo medios del propio origen", async ({ page }) => {
+  test("la CSP de next start permite solo medios propios y nunca 'unsafe-eval'", async ({ page }) => {
     const respuesta = await page.goto("/votar");
-    expect(respuesta?.headers()["content-security-policy"]).toMatch(/media-src 'self'(;|$)/);
+    const csp = respuesta?.headers()["content-security-policy"] ?? "";
+    expect(csp).toMatch(/media-src 'self'(;|$)/);
+    expect(csp).not.toContain("unsafe-eval");
   });
 });
 

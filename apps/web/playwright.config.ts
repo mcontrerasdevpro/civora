@@ -23,7 +23,7 @@ export default defineConfig({
     { name: "movil", use: { ...devices["Desktop Chrome"], viewport: { width: 375, height: 812 }, hasTouch: true } },
   ],
   webServer: {
-    // next dev necesita eval y la CSP no lo permite: se prueba la build real.
+    // Se prueba la build real: su CSP es la de producción (sin 'unsafe-eval').
     command: `pnpm exec next build && pnpm exec next start -p ${PUERTO}`,
     url: `http://localhost:${PUERTO}/votar`,
     reuseExistingServer: !process.env.CI,

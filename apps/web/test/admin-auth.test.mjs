@@ -68,6 +68,7 @@ test("genera CSP con nonce, strict-dynamic y sin ejecución inline insegura", ()
   assert.match(csp, /connect-src[^;]*https:\/\/votos\.ejemplo\.es/);
   assert.doesNotMatch(csp, /script-src[^;]*unsafe-inline/);
   assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /media-src 'self'(;|$)/);
 });
 
 test("rechaza implícitamente certificados sin NIF en vez de usar emisor y serie", () => {

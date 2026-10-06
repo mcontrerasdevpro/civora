@@ -18,6 +18,7 @@ enlazan):
 | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) | Amenazas, lo que no está resuelto y mitigaciones |
 | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) | Hallazgos de auditoría y verificaciones |
 | [docs/especificacion-publica.md](docs/especificacion-publica.md) | Especificación funcional pública |
+| [SECURITY.md](SECURITY.md) | Cómo reportar vulnerabilidades en privado |
 
 ## Comandos
 
@@ -50,7 +51,9 @@ pnpm --filter web test:e2e
 - `test:e2e` ejecuta Playwright + axe (WCAG 2.1 AA) a 1280 y 375 px contra
   `next build` + `next start` en el puerto 3100, con las API simuladas. La
   primera vez: `pnpm --filter web exec playwright install chromium`.
-  Pendiente de añadir al CI ([ROADMAP](docs/ROADMAP.md#paso-a-producción)).
+- El CI (`.github/workflows/ci.yml`) ejecuta estos cinco pasos en cada PR y
+  en cada push a `main`, con un `CONTRATO_DIRECCION` ficticio para el
+  build.
 - `pnpm dev` usa una CSP de desarrollo con `'unsafe-eval'`
   ([ADR 0007](docs/decisiones/0007-csp-con-nonce.md)); no la uses para
   validar la CSP de producción.

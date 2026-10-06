@@ -27,6 +27,29 @@ y ya es seguro".
 
 ## Qué NO resuelve todavía esta PoC
 
+### Front-running de votos ZK (R-01)
+
+**Crítico y abierto.** La prueba ZKPassport acredita la elegibilidad para
+una propuesta, pero no la opción. Quien vea la transacción antes de que se
+mine (el relayer o un observador de la mempool) puede reenviar la misma
+prueba con otra opción; el contrato acepta la primera y rechaza la legítima
+por nullifier repetido. Mitigación prevista: atar la opción a la prueba y
+verificarla en el contrato. Es la primera prioridad del
+[spike ZKPassport](ROADMAP.md#spike-zkpassport-deduplicación-entre-vías);
+detalle en la [auditoría](auditoria-seguridad.md).
+
+### Firma y certificado en la vía de certificado
+
+- El servidor recibe la firma CMS y el certificado del votante para
+  verificarlos. **No se guardan ni se registran** (logs, base de datos o
+  mensajes de error): se descartan tras verificar. Un test lo comprueba con
+  un CMS real y un marcador.
+- La firma cubre la opción (R-04): no puede reutilizarse para otra.
+- El nullifier es un HMAC con un secreto del servidor (R-02): un tercero no
+  puede recalcularlo enumerando DNI, pero el operador sí (A-01).
+
+### Otras limitaciones
+
 - **Verificación real de empadronamiento y de los 5 años de residencia**:
   el chip NFC del DNIe/pasaporte no contiene estos datos; requiere acceso
   oficial al Padrón Municipal / INE, no disponible en una PoC. Se acepta

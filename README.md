@@ -16,6 +16,7 @@ ni acreditación de todos los requisitos legales.
 | Amenazas y limitaciones | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) |
 | Auditoría de seguridad | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) |
 | Especificación funcional | [docs/especificacion-publica.md](docs/especificacion-publica.md) |
+| Reportar una vulnerabilidad | [SECURITY.md](SECURITY.md) |
 
 Este README cubre qué es Civora, qué garantiza hoy y cómo configurar el
 entorno. Los comandos están solo en [AGENTS.md](AGENTS.md#comandos).

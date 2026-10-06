@@ -16,6 +16,16 @@
 
 La arquitectura de identidad, el censo verificable y el secreto criptográfico de papeleta quedan fuera de Fase 0 y no se consideran resueltos.
 
+## Revisión externa (2026-10-06, rama `correcciones-revision`)
+
+| Hallazgo | Severidad | Estado | Resumen |
+|---|---|---|---|
+| [R-01](#r-01--crítico--la-opción-no-está-atada-a-la-prueba-zk-front-running) | Crítico | **Abierto, primera prioridad del spike** | `votarConPruebaZk` no ata la opción a la prueba: se puede reenviar la misma prueba con otra opción. |
+| [R-02](#r-02--crítico--nullifier-de-certificado-enumerable-y-publicado) | Crítico | Corregido | Nullifier de certificado con HMAC y secreto; la nota on-chain ya no lo incluye. |
+| [R-03](#r-03--alto--nif-sin-normalizar) | Alto | Corregido | DNI normalizado y con letra de control validada; NIE y otros formatos rechazados. |
+| [R-04](#r-04--medio--la-opción-no-forma-parte-del-reto-firmado) | Medio | Corregido | El reto firmado incluye la opción y el servidor la verifica. |
+| [R-05](#r-05--bajo--constructor-sin-comprobación-de-dirección-cero-y-natspec-obsoleto) | Bajo | Corregido | El constructor rechaza la dirección cero; NatSpec actualizado. |
+
 ## Accesibilidad y voto asistido (2026-10-06, rama `accesibilidad-voto-asistido`)
 
 Cambios de interfaz sin tocar contratos, identidad ni rutas API:
@@ -104,6 +114,42 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 
 **Arreglo propuesto:** restaurar autenticación y autorización en servidor, limitar tasa y validar que la propuesta se aprueba antes de enviar la transacción. No exponer secretos al cliente.
 
+### R-01 · Crítico — La opción no está atada a la prueba ZK (front-running)
+
+`votarConPruebaZk` recibe la prueba y la opción por separado. La prueba acredita la elegibilidad para la propuesta, pero no la opción. Quien vea la transacción antes de que se mine (el relayer, que la construye, o cualquier observador de la mempool) puede enviar la misma prueba con otra opción y con más gas: el contrato acepta la primera que llega y consume el nullifier, y el voto legítimo se rechaza por repetido.
+
+**Impacto:** un voto ZK puede sustituirse por otro de distinta opción sin que el votante lo note hasta verificar su recibo.
+
+**Estado:** abierto. Es la primera prioridad del [spike ZKPassport](ROADMAP.md#spike-zkpassport-deduplicación-entre-vías). Descrito en el [modelo de amenazas](modelo-amenazas.md#front-running-de-votos-zk-r-01).
+
+**Arreglo previsto:** atar la opción a la prueba (por ejemplo, incluirla en los datos vinculados que ZKPassport firma junto al ámbito) y verificar en el contrato que la opción recibida es la de la prueba.
+
+### R-02 · Crítico — Nullifier de certificado enumerable y publicado
+
+El nullifier de certificado era `SHA-256(propuestaId:certificado:NIF)`, sin secreto, y se publicaba on-chain como nullifier y, además, dentro de la nota de `votarManual`. Con el identificador de la propuesta (público) y el espacio pequeño de DNI, cualquiera podía recalcularlo para cada DNI y saber quién votó y qué.
+
+**Corrección:** `HMAC-SHA256(NULLIFIER_CERTIFICADO_SECRET, propuestaId:certificado:DNI)` en `lib/nullifier-certificado.mjs`. La variable es obligatoria fuera de un RPC local (al menos 32 caracteres) y se valida al arrancar en `next.config.js`; con RPC local se usa un valor fijo de desarrollo. La nota on-chain es solo `"certificado"`. Tests: el arranque falla con RPC no local y sin secreto; el resultado depende del secreto y no coincide con hashes sin secreto.
+
+**Riesgo residual:** el operador, que conoce el secreto, puede recalcular el nullifier y vincular identidad y voto (A-01, [ADR 0005](decisiones/0005-no-publicar-nif.md)). Cambiar o perder el secreto durante la vida de un contrato permitiría votar dos veces: rotarlo exige un contrato nuevo ([despliegue](despliegue-produccion.md)).
+
+### R-03 · Alto — NIF sin normalizar
+
+El NIF se tomaba tal cual del atributo `serialNumber`. El mismo DNI con distinto formato (`IDCES-12345678Z`, `12345678Z`, minúsculas, guiones) producía nullifiers distintos y permitía votar dos veces; tampoco se comprobaba que fuera un DNI.
+
+**Corrección:** `normalizarDniCertificado` en `lib/nif-certificado.mjs` acepta los prefijos ETSI EN 319 412-1 (`IDCES-`, `PNOES-`, `TINES-`, `TAXES-`) y `NIF`, elimina separadores, exige 8 cifras y una letra de control válida y rechaza NIE y otros formatos. Tests con varios formatos que producen el mismo nullifier.
+
+### R-04 · Medio — La opción no forma parte del reto firmado
+
+El reto era `HMAC(propuestaId:timestamp)` y se firmaba antes de elegir. La firma no cubría la opción, así que quien tuviera la petición podía cambiar la opción conservando la firma.
+
+**Corrección:** el reto es `HMAC(propuestaId:timestamp:opcion)` y el servidor lo recalcula con la opción recibida. La firma se pide en la confirmación, tras avisar en texto y en audio de que se abrirá Autofirma. La firma CMS y el certificado no se guardan ni se registran; un test firma un CMS real con un marcador y comprueba que no aparece en la respuesta ni en la consola.
+
+### R-05 · Bajo — Constructor sin comprobación de dirección cero y NatSpec obsoleto
+
+El constructor aceptaba la dirección cero como verificador o relayer, lo que dejaba un contrato inutilizable sin aviso. El NatSpec de `votarManual` describía la vía manual ya retirada.
+
+**Corrección:** error `DireccionCero` en el constructor, con test; NatSpec y cabecera actualizados. También se regenera el ABI de la web, que no incluía `_relayer` ni `SoloRelayer`.
+
 ## Privilegios y cambios sobre elecciones
 
 - No hay funciones de administrador, `owner`, pausa o setters para modificar votos, fechas, opciones o contenido después de crear una propuesta. `crearPropuesta` solo la puede invocar el relayer inmutable; apertura/cierre quedan fijadas al crearla.
@@ -113,7 +159,7 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 
 ## Respuestas directas
 
-1. **Nullifier:** la vía manual de UI/API se eliminó en Fase 0. Certificado = hash de NIF y propuesta; si no hay NIF, se rechaza. ZK = identificador del verificador bajo `civora-voto-<propuesta>`. Los espacios entre certificado y ZK siguen sin vincularse. No se puede confirmar desde este repositorio la equivalencia DNI/pasaporte interna del SDK.
+1. **Nullifier:** la vía manual de UI/API se eliminó en Fase 0. Certificado = HMAC con secreto del servidor sobre la propuesta y el DNI normalizado (R-02, R-03); si no hay DNI válido, se rechaza. ZK = identificador del verificador bajo `civora-voto-<propuesta>`. Los espacios entre certificado y ZK siguen sin vincularse. No se puede confirmar desde este repositorio la equivalencia DNI/pasaporte interna del SDK.
 2. **Separación identidad-voto:** ZK evita revelar directamente identidad al contrato, pero no usa registro de compromiso en árbol Merkle. Certificado sí permite al backend enlazar identidad y voto. La vía manual no demuestra identidad.
 3. **Gas y vinculación:** paga el relayer del servidor; el votante no aporta wallet. La dirección relayer es pública. IP puede correlacionarse en infraestructura web; no se verificó la retención del hosting.
 4. **Administrador:** no hay funciones para pausar o alterar una elección/votos ya creada. La API exige `ADMIN_SECRET` y el contrato limita la creación al relayer inmutable.
@@ -129,3 +175,11 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false`: completado; lockfile sin cambios.
 - `pnpm --filter @civora/contracts test`: 18 pruebas superadas.
 - `pnpm --filter web test`: 7 pruebas superadas.
+
+Revisión externa R-01 a R-05 (2026-10-06):
+
+- `pnpm --filter @civora/contracts test`: 20 pruebas superadas.
+- `pnpm --filter web test`: 27 pruebas superadas.
+- `pnpm --filter web typecheck` y `build`: sin errores.
+- `pnpm --filter web test:e2e`: 32 pruebas superadas.
+- Los mismos pasos que `.github/workflows/ci.yml`, en un clon limpio sin `.env.local` ni despliegue generado: en verde.

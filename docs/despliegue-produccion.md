@@ -89,13 +89,22 @@ cambiarlas hay que volver a desplegar.
 | `HARDHAT_RELAYER_PRIVATE_KEY` | sí | clave cuya dirección es `RELAYER_ADDRESS` | ambos | sin cambios, salvo que se rote (exige otro contrato) |
 | `DATABASE_URL` | sí | `postgresql://usuario:<contraseña>@host-pooler.neon.tech/neondb?sslmode=require` | ambos; recomendable una rama de Neon distinta para Preview | sin cambios |
 | `ADMIN_SECRET` | sí, para crear propuestas | cadena aleatoria larga | ambos (mejor un valor distinto en cada uno) | **nueva** (Fase 0) |
-| `RETO_CERTIFICADO_SECRET` | sí, para la vía de certificado | cadena aleatoria larga | ambos | sin cambios |
+| `RETO_CERTIFICADO_SECRET` | sí, para la vía de certificado | cadena aleatoria larga | ambos | sin cambios; ahora el reto incluye la opción (R-04) |
+| `NULLIFIER_CERTIFICADO_SECRET` | sí; el build falla sin ella con RPC no local | cadena aleatoria de 32 caracteres o más (p. ej. `openssl rand -hex 32`) | ambos, **con el mismo valor** | **nueva** (R-02) |
 | `NEXT_PUBLIC_ZKPASSPORT_DOMAIN` | sí | el mismo que `ZKPASSPORT_DOMAIN` del contrato (p. ej. `civora-voto.vercel.app`) | ambos | sin cambios; debe coincidir con el contrato |
 | `NEXT_PUBLIC_ZKPASSPORT_DEV_MODE` | sí | `true` | ambos | **modificada**: antes `true` por defecto; ahora explícita |
 | `CIVORA_DEMO_TESTNET` | sí, para la demo | `true` | ambos | **nueva**: sin ella el build falla con el dominio y modo de demo |
 | `FALLO_ABIERTO_REVOCACION` | no | `false` o sin definir | ambos | **modificada**: `true` ya no se permite fuera de local; el build falla |
 
 `NODE_ENV` la fija Vercel; no la definas.
+
+**`NULLIFIER_CERTIFICADO_SECRET` es parte del contrato.** Cada nullifier de
+certificado se calcula con ella, así que debe ser la misma en Preview y
+Production mientras usen el mismo contrato, y no puede cambiar durante su
+vida: con otro valor, la misma persona obtendría otro nullifier y podría
+votar dos veces. **Guárdala también fuera de Vercel** (gestor de secretos o
+de contraseñas). Perderla obliga a desplegar un contrato nuevo, igual que
+rotarla ([ADR 0005](decisiones/0005-no-publicar-nif.md)).
 
 Consecuencias de datos: las propuestas guardadas en la base de datos que
 apuntan al contrato antiguo no existen en el nuevo y quedan huérfanas. Si
@@ -111,7 +120,7 @@ No fusiones si alguno falla.
 | # | Comprobación | Resultado esperado |
 |---|---|---|
 | 1 | Crear propuesta en `/propuestas/nueva` con `ADMIN_SECRET`, cierre en unos 15 minutos | Se crea y aparece en `/propuestas`. Con una clave incorrecta, error; tras 5 intentos, bloqueo temporal |
-| 2 | Votar con certificado digital (Autofirma + certificado FNMT o DNIe) | Recibo; un segundo voto con el mismo certificado se rechaza |
+| 2 | Votar con certificado digital (Autofirma + certificado FNMT o DNIe) | La confirmación avisa de que se abrirá Autofirma; la firma se pide al pulsar «Sí»; recibo. Un segundo voto con el mismo certificado se rechaza |
 | 3 | Flujo ZK en modo demo con la app ZKPassport (documento de prueba) | El QR aparece, la prueba se acepta y se obtiene recibo |
 | 4 | Banner | **MODO DEMOSTRACIÓN** visible en todas las páginas |
 | 5 | CSP: `curl.exe -sI <url>/votar` | `content-security-policy` con `nonce-…`, `strict-dynamic` y `media-src 'self'`, **sin** `unsafe-eval`; ningún error de CSP en la consola del navegador |
@@ -142,7 +151,10 @@ Solo con confirmación explícita del responsable.
    - `CONTRATO_DIRECCION` = contrato antiguo.
    - Quita `CIVORA_DEMO_TESTNET` (el código antiguo no la usa).
    - Deja `NEXT_PUBLIC_ZKPASSPORT_DEV_MODE` como estaba.
-   - `ADMIN_SECRET` puede quedarse; el código antiguo la ignora.
+   - `ADMIN_SECRET` y `NULLIFIER_CERTIFICADO_SECRET` pueden quedarse; el
+     código antiguo las ignora. No borres el valor de
+     `NULLIFIER_CERTIFICADO_SECRET`: el contrato nuevo lo necesita si se
+     vuelve a intentar la migración.
 3. **Revertir el merge en `main`:** en la PR fusionada, *Revert* → crea una
    PR de reversión → fusiónala. O en local, en una rama:
    `git revert -m 1 <commit-de-merge>` y PR.

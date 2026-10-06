@@ -12,7 +12,8 @@ Estados: **hecho**, **en curso**, **pendiente**.
 |---|---|---|
 | [Fase 0: seguridad](#fase-0-seguridad) | hecho | `fase-0-seguridad` |
 | [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
-| [Spike ZKPassport](#spike-zkpassport-deduplicación-entre-vías) | pendiente (siguiente) | — |
+| [Revisión externa R-01 a R-05](#revisión-externa-r-01-a-r-05) | hecho, salvo R-01 | `correcciones-revision` |
+| [Spike ZKPassport](#spike-zkpassport-deduplicación-entre-vías) | pendiente (siguiente; primero R-01) | — |
 | [Fase 1: Semaphore](#fase-1-semaphore) | pendiente | — |
 | [«Intenta hacer trampa» y script de auditoría](#intenta-hacer-trampa-y-script-de-auditoría) | pendiente | — |
 | [Idiomas](#idiomas) | pendiente | — |
@@ -66,14 +67,30 @@ opción del enum, servidos desde `public/audio/confirmacion`; número de
 ayuda publicado en los avisos con un protocolo escrito que prohíba preguntar
 o registrar el voto.
 
+## Revisión externa R-01 a R-05
+
+**Objetivo:** corregir los hallazgos de la revisión externa. Detalle en la
+[auditoría](auditoria-seguridad.md#revisión-externa-2026-10-06-rama-correcciones-revision).
+
+| Tarea | Estado |
+|---|---|
+| R-02: nullifier de certificado con HMAC y `NULLIFIER_CERTIFICADO_SECRET`; nota on-chain sin nullifier | hecho |
+| R-03: DNI del certificado normalizado y validado | hecho |
+| R-04: opción incluida en el reto firmado; firma en la confirmación con aviso de Autofirma | hecho |
+| R-05: constructor sin dirección cero; NatSpec actualizado | hecho |
+| `SECURITY.md` y CI en GitHub Actions | hecho |
+| R-01: atar la opción a la prueba ZK | pendiente: primera tarea del spike |
+
 ## Spike ZKPassport: deduplicación entre vías
 
-**Objetivo:** decidir cómo impedir que una persona vote por certificado y
-por ZKPassport a la vez sin publicar el NIF ni hashes directos del documento
+**Objetivo:** primero, cerrar R-01 atando la opción a la prueba ZK; después,
+decidir cómo impedir que una persona vote por certificado y por ZKPassport a
+la vez sin publicar el NIF ni hashes directos del documento
 ([ADR 0005](decisiones/0005-no-publicar-nif.md)).
 
 | Tarea | Estado |
 |---|---|
+| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | pendiente |
 | Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
 | Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |
@@ -82,7 +99,8 @@ por ZKPassport a la vez sin publicar el NIF ni hashes directos del documento
 **Dependencias:** ninguna. No despliega cambios de identidad: el resultado
 alimenta la Fase 1.
 
-**Criterios de aceptación:** ADR nuevo aceptado; tests que demuestran el
+**Criterios de aceptación:** R-01 cerrado: el contrato rechaza una prueba
+reenviada con otra opción (test). ADR nuevo aceptado; tests que demuestran el
 voto cruzado hoy y documentan qué mecanismo lo impediría; ningún
 identificador derivado directamente del NIF o del número de documento en
 la propuesta.
@@ -181,7 +199,7 @@ con contenido manipulado sin efecto.
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (PR obligatoria, checks requeridos) | pendiente |
-| CI con tests de contratos y web, typecheck, build y `test:e2e` | pendiente |
+| CI con tests de contratos y web, typecheck, build y `test:e2e` (`.github/workflows/ci.yml`) | hecho; pendiente de su primera ejecución en GitHub |
 | Rate limit compartido entre instancias (hoy en memoria) | pendiente |
 | Dominio ZKPassport propio registrado y `DEV_MODE=false` | pendiente |
 | Probar OCSP contra los respondedores reales de FNMT/DGP y añadir CRL de respaldo | pendiente |

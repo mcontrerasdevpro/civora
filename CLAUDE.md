@@ -40,7 +40,10 @@ pnpm --filter @civora/contracts test
 pnpm --filter web test
 pnpm --filter web typecheck
 pnpm --filter web build
+pnpm --filter web test:e2e
 ```
+
+`test:e2e` ejecuta Playwright + axe (WCAG 2.1 AA) a 1280 y 375 px contra `next build` + `next start` en el puerto 3100, con las API simuladas; requiere una vez `pnpm --filter web exec playwright install chromium`. Pendiente de añadir al CI cuando exista.
 
 Despliegue Sepolia: define `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, `ZKPASSPORT_DOMAIN`, `ZKPASSPORT_DEV_MODE=false` y `RELAYER_ADDRESS` en el entorno de contratos; ejecuta:
 
@@ -61,19 +64,26 @@ Fase 0 está completada en la rama `fase-0-seguridad`:
 - `POST /api/propuestas` exige `ADMIN_SECRET`, comparación de tiempo constante y rate limit en memoria por IP.
 - La aplicación oculta resultados y recibos hasta el cierre; fuentes locales con `next/font` y CSP con nonce.
 
+Accesibilidad y voto asistido, en la rama `accesibilidad-voto-asistido`:
+
+- Modo sencillo en `/votar` (recordado en `localStorage`), confirmación «Va a votar: X. ¿Es correcto?», avisos fijos, botón «Escuchar» solo con voces locales y audios propios en `public/audio/confirmacion` (provisionales).
+- WCAG 2.1 AA en el flujo de voto comprobado con axe en los E2E; CSP con `media-src 'self'`.
+
 Riesgos abiertos:
 
 - El voto de certificado aún puede vincular identidad y opción en el servidor. Su nullifier público deriva del NIF; esto **no** equivale a ocultar el NIF frente a enumeración. No añadir ni conservar publicación de NIF o hashes directos del DNI; diseñar la migración dentro de la fase de identidad correspondiente.
 - La cadena pública expone opción y nullifier; el bloqueo de resultados solo cubre la aplicación.
 - No hay censo congelado ni deduplicación verificable común entre certificado y ZK; padrón y cinco años de residencia no se prueban. La edad de certificado es autodeclarada.
 - El rate limit no se comparte entre instancias; ZKPassport y Autofirma siguen siendo dependencias de terceros.
+- `pnpm dev` no hidrata las páginas: la CSP bloquea el `eval` que usa `next dev`. Pendiente decidir una CSP específica para desarrollo.
+- El reto de certificado caduca a los 5 minutos en el servidor; la UI permite reintentar sin perder progreso. Revisarlo para voto asistido en Fase 1.
 
 ## Hoja de ruta
 
 1. **Spike ZKPassport:** investigar y probar deduplicación entre vías sin publicar NIF ni hashes directos de documentos; documentar límites y decisión técnica.
 2. **Fase 1, Semaphore:** registro de elegibles mediante un grupo basado en censo congelado, votación con prueba Semaphore y eliminación de `votarManual`.
 3. Crear la página «Intenta hacer trampa» y un script de auditoría reproducible.
-4. Mejorar accesibilidad e incorporar idiomas.
+4. Mejorar accesibilidad e incorporar idiomas. Modo sencillo y WCAG 2.1 AA del flujo de voto hechos; faltan idiomas, grabaciones profesionales de los audios y el teléfono de ayuda.
 5. **Fase 2, MACI:** integrar MACI y someter el sistema a auditoría externa.
 
 **Inclusión y voto asistido** (canales y asignación en Fase 1; detalle en [docs/modelo-amenazas.md](docs/modelo-amenazas.md#inclusión-y-voto-asistido)):

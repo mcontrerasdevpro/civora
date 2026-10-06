@@ -67,9 +67,11 @@ de desarrollo, sin versión corregida.
 
 Ninguno de los paquetes con riesgo aceptado llega a la imagen Docker: la
 etapa de dependencias instala solo `--filter "web..."` y `node-forge` es
-`devDependency`. Los overrides están en `package.json` (`pnpm.overrides`),
-que es donde los lee pnpm 9.0.0 (`packageManager`) y quedan registrados en
-`pnpm-lock.yaml`. Regla nueva: revisar `pnpm audit --prod` antes de cada
+`devDependency`. Los overrides están en `package.json` (`pnpm.overrides`,
+para pnpm 9.0.0, el de `packageManager`) y, con el mismo contenido, en
+`pnpm-workspace.yaml` (para pnpm 10 y 11), y quedan registrados en
+`pnpm-lock.yaml`; un test comprueba que coinciden
+([AGENTS.md](../AGENTS.md#comandos)). Regla nueva: revisar `pnpm audit --prod` antes de cada
 despliegue ([AGENTS.md](../AGENTS.md#reglas-de-trabajo)).
 
 Verificación: 20 tests de contratos, 46 de web, typecheck, build, 36 E2E

@@ -47,6 +47,12 @@ Pasos: [despliegue-vps.md](../despliegue-vps.md).
   de la imagen base pasan a ser responsabilidad propia; también copias de
   seguridad, cortafuegos y supervisión.
 - **Disponibilidad:** un único servidor es un punto único de fallo.
+- **Sin entorno de pruebas separado:** un solo servicio `civora` en el
+  proyecto `nexuraia`; las comprobaciones previas a fusionar se hacen sobre
+  la demo pública, porque ZKPassport solo acepta el dominio del contrato y
+  dos servicios compartirían contrato y secreto
+  ([despliegue-vps.md](../despliegue-vps.md#3-un-solo-servicio)). Un entorno
+  de pruebas con contrato y dominio propios llegará con el VPS dedicado.
 - **Para producción real:** VPS dedicado solo a Civora, endurecido y
   supervisado, con auditoría de su configuración
   ([ROADMAP](../ROADMAP.md#paso-a-producción)).

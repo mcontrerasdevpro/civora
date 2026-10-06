@@ -64,8 +64,9 @@ async function main() {
   );
   if (hre.network.name !== "localhost") {
     console.log(
-      `\nEn Vercel, define CONTRATO_DIRECCION=${deployment.address} ` +
-        "(y HARDHAT_RPC_URL / HARDHAT_RELAYER_PRIVATE_KEY) para que la web use este despliegue."
+      `\nEn la plataforma donde se aloja la web (Easypanel u otra), define CONTRATO_DIRECCION=${deployment.address} ` +
+        "junto con HARDHAT_RPC_URL y HARDHAT_RELAYER_PRIVATE_KEY, y comprueba el contrato con verificar:sepolia " +
+        "(ver docs/despliegue-produccion.md)."
     );
   }
 }

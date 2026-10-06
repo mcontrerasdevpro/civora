@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { OpcionVoto } from "@civora/shared-types";
-import { AUDIO_CONFIRMACION, elegirVozLocal } from "../../lib/modo-sencillo.mjs";
+import { AUDIO_AVISO_AUTOFIRMA, AUDIO_CONFIRMACION, elegirVozLocal } from "../../lib/modo-sencillo.mjs";
 
 /** Tiempo máximo de espera a que el navegador publique sus voces. */
 const ESPERA_VOCES_MS = 1500;
@@ -87,22 +87,47 @@ export function BotonEscuchar({ texto }: { texto: string }) {
 
 /**
  * Lee la confirmación de la opción elegida con un audio pregrabado de
- * nuestro propio origen (media-src 'self'), sin speechSynthesis.
+ * nuestro propio origen (media-src 'self'), sin speechSynthesis. En la vía
+ * de certificado, a continuación suena el aviso de que se abrirá Autofirma.
  */
-export function AudioConfirmacion({ opcion }: { opcion: OpcionVoto }) {
-  const audio = useRef<HTMLAudioElement>(null);
+export function AudioConfirmacion({
+  opcion,
+  conAvisoAutofirma = false,
+}: {
+  opcion: OpcionVoto;
+  conAvisoAutofirma?: boolean;
+}) {
+  const audioOpcion = useRef<HTMLAudioElement>(null);
+  const audioAviso = useRef<HTMLAudioElement>(null);
   const [error, setError] = useState(false);
 
   function reproducir() {
-    const elemento = audio.current;
+    const elemento = audioOpcion.current;
     if (!elemento) return;
+    audioAviso.current?.pause();
     elemento.currentTime = 0;
     elemento.play().catch(() => setError(true));
   }
 
+  function alTerminarOpcion() {
+    const aviso = audioAviso.current;
+    if (!conAvisoAutofirma || !aviso) return;
+    aviso.currentTime = 0;
+    aviso.play().catch(() => setError(true));
+  }
+
   return (
     <>
-      <audio ref={audio} src={AUDIO_CONFIRMACION[opcion]} preload="auto" onError={() => setError(true)} />
+      <audio
+        ref={audioOpcion}
+        src={AUDIO_CONFIRMACION[opcion]}
+        preload="auto"
+        onEnded={alTerminarOpcion}
+        onError={() => setError(true)}
+      />
+      {conAvisoAutofirma && (
+        <audio ref={audioAviso} src={AUDIO_AVISO_AUTOFIRMA} preload="auto" onError={() => setError(true)} />
+      )}
       {error ? (
         <p className="aviso-escuchar" role="note">
           No se ha podido reproducir el audio.

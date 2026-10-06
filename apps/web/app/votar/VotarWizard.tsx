@@ -9,6 +9,7 @@ import { IdentificacionCertificado, type DatosCertificado } from "./Identificaci
 import type { Identificacion } from "./identificacion";
 import { useModoSencillo } from "./ModoSencillo";
 import { AudioConfirmacion, BotonEscuchar } from "./Escuchar";
+import { ErrorAutofirma, firmarReto } from "./autofirma";
 import { esRetoCaducado, mensajeParaVotante } from "../../lib/modo-sencillo.mjs";
 
 /**
@@ -17,7 +18,9 @@ import { esRetoCaducado, mensajeParaVotante } from "../../lib/modo-sencillo.mjs"
  *     verificada dentro del contrato al votar), certificado digital
  *     (Autofirma, firma verificada en el servidor).
  *  2. Elección de la opción.
- *  3. Confirmación explícita antes de enviar. Al enviar, el voto va con el
+ *  3. Confirmación explícita antes de enviar. En la vía de certificado, al
+ *     pulsar «Sí» se pide un reto que incluye la opción y Autofirma lo firma
+ *     (R-04): la firma no sirve para otra opción. Al enviar, el voto va con el
  *     nullifier (o, en la vía ZK, con la prueba que el contrato verifica y
  *     convierte en nullifier; en la vía de certificado, con la firma que el
  *     servidor verifica y convierte en nullifier), nunca con la identidad.
@@ -57,7 +60,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const [opcion, setOpcion] = useState<OpcionVoto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retoCaducado, setRetoCaducado] = useState(false);
-  const [enviando, setEnviando] = useState(false);
+  const [enviando, setEnviando] = useState<false | "firmando" | "enviando">(false);
   const encabezado = useRef<HTMLHeadingElement>(null);
   const primerRender = useRef(true);
 
@@ -79,9 +82,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
     setError(null);
     setRetoCaducado(false);
     setIdentificacion(valor);
-    // Si el votante ya había elegido (reintento tras caducar el reto), se
-    // conserva su elección y vuelve directamente a confirmarla.
-    setPaso(opcion ? "confirmacion" : "voto");
+    setPaso("voto");
   }
 
   function irAConfirmacion(evento: React.FormEvent) {
@@ -91,13 +92,56 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
     setPaso("confirmacion");
   }
 
+  async function votarConCertificado(opcionElegida: OpcionVoto): Promise<Response | null> {
+    setEnviando("firmando");
+    const respuestaReto = await fetch("/api/identidad/certificado/reto", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ propuestaId: propuesta.id, opcion: opcionElegida }),
+    });
+    if (!respuestaReto.ok) {
+      setError(sencillo ? ERROR_GENERICO : "No se ha podido preparar la firma del voto.");
+      return null;
+    }
+    const { reto, timestamp } = (await respuestaReto.json()) as { reto: string; timestamp: number };
+
+    let firma: { firmaB64: string; certB64: string };
+    try {
+      firma = await firmarReto(reto);
+    } catch (errorFirma) {
+      const mensaje = errorFirma instanceof ErrorAutofirma ? errorFirma.message : "No se ha podido firmar con Autofirma.";
+      setError(
+        sencillo
+          ? "No se ha podido firmar con Autofirma. Compruebe que el programa está abierto e inténtelo de nuevo."
+          : mensaje
+      );
+      return null;
+    }
+
+    setEnviando("enviando");
+    // La firma y el certificado solo viajan en esta petición; el servidor
+    // los descarta tras verificarlos.
+    return fetch("/api/propuesta/votos/certificado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        propuestaId: propuesta.id,
+        opcion: opcionElegida,
+        timestamp,
+        reto,
+        signatureB64: firma.firmaB64,
+        certB64: firma.certB64,
+      }),
+    });
+  }
+
   async function votar() {
     if (!opcion || !identificacion) return;
     setError(null);
-    setEnviando(true);
     try {
-      let respuesta: Response;
+      let respuesta: Response | null;
       if (identificacion.tipo === "zk") {
+        setEnviando("enviando");
         respuesta = await fetch("/api/propuesta/votos/zk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -108,32 +152,21 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
           }),
         });
       } else {
-        respuesta = await fetch("/api/propuesta/votos/certificado", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            propuestaId: propuesta.id,
-            opcion,
-            timestamp: identificacion.timestamp,
-            reto: identificacion.reto,
-            signatureB64: identificacion.signatureB64,
-            certB64: identificacion.certB64,
-          }),
-        });
+        respuesta = await votarConCertificado(opcion);
+        if (!respuesta) return;
       }
       const cuerpo = await respuesta.json();
       if (!respuesta.ok) {
         if (identificacion.tipo === "certificado" && esRetoCaducado(cuerpo.error)) {
-          // El servidor da un tiempo limitado para firmar. Se vuelve a pedir
-          // la firma conservando método, datos del formulario y opción.
-          setIdentificacion(null);
+          // El servidor da un tiempo limitado para firmar. Se queda en la
+          // confirmación, con la opción elegida, para firmar de nuevo.
           setRetoCaducado(true);
-          setPaso("identificacion");
           return;
         }
         setError(mensajeParaVotante(cuerpo.error ?? ERROR_GENERICO, sencillo, ERROR_GENERICO));
         return;
       }
+      setRetoCaducado(false);
       setNullifier(cuerpo.nullifier);
       setPaso("recibo");
     } catch {
@@ -207,14 +240,6 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
         </div>
       )}
 
-      {paso === "identificacion" && retoCaducado && (
-        <div className="alert alert-info" role="alert">
-          {sencillo
-            ? "Ha pasado demasiado tiempo y, por seguridad, tiene que firmar otra vez. No ha perdido nada: sus datos y la opción que eligió siguen aquí. Pulse «Firmar de nuevo»."
-            : "La firma ha caducado: el servidor solo la acepta durante unos minutos. Tus datos y tu elección se conservan; pulsa «Firmar de nuevo» para continuar."}
-        </div>
-      )}
-
       {paso === "identificacion" && !metodo && <MetodoSelector onElegir={setMetodo} />}
 
       {paso === "identificacion" && metodo === "dnie" && (
@@ -230,7 +255,6 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
           propuesta={propuesta}
           datos={datosCertificado}
           onCambiarDatos={setDatosCertificado}
-          reintento={retoCaducado}
           onVerificado={identificacionCompletada}
           onCambiarMetodo={() => setMetodo(null)}
         />
@@ -268,22 +292,58 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
           <p className="confirmacion-texto" id="texto-confirmacion">
             Va a votar: <strong>{ETIQUETAS_OPCION[opcion]}</strong>. ¿Es correcto?
           </p>
-          <AudioConfirmacion opcion={opcion} />
+          {identificacion?.tipo === "certificado" && (
+            <p className="aviso-autofirma" id="aviso-autofirma">
+              {sencillo
+                ? "Al pulsar «Sí» se abrirá Autofirma para que firme su voto con su certificado."
+                : "Al pulsar «Sí» se abrirá Autofirma para que firmes tu voto con tu certificado digital."}
+            </p>
+          )}
+          <AudioConfirmacion opcion={opcion} conAvisoAutofirma={identificacion?.tipo === "certificado"} />
+          {retoCaducado && (
+            <div className="alert alert-info" role="alert">
+              {sencillo
+                ? "Ha pasado demasiado tiempo y, por seguridad, tiene que firmar otra vez. No ha perdido nada: su opción sigue aquí. Pulse «Firmar de nuevo»."
+                : "La firma ha caducado: el servidor solo la acepta durante unos minutos. Tu elección se conserva; pulsa «Firmar de nuevo» para continuar."}
+            </div>
+          )}
           <div className="confirmacion-botones" role="group" aria-labelledby="texto-confirmacion">
-            <button className="btn-primary" type="button" onClick={votar} disabled={enviando}>
-              {enviando ? "Enviando…" : "Sí"}
+            <button
+              className="btn-primary"
+              type="button"
+              onClick={votar}
+              disabled={Boolean(enviando)}
+              aria-describedby={identificacion?.tipo === "certificado" ? "aviso-autofirma" : undefined}
+            >
+              {enviando === "firmando"
+                ? "Esperando a Autofirma…"
+                : enviando === "enviando"
+                  ? "Enviando…"
+                  : retoCaducado
+                    ? "Firmar de nuevo"
+                    : "Sí"}
             </button>
             <button
               className="btn-secundario"
               type="button"
-              onClick={() => setPaso("voto")}
-              disabled={enviando}
+              onClick={() => {
+                setRetoCaducado(false);
+                setPaso("voto");
+              }}
+              disabled={Boolean(enviando)}
             >
               Volver
             </button>
           </div>
           <div aria-live="polite">
-            {enviando && (
+            {enviando === "firmando" && (
+              <div className="alert alert-info" style={{ marginTop: 20, marginBottom: 0 }}>
+                {sencillo
+                  ? "Firme su voto en la ventana de Autofirma."
+                  : "Firma tu voto en la ventana de Autofirma."}
+              </div>
+            )}
+            {enviando === "enviando" && (
               <div className="alert alert-info" style={{ marginTop: 20, marginBottom: 0 }}>
                 {sencillo
                   ? "Un momento, estamos guardando su voto. No cierre esta ventana."

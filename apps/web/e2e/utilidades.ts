@@ -27,12 +27,21 @@ function propuesta() {
   };
 }
 
-/** Sustituye Autofirma por una versión que firma al instante. */
+/**
+ * Sustituye Autofirma por una versión que firma al instante y anota qué ha
+ * firmado en window.__firmado. Con window.__autofirmaFalla = true, falla
+ * como si el usuario cancelara.
+ */
 const AUTOSCRIPT_FALSO = `
+window.__firmado = [];
 window.AutoScript = {
   cargarAppAfirma: function () {},
-  sign: function (datos, algoritmo, formato, extra, onExito) {
-    setTimeout(function () { onExito("RklSTUE=", "Q0VSVA=="); }, 10);
+  sign: function (datos, algoritmo, formato, extra, onExito, onError) {
+    window.__firmado.push(datos);
+    setTimeout(function () {
+      if (window.__autofirmaFalla) onError("cancelado", "Operación cancelada por el usuario");
+      else onExito("RklSTUE=", "Q0VSVA==");
+    }, 10);
   },
 };`;
 
@@ -43,11 +52,13 @@ export type OpcionesSimulacion = {
 
 /**
  * Simula las API que usa el flujo de voto y registra lo que se envía.
- * Devuelve los cuerpos de los votos enviados y el número de retos pedidos.
+ * Devuelve los cuerpos de los votos enviados, el número de retos pedidos y
+ * la opción con la que se pidió cada reto.
  */
 export async function simularApi(page: Page, opciones: OpcionesSimulacion = {}) {
   const votos: unknown[] = [];
   const contador = { retos: 0 };
+  const opcionesReto: unknown[] = [];
   const respuestas = [...(opciones.respuestasVoto ?? [{ status: 200, body: { nullifier: NULLIFIER } }])];
 
   await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) =>
@@ -58,6 +69,7 @@ export async function simularApi(page: Page, opciones: OpcionesSimulacion = {}) 
   );
   await page.route("**/api/identidad/certificado/reto", (ruta) => {
     contador.retos += 1;
+    opcionesReto.push((ruta.request().postDataJSON() as { opcion?: unknown }).opcion);
     return ruta.fulfill({ json: { reto: "ab".repeat(32), timestamp: Date.now() } });
   });
   await page.route("**/api/propuesta/votos/certificado", (ruta) => {
@@ -69,7 +81,7 @@ export async function simularApi(page: Page, opciones: OpcionesSimulacion = {}) 
   // externa para que los tests no dependan de terceros.
   await page.route(/zkpassport\.id/, (ruta) => ruta.abort());
 
-  return { votos, contador };
+  return { votos, contador, opcionesReto };
 }
 
 /**

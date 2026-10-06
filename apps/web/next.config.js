@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const { crearCsp } = require("./lib/content-security-policy");
-const { validarConfiguracionZkWeb, validarFalloAbiertoRevocacion } = require("./lib/runtime-security");
+const {
+  validarConfiguracionZkWeb,
+  validarFalloAbiertoRevocacion,
+  validarSecretoNullifierCertificado,
+} = require("./lib/runtime-security");
 
 validarFalloAbiertoRevocacion(
   process.env.FALLO_ABIERTO_REVOCACION === "true",
@@ -14,6 +18,7 @@ validarConfiguracionZkWeb(
   process.env.NODE_ENV,
   process.env.CIVORA_DEMO_TESTNET
 );
+validarSecretoNullifierCertificado(process.env.NULLIFIER_CERTIFICADO_SECRET, process.env.HARDHAT_RPC_URL);
 
 const nextConfig = {
   reactStrictMode: true,

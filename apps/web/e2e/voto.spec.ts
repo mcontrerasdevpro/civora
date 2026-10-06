@@ -101,7 +101,7 @@ test.describe("confirmación final", () => {
     await page.getByLabel("En contra").check();
     await page.getByRole("button", { name: "Continuar" }).click();
 
-    const audio = page.locator(".confirmacion-voto audio");
+    const audio = page.locator(".confirmacion-voto audio").first();
     await expect(audio).toHaveAttribute("src", "/audio/confirmacion/en_contra.wav");
     const respuesta = await page.request.get("/audio/confirmacion/en_contra.wav");
     expect(respuesta.status()).toBe(200);
@@ -223,9 +223,64 @@ test.describe("botón Escuchar", () => {
   });
 });
 
+test.describe("firma del voto con certificado (R-04)", () => {
+  test("pide el reto con la opción solo al pulsar Sí y avisa antes de abrir Autofirma", async ({ page }) => {
+    const { votos, contador, opcionesReto } = await simularApi(page);
+    await abrirVotacion(page);
+    await identificarseConCertificado(page);
+    expect(contador.retos).toBe(0);
+
+    await page.getByLabel("Abstención").check();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    const aviso = page.locator("#aviso-autofirma");
+    await expect(aviso).toHaveText("Al pulsar «Sí» se abrirá Autofirma para que firmes tu voto con tu certificado digital.");
+    await expect(page.getByRole("button", { name: "Sí", exact: true })).toHaveAttribute("aria-describedby", "aviso-autofirma");
+    await expect(page.locator(".confirmacion-voto audio").nth(1)).toHaveAttribute(
+      "src",
+      "/audio/confirmacion/aviso-autofirma.wav"
+    );
+    expect(contador.retos).toBe(0);
+
+    await page.getByRole("button", { name: "Sí", exact: true }).click();
+    await expect(page.locator(".recibo")).toBeVisible();
+    expect(opcionesReto).toEqual(["abstencion"]);
+    expect(votos[0]).toMatchObject({ opcion: "abstencion", reto: "ab".repeat(32) });
+    const firmado = await page.evaluate(() => (window as unknown as { __firmado: string[] }).__firmado);
+    expect(firmado).toEqual([Buffer.from("ab".repeat(32), "hex").toString("base64")]);
+  });
+
+  test("el aviso de Autofirma también aparece en modo sencillo", async ({ page }) => {
+    await simularApi(page);
+    await abrirVotacion(page);
+    await activarModoSencillo(page);
+    await identificarseConCertificado(page);
+    await page.getByLabel("A favor").check();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.locator("#aviso-autofirma")).toHaveText(
+      "Al pulsar «Sí» se abrirá Autofirma para que firme su voto con su certificado."
+    );
+  });
+
+  test("si se cancela la firma, se queda en la confirmación sin enviar el voto", async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __autofirmaFalla: boolean }).__autofirmaFalla = true;
+    });
+    const { votos } = await simularApi(page);
+    await abrirVotacion(page);
+    await identificarseConCertificado(page);
+    await page.getByLabel("En contra").check();
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await page.getByRole("button", { name: "Sí", exact: true }).click();
+
+    await expect(page.getByRole("alert").filter({ hasText: "cancelada" })).toBeVisible();
+    await expect(page.locator(".confirmacion-texto")).toHaveText("Va a votar: En contra. ¿Es correcto?");
+    expect(votos).toHaveLength(0);
+  });
+});
+
 test.describe("reto de certificado caducado", () => {
-  test("avisa y permite firmar de nuevo conservando datos y opción", async ({ page }) => {
-    const { votos, contador } = await simularApi(page, {
+  test("avisa en la confirmación y permite firmar de nuevo conservando la opción", async ({ page }) => {
+    const { votos, contador, opcionesReto } = await simularApi(page, {
       respuestasVoto: [
         { status: 400, body: { error: MENSAJE_RETO_CADUCADO } },
         { status: 200, body: { nullifier: NULLIFIER } },
@@ -238,15 +293,12 @@ test.describe("reto de certificado caducado", () => {
     await page.getByRole("button", { name: "Sí", exact: true }).click();
 
     await expect(page.getByRole("alert").filter({ hasText: "La firma ha caducado" })).toBeVisible();
-    await expect(page.locator("#fecha-nacimiento-cert")).toHaveValue("1980-05-17");
-    await expect(page.locator(".form-check input[type=checkbox]")).toBeChecked();
+    await expect(page.locator(".confirmacion-texto")).toHaveText("Va a votar: En contra. ¿Es correcto?");
 
     await page.getByRole("button", { name: "Firmar de nuevo" }).click();
-    await expect(page.locator(".confirmacion-texto")).toHaveText("Va a votar: En contra. ¿Es correcto?");
-    await page.getByRole("button", { name: "Sí", exact: true }).click();
-
     await expect(page.locator(".recibo")).toHaveText(NULLIFIER);
     expect(contador.retos).toBe(2);
+    expect(opcionesReto).toEqual(["en_contra", "en_contra"]);
     expect(votos).toHaveLength(2);
     expect(votos[1]).toMatchObject({ opcion: "en_contra" });
   });

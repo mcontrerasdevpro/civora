@@ -11,3 +11,4 @@ export function validarConfiguracionZkWeb(
   nodeEnv: string | undefined,
   demoTestnet?: string | undefined
 ): void;
+export function validarSecretoNullifierCertificado(secreto: string | undefined, rpcUrl: string | undefined): void;

@@ -1184,6 +1184,13 @@ footer.site-footer {
   margin: 0 0 16px;
 }
 
+.aviso-autofirma {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tinta);
+  margin: 0 0 16px;
+}
+
 .confirmacion-botones {
   display: flex;
   flex-wrap: wrap;

@@ -35,4 +35,26 @@ function validarConfiguracionZkWeb(dominio, devMode, rpcUrl, nodeEnv, demoTestne
   }
 }
 
-module.exports = { isLocalRpcUrl, validarFalloAbiertoRevocacion, validarConfiguracionZkWeb };
+/** Longitud mínima del secreto del nullifier de certificado (R-02). */
+const LONGITUD_MINIMA_SECRETO = 32;
+
+/**
+ * Fuera de un RPC local, NULLIFIER_CERTIFICADO_SECRET es obligatoria y debe
+ * ser larga. Depende solo del RPC, no de NODE_ENV: `next dev` contra
+ * Sepolia también la exige.
+ */
+function validarSecretoNullifierCertificado(secreto, rpcUrl) {
+  if (isLocalRpcUrl(rpcUrl)) return;
+  if (!secreto || secreto.length < LONGITUD_MINIMA_SECRETO) {
+    throw new Error(
+      `Fuera de un nodo local define NULLIFIER_CERTIFICADO_SECRET con al menos ${LONGITUD_MINIMA_SECRETO} caracteres.`
+    );
+  }
+}
+
+module.exports = {
+  isLocalRpcUrl,
+  validarFalloAbiertoRevocacion,
+  validarConfiguracionZkWeb,
+  validarSecretoNullifierCertificado,
+};

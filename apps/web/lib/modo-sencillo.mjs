@@ -109,3 +109,9 @@ export const AUDIO_CONFIRMACION = Object.freeze({
   en_contra: "/audio/confirmacion/en_contra.wav",
   abstencion: "/audio/confirmacion/abstencion.wav",
 });
+
+/**
+ * Aviso que sigue al audio de la opción en la vía de certificado: al pulsar
+ * «Sí» se abre Autofirma. No contiene la opción.
+ */
+export const AUDIO_AVISO_AUTOFIRMA = "/audio/confirmacion/aviso-autofirma.wav";

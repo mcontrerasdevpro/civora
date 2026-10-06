@@ -20,7 +20,12 @@ validarFalloAbiertoRevocacion(
  * del usuario (ver public/js/autoscript.js), y este modulo comprueba en el
  * servidor:
  *   1. Que el reto no ha caducado y no ha sido manipulado (HMAC propio, sin
- *      guardar estado: nada que limpiar ni base de datos de retos).
+ *      guardar estado: nada que limpiar ni base de datos de retos). El reto
+ *      incluye la opción de voto (R-04): la firma solo vale para esa opción.
+ *
+ * La firma CMS y el certificado recibidos solo viven en memoria durante la
+ * verificación: no se guardan ni se registran (logs, base de datos o
+ * mensajes de error). Ver docs/modelo-amenazas.md.
  *   2. Que la firma CMS/CAdES es criptograficamente valida.
  *   3. Que lo firmado es exactamente el reto esperado (no basta con que la
  *      firma sea valida sobre "algo": tiene que cubrir este reto).
@@ -67,19 +72,19 @@ function claveReto(): string {
   return clave;
 }
 
-function hmacReto(propuestaId: string, timestamp: number): string {
-  return createHmac("sha256", claveReto()).update(`${propuestaId}:${timestamp}`).digest("hex");
+function hmacReto(propuestaId: string, timestamp: number, opcion: string): string {
+  return createHmac("sha256", claveReto()).update(`${propuestaId}:${timestamp}:${opcion}`).digest("hex");
 }
 
-export function generarReto(propuestaId: string): { reto: string; timestamp: number } {
+export function generarReto(propuestaId: string, opcion: string): { reto: string; timestamp: number } {
   const timestamp = Date.now();
-  return { reto: hmacReto(propuestaId, timestamp), timestamp };
+  return { reto: hmacReto(propuestaId, timestamp, opcion), timestamp };
 }
 
-function retoValido(propuestaId: string, timestamp: number, reto: string): boolean {
+function retoValido(propuestaId: string, timestamp: number, opcion: string, reto: string): boolean {
   const ahora = Date.now();
   if (timestamp > ahora || ahora - timestamp > RETO_TTL_MS) return false;
-  const esperado = hmacReto(propuestaId, timestamp);
+  const esperado = hmacReto(propuestaId, timestamp, opcion);
   const a = Buffer.from(reto, "hex");
   const b = Buffer.from(esperado, "hex");
   return a.length === b.length && timingSafeEqual(a, b);
@@ -311,6 +316,8 @@ export interface ResultadoVerificacionCertificado {
 
 export async function verificarFirmaCertificado(params: {
   propuestaId: string;
+  /** Opción enviada con el voto; debe ser la incluida en el reto firmado. */
+  opcion: string;
   timestamp: number;
   reto: string;
   signatureB64: string;
@@ -318,7 +325,7 @@ export async function verificarFirmaCertificado(params: {
 }): Promise<ResultadoVerificacionCertificado> {
   asegurarMotorCriptografico();
 
-  if (!retoValido(params.propuestaId, params.timestamp, params.reto)) {
+  if (!retoValido(params.propuestaId, params.timestamp, params.opcion, params.reto)) {
     return { valido: false, identificador: null, error: "El reto ha caducado o no es válido." };
   }
 
@@ -442,7 +449,11 @@ export async function verificarFirmaCertificado(params: {
 
   const nif = nifDeCertificado(hojaPar.forge);
   if (!nif) {
-    return { valido: false, identificador: null, error: "El certificado no declara un NIF del titular." };
+    return {
+      valido: false,
+      identificador: null,
+      error: "El certificado no declara un DNI español válido del titular.",
+    };
   }
 
   const emisorInmediato = cadena[1]?.pkijs;
@@ -470,11 +481,4 @@ export async function verificarFirmaCertificado(params: {
   }
 
   return { valido: true, identificador: nif };
-}
-
-/** Nullifier final, propuesta-especifico, a partir del identificador del certificado ya verificado. */
-export async function derivarNullifierCertificado(propuestaId: string, identificador: string): Promise<string> {
-  const datos = new TextEncoder().encode(`${propuestaId}:certificado:${identificador}`);
-  const hash = await crypto.subtle.digest("SHA-256", datos);
-  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

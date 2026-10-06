@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { generarReto } from "../../../../../lib/certificado-digital";
 
-const CuerpoSchema = z.object({ propuestaId: z.string().uuid() });
+/** El reto se pide al confirmar el voto e incluye la opción (R-04). */
+const CuerpoSchema = z.object({ propuestaId: z.string().uuid(), opcion: OpcionVotoSchema });
 
 export async function POST(request: Request) {
   const cuerpo = await request.json().catch(() => null);
@@ -16,6 +18,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
-  const { reto, timestamp } = generarReto(parseo.data.propuestaId);
+  const { reto, timestamp } = generarReto(parseo.data.propuestaId, parseo.data.opcion);
   return NextResponse.json({ reto, timestamp });
 }

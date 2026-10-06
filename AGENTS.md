@@ -30,6 +30,26 @@ interactiva: instala siempre sin confirmación.
 pnpm install --frozen-lockfile --config.confirmModulesPurge=false
 ```
 
+**Versión de pnpm.** El proyecto fija `pnpm@9.0.0` en `packageManager`; la
+usan el CI (`pnpm/action-setup`) y la imagen Docker (corepack).
+
+- Con un pnpm global más nuevo (≥ 9.7, p. ej. 11), pnpm cambia solo a la
+  9.0.0 al entrar en el repositorio: `pnpm --version` dentro del proyecto
+  debe decir `9.0.0`. Antes de cambiar, el pnpm global avisa de que el
+  campo `pnpm` de `package.json` «ya no se lee»: es inofensivo.
+- Alternativa sin pnpm global: `corepack enable` (Node 22/24) y corepack
+  usa la versión de `packageManager`.
+- Los **overrides** viven en dos sitios con el mismo contenido:
+  `pnpm.overrides` de `package.json` (lo lee pnpm 9) y `overrides` de
+  `pnpm-workspace.yaml` (lo leen pnpm 10 y 11). Al añadir o cambiar uno,
+  edita los dos y ejecuta `pnpm install`: `apps/web/test/dependencias.test.mjs`
+  falla si difieren entre sí o con el lockfile.
+- `allowBuilds` de `pnpm-workspace.yaml` (pnpm ≥ 10.26) desactiva los scripts
+  de compilación de `keccak`, `msgpackr-extract` y `secp256k1`, módulos
+  nativos opcionales de Hardhat con alternativa en JavaScript.
+- Instalación con lockfile congelado comprobada con pnpm 9.0.0, 10.34.6 y
+  11.1.3.
+
 Arranque local, en tres terminales (la configuración de entorno está en
 [README.md](README.md#arrancar-en-local-o-codespaces)):
 
@@ -94,8 +114,8 @@ pnpm --filter @civora/contracts verificar:sepolia
   fase). Nunca trabajes directamente en `main`.
 - Tests para cada cambio y los comandos de verificación en verde.
 - **Antes de cada despliegue, `pnpm audit --prod` sin vulnerabilidades.** Si
-  aparece alguna, corrígela (actualización u override en
-  `pnpm.overrides` de `package.json`) o documéntala en la
+  aparece alguna, corrígela (actualización u override en `package.json` y
+  `pnpm-workspace.yaml`, ver [Comandos](#comandos)) o documéntala en la
   [auditoría](docs/auditoria-seguridad.md#dependencias-2026-10-06-rama-actualizar-dependencias)
   antes de desplegar. Las versiones mayores de Next y React son tareas
   propias ([ADR 0012](docs/decisiones/0012-next-15-react-19.md)).

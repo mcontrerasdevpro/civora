@@ -11,7 +11,8 @@ validarConfiguracionZkWeb(
   process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN,
   process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE,
   process.env.HARDHAT_RPC_URL,
-  process.env.NODE_ENV
+  process.env.NODE_ENV,
+  process.env.CIVORA_DEMO_TESTNET
 );
 
 const nextConfig = {

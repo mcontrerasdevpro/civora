@@ -61,6 +61,18 @@ test("exige dominio propio y modo no demo explícito en la web pública", () => 
   assert.doesNotThrow(() => validarConfiguracionZkWeb(undefined, undefined, undefined, "development"));
 });
 
+test("la demo pública exige opt-in CIVORA_DEMO_TESTNET y DEV_MODE explícito", () => {
+  const sepolia = "https://rpc.sepolia.org";
+  assert.throws(() => validarConfiguracionZkWeb("demo.zkpassport.id", "true", sepolia, "production"), /dominio propio/);
+  assert.throws(() => validarConfiguracionZkWeb("demo.zkpassport.id", "true", sepolia, "production", "1"), /dominio propio/);
+  assert.throws(
+    () => validarConfiguracionZkWeb("demo.zkpassport.id", undefined, sepolia, "production", "true"),
+    /de forma explícita/
+  );
+  assert.doesNotThrow(() => validarConfiguracionZkWeb("demo.zkpassport.id", "true", sepolia, "production", "true"));
+  assert.doesNotThrow(() => validarConfiguracionZkWeb(undefined, "true", sepolia, "production", "true"));
+});
+
 test("genera CSP con nonce, strict-dynamic y sin ejecución inline insegura", () => {
   const csp = crearCsp("nonce-de-prueba", "votos.ejemplo.es");
 

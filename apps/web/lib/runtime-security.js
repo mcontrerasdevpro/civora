@@ -13,8 +13,20 @@ function validarFalloAbiertoRevocacion(falloAbierto, rpcUrl, nodeEnv) {
   }
 }
 
-function validarConfiguracionZkWeb(dominio, devMode, rpcUrl, nodeEnv) {
+/**
+ * En producción con red no local exige dominio propio y DEV_MODE=false,
+ * salvo la demo pública con opt-in CIVORA_DEMO_TESTNET=true, que exige
+ * DEV_MODE explícito. Es el contrato quien impide la demo en una red
+ * principal: solo el despliegue en Sepolia puede activar devModeZk.
+ */
+function validarConfiguracionZkWeb(dominio, devMode, rpcUrl, nodeEnv, demoTestnet) {
   if (nodeEnv !== "production" || isLocalRpcUrl(rpcUrl)) return;
+  if (demoTestnet === "true") {
+    if (devMode !== "true" && devMode !== "false") {
+      throw new Error("Con CIVORA_DEMO_TESTNET=true define NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true o false de forma explícita.");
+    }
+    return;
+  }
   if (!dominio || dominio === "demo.zkpassport.id") {
     throw new Error("En redes no locales define NEXT_PUBLIC_ZKPASSPORT_DOMAIN con tu dominio propio.");
   }

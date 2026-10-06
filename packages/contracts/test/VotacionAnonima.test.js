@@ -49,6 +49,31 @@ describe("VotacionAnonima", function () {
       expect(() => obtenerConfiguracionDespliegue("sepolia", { ...base, RELAYER_ADDRESS: undefined }, base.RELAYER_ADDRESS)).to.throw("RELAYER_ADDRESS");
     });
 
+    it("permite la demo pública solo en Sepolia con opt-in y DEV_MODE explícito", function () {
+      const relayer = "0x0000000000000000000000000000000000000001";
+      const demo = { CIVORA_DEMO_TESTNET: "true", ZKPASSPORT_DEV_MODE: "true", RELAYER_ADDRESS: relayer };
+
+      const configuracion = obtenerConfiguracionDespliegue("sepolia", demo, relayer, 11155111n);
+      expect(configuracion.devModeZk).to.equal(true);
+      expect(configuracion.dominioZk).to.equal(DOMINIO_ZK);
+      expect(configuracion.demoTestnet).to.equal(true);
+      expect(configuracion.relayerAddress).to.equal(relayer);
+
+      expect(() => obtenerConfiguracionDespliegue("mainnet", demo, relayer, 1n)).to.throw("solo se permite en Sepolia");
+      expect(() => obtenerConfiguracionDespliegue("base", demo, relayer, 8453n)).to.throw("solo se permite en Sepolia");
+      expect(() => obtenerConfiguracionDespliegue("sepolia", demo, relayer, undefined)).to.throw("solo se permite en Sepolia");
+      expect(() =>
+        obtenerConfiguracionDespliegue("sepolia", { ...demo, ZKPASSPORT_DEV_MODE: undefined }, relayer, 11155111n)
+      ).to.throw("de forma explícita");
+      expect(() =>
+        obtenerConfiguracionDespliegue("sepolia", { ...demo, RELAYER_ADDRESS: undefined }, relayer, 11155111n)
+      ).to.throw("RELAYER_ADDRESS");
+      // Cualquier valor distinto de "true" no activa la excepción: vuelve a exigir dominio propio.
+      expect(() =>
+        obtenerConfiguracionDespliegue("sepolia", { ...demo, CIVORA_DEMO_TESTNET: "1" }, relayer, 11155111n)
+      ).to.throw("ZKPASSPORT_DOMAIN");
+    });
+
     it("acepta solo una configuración pública explícita y segura", function () {
       const configuracion = obtenerConfiguracionDespliegue(
         "sepolia",

@@ -8,5 +8,6 @@ export function validarConfiguracionZkWeb(
   dominio: string | undefined,
   devMode: string | undefined,
   rpcUrl: string | undefined,
-  nodeEnv: string | undefined
+  nodeEnv: string | undefined,
+  demoTestnet?: string | undefined
 ): void;

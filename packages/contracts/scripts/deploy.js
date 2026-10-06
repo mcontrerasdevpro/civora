@@ -8,12 +8,17 @@ const ROOT_VERIFIER_ZKPASSPORT = "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8";
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
+  const { chainId } = await hre.ethers.provider.getNetwork();
 
-  const { esLocal, dominioZk, devModeZk, relayerAddress } = obtenerConfiguracionDespliegue(
+  const { esLocal, dominioZk, devModeZk, relayerAddress, demoTestnet } = obtenerConfiguracionDespliegue(
     hre.network.name,
     process.env,
-    deployer.address
+    deployer.address,
+    chainId
   );
+  if (demoTestnet) {
+    console.log(`AVISO: demo pública en Sepolia (CIVORA_DEMO_TESTNET=true), devMode ${devModeZk}.`);
+  }
 
   let direccionVerificador;
   if (esLocal) {

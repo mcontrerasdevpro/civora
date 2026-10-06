@@ -59,12 +59,10 @@ test("rechaza letra de control incorrecta, NIE y formatos que no son DNI", () =>
 });
 
 test("nifDeCertificado devuelve el DNI canónico o null", () => {
-  const conCampo = (valor) => ({
-    subject: { getField: ({ shortName }) => (shortName === "serialNumber" ? { value: valor } : null) },
-  });
+  const conCampo = (valor) => ({ subject: `C=ES\nserialNumber=${valor}\nCN=TITULAR` });
   assert.equal(nifDeCertificado(conCampo("IDCES-12345678Z")), "12345678Z");
   assert.equal(nifDeCertificado(conCampo("IDCES-12345678A")), null);
-  assert.equal(nifDeCertificado({ subject: { getField: () => null } }), null);
+  assert.equal(nifDeCertificado({ subject: "C=ES\nCN=TITULAR" }), null);
 });
 
 // ---------- R-02: nullifier con HMAC y secreto obligatorio ----------

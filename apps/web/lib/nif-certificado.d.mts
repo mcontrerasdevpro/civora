@@ -1,3 +1,3 @@
-export function nifDeCertificado(cert: {
-  subject: { getField: (selector: { shortName?: string; type?: string }) => { value?: unknown } | null };
-}): string | null;
+export function normalizarDniCertificado(valor: string | null | undefined): string | null;
+export function nifDeSujeto(sujeto: string): string | null;
+export function nifDeCertificado(cert: { subject: string }): string | null;

@@ -94,14 +94,8 @@ test("la CSP de producción nunca permite 'unsafe-eval'; solo la de desarrollo",
 });
 
 test("rechaza implícitamente certificados sin NIF en vez de usar emisor y serie", () => {
-  const sinNif = {
-    subject: { getField: () => null },
-  };
-  const conNif = {
-    subject: {
-      getField: ({ shortName }) => (shortName === "serialNumber" ? { value: "12345678Z" } : null),
-    },
-  };
+  const sinNif = { subject: "C=ES\nCN=SIN NIF" };
+  const conNif = { subject: "C=ES\nserialNumber=12345678Z\nCN=CON NIF" };
 
   assert.equal(nifDeCertificado(sinNif), null);
   assert.equal(nifDeCertificado(conNif), "12345678Z");

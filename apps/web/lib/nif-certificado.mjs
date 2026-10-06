@@ -28,10 +28,22 @@ export function normalizarDniCertificado(valor) {
 }
 
 /**
- * DNI del titular a partir del serialNumber del sujeto (OID 2.5.4.5),
- * normalizado. null si falta o no es un DNI válido.
+ * DNI del titular a partir del serialNumber (OID 2.5.4.5) del sujeto, tal
+ * como lo expone crypto.X509Certificate#subject (un atributo por línea,
+ * "clave=valor"). null si falta, si hay más de uno o no es un DNI válido.
+ *
+ * @param {string} sujeto
+ * @returns {string | null}
+ */
+export function nifDeSujeto(sujeto) {
+  const valores = [...sujeto.matchAll(/^serialNumber=(.*)$/gm)].map((m) => m[1]);
+  return valores.length === 1 ? normalizarDniCertificado(valores[0]) : null;
+}
+
+/**
+ * @param {{ subject: string }} cert crypto.X509Certificate
+ * @returns {string | null}
  */
 export function nifDeCertificado(cert) {
-  const field = cert.subject.getField({ shortName: "serialNumber" }) ?? cert.subject.getField({ type: "2.5.4.5" });
-  return field?.value ? normalizarDniCertificado(String(field.value)) : null;
+  return nifDeSujeto(cert.subject);
 }

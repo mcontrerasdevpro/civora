@@ -31,18 +31,9 @@ y ya es seguro".
   el chip NFC del DNIe/pasaporte no contiene estos datos; requiere acceso
   oficial al Padrón Municipal / INE, no disponible en una PoC. Se acepta
   como declaración responsable del votante.
-- **Vía de "datos manuales"**: cuando el votante no tiene DNIe con NFC,
-  /votar permite introducir el número de DNI y la fecha de nacimiento a
-  mano. Solo se valida el formato (letra de control del DNI) y que la edad
-  declarada sea suficiente; no hay ninguna comprobación de que el
-  documento exista o pertenezca a quien lo introduce. Es una vía de
-  respaldo para la demo, no una via de identificacion segura. Ademas,
-  comparte el mismo espacio de nullifiers que la vía ZKPassport: en teoría,
-  alguien que conociera de antemano el identificador único que un DNIe
-  concreto generaría para una propuesta podría "reservarlo" por la vía
-  manual y bloquear ese voto — requeriría conocer ese identificador sin
-  poseer el documento, algo que hoy no se sabe hacer, pero es una
-  simplificación de diseño, no una garantía demostrada.
+- **Vía de "datos manuales"**: retirada de la interfaz y la API en la
+  Fase 0 ([ADR 0006](decisiones/0006-eliminacion-via-manual.md)); el contrato
+  conserva `votarManual` solo para el relayer hasta la Fase 1.
 - **Requisitos de elegibilidad fijos en el contrato**: `EDAD_MINIMA` y la
   nacionalidad exigida (España) están fijados como constantes en
   `VotacionAnonima.sol`, iguales para todas las propuestas. Personalizar
@@ -116,36 +107,22 @@ Diseño acordado; los canales y la asignación se implementan en la Fase 1
   - Mitigación futura (Fase 2, MACI): el voto presencial prevalece sobre el
     digital, de modo que un voto remoto forzado puede anularse en persona
     sin que el coaccionador lo sepa.
-- **Síntesis de voz en la web**: el botón «Escuchar» del modo sencillo solo
-  usa voces del sistema marcadas como locales (`localService`). Las voces
-  en red de algunos navegadores (por ejemplo, las voces «Google» de Chrome)
-  envían el texto a servidores externos; si no hay voz local, el botón se
-  oculta con un aviso. La confirmación de la opción elegida no pasa nunca
-  por `speechSynthesis`: usa audios pregrabados servidos desde nuestro
-  propio origen. Los audios actuales son provisionales, generados con una
-  voz local; en producción se sustituirán por grabaciones profesionales.
+- **Síntesis de voz en la web**: las voces en red de algunos navegadores
+  (por ejemplo, las voces «Google» de Chrome) envían el texto a servidores
+  externos y filtrarían el voto si leyeran la opción. Mitigación: solo voces
+  locales y audios propios para la confirmación
+  ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)).
 - **Caducidad del reto de certificado**: el servidor da 5 minutos para
   firmar el reto. La interfaz no impone límites de tiempo y, si el reto
   caduca, avisa y permite reintentar sin perder el progreso; eliminar ese
   límite para el voto asistido queda pendiente para la Fase 1.
-- **Pendiente de decidir para producción**: la red de despliegue (Base u
-  otra red principal, o una red permisionada).
+- **Red de despliegue para producción**: pendiente de decidir
+  ([ROADMAP](ROADMAP.md#paso-a-producción)).
 
 ## Asistente de IA (futuro, no implementado)
 
-Regla: **la IA ayuda con el proceso, nunca con la decisión, y nunca toca la
-papeleta.**
+Límites y arquitectura prevista: [ADR 0009](decisiones/0009-limites-asistente-ia.md).
 
-- **Puede**: guiar la identificación, responder dudas del proceso, ayudar a
-  navegar y leer literalmente la propuesta o un resumen neutral aprobado de
-  antemano.
-- **No puede**: conocer, sugerir ni confirmar la opción; tener herramientas
-  para votar ni acceso a la identidad, al contrato o al relayer; opinar
-  sobre la propuesta.
-- **Arquitectura prevista**: servicio aislado de la aplicación de voto. Se
-  desconecta en el paso de votar y lo anuncia; la elección se hace con una
-  interfaz determinista sin IA. Modelo alojado en la UE o local, registros
-  sin datos de la sesión de voto y contenido de las propuestas firmado.
 - **Amenazas**:
   - *Fuga del voto a proveedores de IA*: cualquier texto, audio o contexto
     que llegue al modelo puede revelar la opción. Mitigación: desconexión
@@ -159,17 +136,11 @@ papeleta.**
   - *Reglamento europeo de IA*: un sistema de IA que influya en el voto
     entra en la categoría de alto riesgo. El diseño evita esa influencia;
     si no pudiera garantizarse, el asistente no se despliega.
-- **Nota técnica**: el reconocimiento de voz de la Web Speech API en Chrome
-  envía el audio a servidores externos. No se usará nunca para seleccionar
-  la opción de voto.
+- **Reconocimiento de voz**: la Web Speech API de Chrome envía el audio a
+  servidores externos; no se usa para elegir la opción
+  ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)).
 
 ## Próximos pasos de seguridad
 
-- Auditoría externa de los contratos y del circuito ZK antes de cualquier
-  uso real.
-- Probar la comprobación OCSP contra los respondedores reales de la
-  FNMT/DGP (solo probada con certificados sintéticos) y añadir CRL como
-  respaldo cuando OCSP no esté disponible.
-- Verificación con el Padrón Municipal / INE mediante convenio oficial.
-- Estudio de mitigación de coacción (p.ej. permitir revotar hasta el cierre,
-  ocultando cuál es el voto "definitivo").
+Las tareas que cierran estas amenazas, con su estado y criterios de
+aceptación, están en la [hoja de ruta](ROADMAP.md).

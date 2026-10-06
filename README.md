@@ -5,6 +5,20 @@ verificación de elegibilidad y voto digital. Las garantías dependen de la
 vía de identificación: hoy no ofrece anonimato integral, censo verificable
 ni acreditación de todos los requisitos legales.
 
+## Documentación
+
+| Para | Ver |
+|---|---|
+| Comandos, convenciones y reglas para agentes de IA | [AGENTS.md](AGENTS.md) |
+| Fases, tareas y estado | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Decisiones de arquitectura y su porqué | [docs/decisiones/](docs/decisiones/README.md) |
+| Amenazas y limitaciones | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) |
+| Auditoría de seguridad | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) |
+| Especificación funcional | [docs/especificacion-publica.md](docs/especificacion-publica.md) |
+
+Este README cubre qué es Civora, qué garantiza hoy y cómo configurar el
+entorno. Los comandos están solo en [AGENTS.md](AGENTS.md#comandos).
+
 ## La idea en una frase
 
 La vía ZKPassport puede acreditar edad mínima y nacionalidad española sin
@@ -42,10 +56,11 @@ publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
 los votos individuales y sus recuentos siguen siendo observables en la
 cadena pública.
 
-La red de despliegue para producción está pendiente de decidir (Base u otra
-red principal, o una red permisionada). El detalle del voto asistido y del
-futuro asistente de IA está en
-[docs/modelo-amenazas.md](docs/modelo-amenazas.md#inclusión-y-voto-asistido).
+La red de producción está pendiente de decidir
+([ROADMAP](docs/ROADMAP.md#paso-a-producción)). El diseño del voto asistido
+está en el [modelo de amenazas](docs/modelo-amenazas.md#inclusión-y-voto-asistido)
+y los límites del asistente de IA, en el
+[ADR 0009](docs/decisiones/0009-limites-asistente-ia.md).
 
 ## Que hay montado ahora mismo
 
@@ -56,26 +71,17 @@ futuro asistente de IA está en
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
 | Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
-| Documentacion | docs/ | Especificacion publica y modelo de amenazas |
-
-Ver docs/especificacion-publica.md para el detalle de cada componente y
-docs/modelo-amenazas.md para que garantiza el sistema y que queda
-todavia por resolver.
+| Documentacion | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
 
 Este repo esta preparado para abrirse directamente en GitHub Codespaces
-(.devcontainer ya configurado) o en local con pnpm:
-
-pnpm install
+(.devcontainer ya configurado) o en local con pnpm. Los comandos de
+instalación, nodo local, despliegue y arranque están en
+[AGENTS.md](AGENTS.md#comandos).
 
 El contrato necesita un nodo Ethereum local corriendo antes de arrancar la
-web (en dos terminales):
-
-pnpm --filter @civora/contracts node
-pnpm --filter @civora/contracts deploy:localhost
-
-El script de despliegue escribe la direccion + ABI en
+web. El script de despliegue escribe la direccion + ABI en
 apps/web/lib/generated/despliegue-localhost.json (se regenera en cada
 despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
@@ -100,11 +106,7 @@ La tabla `propuestas` se crea sola la primera vez que la web la necesita
 (no hace falta ejecutar ninguna migracion a mano).
 
 Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
-ya se puede arrancar la web:
-
-pnpm dev
-
-La web queda disponible en http://localhost:3000. Crea tu primera propuesta
+ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta
 en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
 Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
 cambia con cada nodo nuevo; las propuestas guardadas en Neon quedan
@@ -123,11 +125,8 @@ docs/especificacion-publica.md).
    SEPOLIA_RPC_URL=...
    SEPOLIA_PRIVATE_KEY=...   # clave de la cuenta del paso anterior, sin 0x opcional
 
-3. Despliega:
-
-   pnpm --filter @civora/contracts deploy:sepolia
-
-   El script imprime la direccion del contrato desplegado.
+3. Despliega con `deploy:sepolia` ([AGENTS.md](AGENTS.md#comandos)). El
+   script imprime la direccion del contrato desplegado.
 4. En Vercel (Settings -> Environment Variables del proyecto), define:
 
    CONTRATO_DIRECCION=<direccion impresa en el paso anterior>
@@ -150,7 +149,7 @@ llamando al **RootVerifier oficial de ZKPassport**
 Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
 genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
 Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
-prueba criptografica valida. En redes locales de Hardhat se despliega en su
+prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)). En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes publicas.
 
@@ -221,23 +220,12 @@ civora/
   packages/contracts    -> Contrato de votacion (Solidity)
   packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)
   packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
-  docs/            -> Especificacion publica y modelo de amenazas
+  docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoria y especificacion
 
 ## Por que estas decisiones
 
-- Monorepo: la web, los contratos y la logica de identidad comparten un
-  unico esquema de datos (shared-types), evitando que diverjan.
-- Identidad en capa aislada: zk-identity expone una interfaz propia en vez
-  de acoplar la app directamente al SDK de ZKPassport, para poder migrar
-  en el futuro a la Cartera Europea de Identidad Digital (eIDAS 2.0) sin
-  tocar el resto del sistema.
-- Voto por nullifier: el contrato impide repetir un mismo identificador
-   dentro de una propuesta. No garantiza deduplicación común entre métodos
-   ni secreto de papeleta: opción y nullifier son públicos en cadena.
-- Verificacion ZK dentro del contrato, no en un servidor de confianza:
-  `votarConPruebaZk` llama directamente al RootVerifier oficial de
-  ZKPassport, así que no hay que confiar en que el operador de este sistema
-  verifique honestamente antes de aceptar un voto.
+Cada decisión, con su contexto y alternativas, está en
+[docs/decisiones/](docs/decisiones/README.md).
 
 ## Aviso legal
 

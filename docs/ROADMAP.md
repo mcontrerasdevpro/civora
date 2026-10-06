@@ -1,0 +1,207 @@
+# Hoja de ruta
+
+Estado de cada fase y sus tareas. Las amenazas y los riesgos abiertos están
+en el [modelo de amenazas](modelo-amenazas.md) y en la
+[auditoría](auditoria-seguridad.md); las decisiones, en
+[decisiones/](decisiones/README.md). Al cerrar una tarea, sigue el
+[procedimiento de cierre](../AGENTS.md#cierre-de-tarea).
+
+Estados: **hecho**, **en curso**, **pendiente**.
+
+| Fase | Estado | Rama |
+|---|---|---|
+| [Fase 0: seguridad](#fase-0-seguridad) | hecho | `fase-0-seguridad` |
+| [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
+| [Spike ZKPassport](#spike-zkpassport-deduplicación-entre-vías) | pendiente (siguiente) | — |
+| [Fase 1: Semaphore](#fase-1-semaphore) | pendiente | — |
+| [«Intenta hacer trampa» y script de auditoría](#intenta-hacer-trampa-y-script-de-auditoría) | pendiente | — |
+| [Idiomas](#idiomas) | pendiente | — |
+| [Asistente de IA](#asistente-de-ia) | pendiente (futuro) | — |
+| [Paso a producción](#paso-a-producción) | pendiente | — |
+| [Fase 2: MACI y auditoría externa](#fase-2-maci-y-auditoría-externa) | pendiente | — |
+
+## Fase 0: seguridad
+
+**Objetivo:** cerrar los hallazgos críticos de la
+[auditoría](auditoria-seguridad.md) sin cambiar la arquitectura de
+identidad.
+
+| Tarea | Estado |
+|---|---|
+| Reinstalar dependencias con lockfile congelado; Hardhat ejecuta sus tests | hecho |
+| `DEV_MODE` opt-in; producción exige dominio ZK propio y `false` explícito; banner **MODO DEMOSTRACIÓN** | hecho |
+| Retirar el voto manual de UI y API ([ADR 0006](decisiones/0006-eliminacion-via-manual.md)) | hecho |
+| Restringir `votarManual` y `crearPropuesta` al relayer inmutable ([ADR 0004](decisiones/0004-relayer-inmutable.md)) | hecho |
+| Rechazar certificados sin NIF; prohibir fallo abierto OCSP en producción no local | hecho |
+| `POST /api/propuestas` con `ADMIN_SECRET`, comparación en tiempo constante y rate limit por IP | hecho |
+| Ocultar resultados y recibos hasta el cierre; fuentes locales; CSP con nonce ([ADR 0007](decisiones/0007-csp-con-nonce.md)) | hecho |
+
+**Criterios de aceptación (cumplidos):** tests de contratos y web en verde;
+hallazgos C-01, C-02 y M-04 mitigados según la tabla de la auditoría.
+
+## Accesibilidad y voto asistido (web)
+
+**Objetivo:** que cualquier persona pueda votar sola en el canal digital, y
+dejar diseñado el voto asistido para la Fase 1. Diseño y amenazas:
+[modelo de amenazas](modelo-amenazas.md#inclusión-y-voto-asistido).
+
+| Tarea | Estado |
+|---|---|
+| Modo sencillo en `/votar`, recordado en `localStorage` | hecho |
+| Confirmación «Va a votar: X. ¿Es correcto?» con Sí / Volver | hecho |
+| Avisos fijos: secreto del voto y cómo pedir ayuda | hecho |
+| Botón «Escuchar» solo con voces locales; audios propios para la confirmación ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)) | hecho |
+| WCAG 2.1 AA en el flujo de voto, comprobado con axe en `test:e2e` | hecho |
+| Reintento sin perder progreso si caduca el reto de certificado | hecho |
+| CSP de desarrollo para que `pnpm dev` funcione ([ADR 0007](decisiones/0007-csp-con-nonce.md)) | hecho |
+| Sustituir los audios provisionales por grabaciones profesionales | pendiente |
+| Teléfono de ayuda real (nunca pregunta ni registra el sentido del voto) | pendiente |
+
+**Criterios de aceptación (cumplidos):** `test:e2e` sin infracciones axe en
+cada paso, modo normal y sencillo, a 1280 y 375 px; la opción elegida no
+pasa por `speechSynthesis`.
+
+**Criterios de los pendientes:** audios de locución profesional, uno por
+opción del enum, servidos desde `public/audio/confirmacion`; número de
+ayuda publicado en los avisos con un protocolo escrito que prohíba preguntar
+o registrar el voto.
+
+## Spike ZKPassport: deduplicación entre vías
+
+**Objetivo:** decidir cómo impedir que una persona vote por certificado y
+por ZKPassport a la vez sin publicar el NIF ni hashes directos del documento
+([ADR 0005](decisiones/0005-no-publicar-nif.md)).
+
+| Tarea | Estado |
+|---|---|
+| Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
+| Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
+| Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |
+| ADR con la decisión y sus límites | pendiente |
+
+**Dependencias:** ninguna. No despliega cambios de identidad: el resultado
+alimenta la Fase 1.
+
+**Criterios de aceptación:** ADR nuevo aceptado; tests que demuestran el
+voto cruzado hoy y documentan qué mecanismo lo impediría; ningún
+identificador derivado directamente del NIF o del número de documento en
+la propuesta.
+
+## Fase 1: Semaphore
+
+**Objetivo:** voto anónimo por pertenencia a un censo congelado, con un
+único mecanismo de deduplicación para todas las vías (hallazgos A-01, A-03 y
+A-04).
+
+| Tarea | Estado |
+|---|---|
+| Definir la autoridad y el proceso de formación del censo (padrón e INE requieren convenio oficial) | pendiente |
+| Registro de elegibles: alta de un compromiso de identidad Semaphore tras acreditar elegibilidad | pendiente |
+| Asignación de canal (digital, punto asistido o papel) al registrarse, antes de congelar | pendiente |
+| Grupo y raíz Merkle congelados y publicados antes de abrir la votación | pendiente |
+| Votación con prueba Semaphore de pertenencia y nullifier por propuesta | pendiente |
+| Punto de voto asistido: lector NFC del punto, modo quiosco, identidad generada y destruida en la sesión, registro de «voto asistido» sin contenido | pendiente |
+| Revisar la caducidad de 5 minutos del reto de certificado para el voto asistido | pendiente |
+| Pruebas de integración de extremo a extremo antes de retirar la vía de certificado | pendiente |
+| Eliminar `votarManual` del contrato | pendiente |
+
+**Dependencias:** spike ZKPassport; redespliegue del contrato
+([Paso a producción](#paso-a-producción)).
+
+**Criterios de aceptación:**
+- El contrato rechaza votos de quien no pertenece a la raíz congelada y un
+  segundo voto con el mismo nullifier, sea cual sea la vía de registro.
+- Ningún servicio recibe a la vez identidad y opción.
+- La raíz no puede cambiar después de la apertura (test de contrato).
+- Cada persona tiene un solo canal; el canal digital rechaza a quien está
+  asignado a otro (test).
+- `votarManual` ya no existe y todos los tests pasan.
+
+## «Intenta hacer trampa» y script de auditoría
+
+**Objetivo:** que cualquiera pueda comprobar las garantías sin confiar en el
+operador.
+
+| Tarea | Estado |
+|---|---|
+| Página «Intenta hacer trampa» con ataques guiados (doble voto, voto fuera de plazo, prueba falsa) y el resultado esperado | pendiente |
+| Script de auditoría reproducible que recalcula el recuento desde la cadena y lo compara con la aplicación | pendiente |
+
+**Dependencias:** Fase 1, para que los ataques muestren el modelo final.
+
+**Criterios de aceptación:** cada ataque de la página falla con el motivo
+explicado; el script se ejecuta con un único comando sobre una red pública y
+obtiene el mismo recuento que la aplicación.
+
+## Idiomas
+
+**Objetivo:** el flujo de voto en las lenguas cooficiales y en inglés.
+
+| Tarea | Estado |
+|---|---|
+| Extraer los textos de la interfaz, incluidos los del modo sencillo | pendiente |
+| Traducciones (catalán/valenciano, euskera, gallego e inglés) revisadas por personas | pendiente |
+| Audios de confirmación por idioma | pendiente |
+
+**Dependencias:** grabaciones profesionales de los audios.
+
+**Criterios de aceptación:** `test:e2e` y axe en verde en cada idioma; ningún
+texto del flujo sin traducir; atributo `lang` correcto en cada página.
+
+## Asistente de IA
+
+**Objetivo:** ayudar con el proceso, nunca con la decisión. Límites
+obligatorios en [ADR 0009](decisiones/0009-limites-asistente-ia.md); amenazas
+en el [modelo de amenazas](modelo-amenazas.md#asistente-de-ia-futuro-no-implementado).
+**No implementar todavía.**
+
+| Tarea | Estado |
+|---|---|
+| Diseño del servicio aislado y de su desconexión anunciada en el paso de votar | pendiente |
+| Evaluación del Reglamento europeo de IA | pendiente |
+| Contenido de propuestas firmado y resúmenes neutrales aprobados de antemano | pendiente |
+
+**Dependencias:** Fase 1 e idiomas.
+
+**Criterios de aceptación:** el asistente no tiene herramientas ni acceso a
+identidad, contrato o relayer (revisión de código y test); los registros no
+contienen datos de la sesión de voto; prueba de inyección de instrucciones
+con contenido manipulado sin efecto.
+
+## Paso a producción
+
+**Objetivo:** que `main` pueda desplegarse con garantías.
+
+| Tarea | Estado |
+|---|---|
+| Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
+| Redesplegar el contrato y actualizar las variables en Vercel antes de fusionar cambios de contrato | pendiente |
+| Protección de `main` en GitHub (PR obligatoria, checks requeridos) | pendiente |
+| CI con tests de contratos y web, typecheck, build y `test:e2e` | pendiente |
+| Rate limit compartido entre instancias (hoy en memoria) | pendiente |
+| Dominio ZKPassport propio registrado y `DEV_MODE=false` | pendiente |
+| Probar OCSP contra los respondedores reales de FNMT/DGP y añadir CRL de respaldo | pendiente |
+
+**Dependencias:** ninguna para CI y protección de `main`; la red, antes de
+la Fase 1 en producción.
+
+**Criterios de aceptación:** un PR a `main` no puede fusionarse sin CI en
+verde; el despliegue de Vercel apunta al contrato de la red elegida; dos
+instancias comparten el límite de intentos (test).
+
+## Fase 2: MACI y auditoría externa
+
+**Objetivo:** secreto de papeleta y resistencia a la coacción (hallazgo A-02).
+
+| Tarea | Estado |
+|---|---|
+| Integrar MACI: votos cifrados y recuento verificable | pendiente |
+| Prevalencia del voto presencial sobre el digital | pendiente |
+| Estudiar el revoto hasta el cierre sin revelar cuál es el definitivo | pendiente |
+| Auditoría externa de contratos y circuitos | pendiente |
+
+**Dependencias:** Fase 1 y paso a producción.
+
+**Criterios de aceptación:** la cadena no expone la opción de ningún voto;
+un voto presencial anula el digital previo de la misma persona sin que sea
+observable; informe de auditoría externa sin hallazgos críticos abiertos.

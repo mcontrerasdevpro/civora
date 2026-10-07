@@ -48,6 +48,7 @@ const MENSAJES_ERROR_CONTRATO: Record<string, string> = {
   ModoDesarrolloNoPermitido: "Esta prueba es de un documento simulado (modo desarrollo), no aceptado aquí.",
   NoCumpleEdadMinima: "La prueba no acredita la edad mínima requerida.",
   NacionalidadNoValida: "La prueba no acredita nacionalidad española.",
+  OpcionNoVinculada: "La prueba no se generó para esta opción; genera una nueva desde /votar.",
 };
 
 export async function POST(request: Request) {

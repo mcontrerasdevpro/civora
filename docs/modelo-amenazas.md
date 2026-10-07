@@ -29,14 +29,21 @@ y ya es seguro".
 
 ### Front-running de votos ZK (R-01)
 
-**Crítico y abierto.** La prueba ZKPassport acredita la elegibilidad para
-una propuesta, pero no la opción. Quien vea la transacción antes de que se
-mine (el relayer o un observador de la mempool) puede reenviar la misma
-prueba con otra opción; el contrato acepta la primera y rechaza la legítima
-por nullifier repetido. Mitigación prevista: atar la opción a la prueba y
-verificarla en el contrato. Es la primera prioridad del
-[spike ZKPassport](ROADMAP.md#spike-zkpassport-deduplicación-entre-vías);
-detalle en la [auditoría](auditoria-seguridad.md).
+**Corregido en el código; pendiente de desplegar el contrato nuevo.** La
+prueba ZKPassport acreditaba la elegibilidad para una propuesta, pero no la
+opción: quien viera la transacción antes de que se minara (el relayer o un
+observador de la mempool) podía reenviarla con otra opción. Ahora la prueba
+lleva vinculado `civora-voto:<propuesta>:<opción>` y el contrato rechaza
+cualquier otra opción (`OpcionNoVinculada`,
+[ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)). Reenviar la
+prueba con la misma opción sigue siendo posible y no altera el voto. Hasta
+que se despliegue el contrato nuevo, el desplegado en Sepolia sigue expuesto.
+
+La prueba no se verifica en el navegador ni sale hacia terceros: el SDK de
+ZKPassport la verificaría consultando un nodo de Alchemy con la prueba (con
+nullifier y opción) y la IP del votante, y la subiría a su panel. La web la
+envía directamente al contrato y crea el SDK con `disableProofStorage`; la
+CSP no permite WebAssembly ni Alchemy.
 
 ### Firma y certificado en la vía de certificado
 

@@ -80,7 +80,7 @@ o registrar el voto.
 | R-04: opción incluida en el reto firmado; firma en la confirmación con aviso de Autofirma | hecho |
 | R-05: constructor sin dirección cero; NatSpec actualizado | hecho |
 | `SECURITY.md` y CI en GitHub Actions | hecho |
-| R-01: atar la opción a la prueba ZK | pendiente: primera tarea del spike |
+| R-01: atar la opción a la prueba ZK | hecho en código ([ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)); pendiente de desplegar el contrato |
 
 ## Spike ZKPassport: deduplicación entre vías
 
@@ -91,7 +91,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 
 | Tarea | Estado |
 |---|---|
-| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | pendiente |
+| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`), contrato en Sepolia; primera prueba real: la CSP bloqueaba la verificación local del SDK, corregido tomando la prueba en `onProofGenerated`; pendiente: repetir la prueba con DNIe o pasaporte real |
 | Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
 | Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |
@@ -193,12 +193,13 @@ con contenido manipulado sin efecto.
 
 | Tarea | Estado |
 |---|---|
-| Procedimiento de despliegue y PR #5 a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | en curso: PR #5 con CI en verde, sin fusionar |
-| Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | hecho; no se usa: el contrato desplegado tiene `devMode` desactivado |
+| Procedimiento de despliegue y PR #5 a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | hecho: PR #5 fusionado en `main` (2026-10-07) |
+| Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | en uso desde 2026-10-07: en Sepolia solo pasan los pasaportes simulados de ZKPassport; contrato de demostración `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6` (`devMode`, sin exigir nacionalidad) |
+| Validar la vía ZK con un DNIe o pasaporte real: requiere red principal (Base o Ethereum), tope de gasto del relayer y autorización para crear propuestas | pendiente |
 | Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
 | Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; CI en verde en GitHub |
-| Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | pendiente |
-| Contrato en Sepolia `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia` | hecho |
+| Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | hecho: *Source* en `main` (2026-10-07); durante la prueba de R-01, en su rama |
+| Contrato en Sepolia `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` (con R-01; sustituye a `0xDCfe…FC3C`) (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia`; la demo usa el de demostración | hecho |
 | Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
 | Creación de propuestas abierta en la demo, sin `ADMIN_SECRET` (M-04 como riesgo aceptado) | hecho |
 | Volver a exigir autorización (cuentas individuales) y un tope de gasto del relayer antes de producción real | pendiente |
@@ -210,7 +211,7 @@ con contenido manipulado sin efecto.
 | Entorno de pruebas separado (contrato y dominio propios), con el VPS dedicado | pendiente |
 | Dependencias: Next 15.5.27 y React 19.2.8, sin `node-forge` en runtime, `pnpm audit --prod` limpio y Dependabot agrupado ([ADR 0012](decisiones/0012-next-15-react-19.md)) | hecho |
 | CSP con nonce en todas las páginas (renderizado dinámico), resultados «no disponibles» sin 500, `Referrer-Policy: no-referrer` y E2E de todas las páginas ([auditoría](auditoria-seguridad.md#revisión-en-producción-2026-10-07-rama-actualizar-dependencias)) | hecho; pendiente de revisar en producción |
-| CSP que permite abrir Autofirma (`wss`/`https` a `127.0.0.1` y `frame-src afirma:`), E2E sin simulacro de la conexión y favicon ([auditoría](auditoria-seguridad.md#csp-y-autofirma-2026-10-07-rama-fixcsp-autofirma)) | hecho; pendiente de firmar con Autofirma real en Chrome, Edge y Firefox tras desplegar |
+| CSP que permite abrir Autofirma (`wss`/`https` a `127.0.0.1` y `frame-src afirma:`), E2E sin simulacro de la conexión y favicon ([auditoría](auditoria-seguridad.md#csp-y-autofirma-2026-10-07-rama-fixcsp-autofirma)) | hecho; firmado con Autofirma y certificado real en producción con Edge y Brave (2026-10-07); pendiente de probar en Firefox |
 | Revisión completa del PR #5: C-03 (firma atada al certificado validado), aviso de recibo antes del cierre y título de resultados ([auditoría](auditoria-seguridad.md#revisión-del-pr-5-2026-10-07-rama-fixrevision-pr5)) | hecho |
 | Revisar los 4 avisos de desarrollo sin parche (`braces`, `node-forge` en tests, `sprintf-js`, `elliptic`) al migrar a Hardhat 3 | pendiente |
 | Next 16 como tarea propia (versión mayor) | pendiente |

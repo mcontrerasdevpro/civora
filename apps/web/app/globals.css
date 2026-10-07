@@ -1203,6 +1203,20 @@ footer.site-footer {
   min-height: 48px;
 }
 
+/* QR de ZKPassport en la confirmación (R-01: la prueba lleva la opción). */
+.prueba-zk {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.prueba-zk .btn-secundario {
+  align-self: flex-start;
+  min-width: 120px;
+  min-height: 48px;
+}
+
 .btn-escuchar {
   display: inline-flex;
   align-items: center;

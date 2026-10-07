@@ -102,16 +102,6 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
-## SDK de ZKPassport 0.18.2 (2026-10-07, rama `feat/zkpassport-sdk-0.18`)
-
-- Dependencias: `@zkpassport/utils` 0.39.0 y `@zkpassport/registry` 0.15.3 (la 0.18.0 exigía una beta de `utils` rota). `pnpm audit --prod` limpio.
-- Sin cambios en lo que verifica el contrato: el verificador es la misma dirección (`0x1D00…c0D8`), la validez por defecto sigue en 7 días y `bind("custom_data", …)` y `getSolidityVerifierParameters` mantienen su firma.
-- El constructor ya no acepta `disableProofStorage`: desde la 0.18 el SDK solo sube pruebas al panel de ZKPassport con una política del panel que lo active, y no se usa ninguna.
-- El SDK solo verifica la prueba por su cuenta si se registra `onResult`, en el navegador (bloqueado por la CSP) o en su API (`verifierMode`), que recibiría la prueba con la IP del votante. La web usa `onSuccess`, que entrega las pruebas sin verificarlas, y nunca `onResult`; un test lo comprueba en el código.
-- Comprobado en local que el QR se genera con el puente real de ZKPassport y sin violaciones de CSP. Pendiente: voto con pasaporte simulado en producción.
-
-Verificación: 24 tests de contratos, 56 de web, typecheck, build y 76 E2E.
-
 ## Propuestas por contrato y errores del contrato (2026-10-07, rama `feat/propuestas-por-contrato`)
 
 - **Propuestas de contratos anteriores:** al cambiar `CONTRATO_DIRECCION`, las propuestas creadas con el contrato anterior seguían en el listado y el voto fallaba con un error genérico (pasó en la prueba de ZKPassport). La tabla `propuestas` guarda ahora el contrato de cada una (`ALTER TABLE … ADD COLUMN IF NOT EXISTS contrato`, sin migración manual). Las de otro contrato no se listan, no admiten votos ni retos (`obtenerPropuesta` devuelve `null`) y `/api/propuestas/<id>` responde 410 con «Esta propuesta pertenece a una versión anterior de la demostración y ya no admite votos», que muestran `/votar/<id>` y `/resultados/<id>`. Las anteriores a este cambio (sin contrato guardado) se consideran vigentes.

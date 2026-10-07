@@ -114,14 +114,17 @@ importers:
         specifier: workspace:*
         version: link:../shared-types
       '@zkpassport/sdk':
-        specifier: ^0.18.2
-        version: 0.18.2(typescript@5.9.3)(zod@3.25.76)
+        specifier: ^0.16.2
+        version: 0.16.2(typescript@5.9.3)(zod@3.25.76)
     devDependencies:
       '@types/node':
         specifier: ^20.12.0
         version: 20.19.43
 
 packages:
+
+  '@adraffy/ens-normalize@1.10.1':
+    resolution: {integrity: sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==}
 
   '@adraffy/ens-normalize@1.11.1':
     resolution: {integrity: sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ==}
@@ -566,18 +569,6 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@noir-lang/acvm_js@1.0.0-beta.22':
-    resolution: {integrity: sha512-2xXfSKrnskUNmPiG/Kj6yvWi1E6wJBl/1ZsmzVaHEEyJsUBf15xaSRBZR7X1361whUR2vqyG80ck2huLZPb5bA==}
-
-  '@noir-lang/noir_js@1.0.0-beta.22':
-    resolution: {integrity: sha512-Ts+QI2fN2PsrVjx38CszFSR0TyWpip9TgJ6HM17DIK05Jku4TSKtHMIjrE6lRii4Y+JV0rn70v+TrunJmt/X4w==}
-
-  '@noir-lang/noirc_abi@1.0.0-beta.22':
-    resolution: {integrity: sha512-vpZtWb946eb4ZxERxY32I4Fv62SAAjhAyJpb2YzWYvnDVTyFVIvr/MSVunrM1osUP35nnRPRGuXVTWy4sBQkIg==}
-
-  '@noir-lang/types@1.0.0-beta.22':
-    resolution: {integrity: sha512-PXD8cmvMT4wybDe1pUPwv2Uz1FYh9B/hdXrY5eOMf1elNVxomj2tHDDYoKI/zNDrJ1JzTL0xhbAX1vBTMMFvBw==}
-
   '@nomicfoundation/edr-darwin-arm64@0.12.0-next.23':
     resolution: {integrity: sha512-Amh7mRoDzZyJJ4efqoePqdoZOzharmSOttZuJDlVE5yy07BoE8hL6ZRpa5fNYn0LCqn/KoWs8OHANWxhKDGhvQ==}
     engines: {node: '>= 20'}
@@ -709,8 +700,8 @@ packages:
     resolution: {integrity: sha512-q4n32/FNKIhQ3zQGGw5CvPF6GTvDCpYwIf7bEY/dZTZbgfDsHyjJwURxUJf3VQuuJj+fDIFl4+KkBVbw4Ef6jA==}
     engines: {node: '>= 12'}
 
-  '@obsidion/bridge@0.12.2':
-    resolution: {integrity: sha512-3swoUCqf+Z06qFYW9fOG5EoETA1lnqbXpmn+LjKT1FqOdgy51Q6gWxyNn99ZMKQcMkk/vbWV11DLpDQAH7YYsg==}
+  '@obsidion/bridge@0.11.2':
+    resolution: {integrity: sha512-IX5g2c6TF9xKGFgnQBAq4TJLns+W2SfDgndE1orsLIQCRJ8UKsu5Mt+RwbI6sDu7PxVveZvmLEaiXhJl7NhJaQ==}
     peerDependencies:
       typescript: ^5.0.0
 
@@ -939,20 +930,31 @@ packages:
   '@types/secp256k1@4.0.7':
     resolution: {integrity: sha512-Rcvjl6vARGAKRO6jHeKMatGrvOMGrR/AR11N1x2LqintPCyDZ7NBhrh238Z2VZc7aM7KIwnFpFQ7fnfK4H/9Qw==}
 
-  '@zk-kit/utils@1.3.0':
-    resolution: {integrity: sha512-Gqsq5KLDf2WPuZSsNc2KZy25XeK5d5UV9hwLaPEM5wq+GD2qCi1ZBFzNs0OptiJ9GRGtP2J/xptrszWri+pRqQ==}
+  '@zk-kit/utils@1.4.1':
+    resolution: {integrity: sha512-IoXzy3ElfkvRfC/s6uk3eFQO8uxkCdAOVxKlJlaEjM7pgckX5AK46Q+7n5yMQD/v/o6OL0mMtet065o5EpUocA==}
 
   '@zkpassport/poseidon2@0.6.2':
     resolution: {integrity: sha512-6sFHX9kAcrmDmBEEndvjZ8DA9FomunirQ5oCV6oD7bqr/lP0n0OBSRn86SZgQBXwRR+vq7sk16y31OgRBIOJ5Q==}
 
-  '@zkpassport/registry@0.15.3':
-    resolution: {integrity: sha512-Er6bxcB79qtGg9xhAVUkwlbpZYOHsO2hKlbguu+ycnx83NOUsrUyeOYBtajYaDAbHRopFODFYABQFS2zRGKbgg==}
+  '@zkpassport/registry@0.14.0':
+    resolution: {integrity: sha512-6E6740NYx3wYIPZyWyIpNgnExJFHzSdZ4jzspTGHfKJalfpIQ8QMpTPSAruuHEymWD0c8qtz1kL9ioTjAp7GBA==}
+    peerDependencies:
+      typescript: ^5.0.0
 
-  '@zkpassport/sdk@0.18.2':
-    resolution: {integrity: sha512-DRgV57QxXYRCrDjFEXINF/8oMRlWgRkyG1/Pdk/o0PxREChO5sKaO5wk5XUU32s4rDnqBUuVwMqI4Z6cB7j6pg==}
+  '@zkpassport/sdk@0.16.2':
+    resolution: {integrity: sha512-LsPrQrMndf9WNIXDeT+Q6culdgx2s9rTWAkTsPId0IZPT6PaISGi5YWAu7SbFbtTRw+tgTyRLNA6c3ulmyzA2g==}
+    peerDependencies:
+      typescript: ^5.0.0
 
-  '@zkpassport/utils@0.39.0':
-    resolution: {integrity: sha512-oNflZQ9M2bHdQpwYWBN9v6joulMwwy1jdVPVyHFE9FXlRWfJSj7A/tOht/LRzbWq5qTafCuSSyWM1NNbOXOxIg==}
+  '@zkpassport/utils@0.36.0':
+    resolution: {integrity: sha512-FL1NCIqHASdSabnjIJIohm0HQi664XUhCxWPyZSdsN0KwXiBhrY3C7YGrW5XToxcXPnbVTy8/LAd3AXdVZcffQ==}
+    peerDependencies:
+      typescript: ^5.0.0
+
+  '@zkpassport/utils@0.37.5':
+    resolution: {integrity: sha512-4zJEGybhN+t+QxlTkF3UJleK3eijhb1QyJ0LNLDTBqjcXY6drnXG2hkXak2I8clSq7gAeey7C/+1bJ1IdNiZdw==}
+    peerDependencies:
+      typescript: ^5.0.0
 
   abbrev@1.0.9:
     resolution: {integrity: sha512-LEyx4aLEC3x6T0UguF6YILf+ntvmOaWsVfENmIW0E9H09vKlLDGelMjjSm0jkDHALj8A8quZ/HapKNigzwge+Q==}
@@ -1536,6 +1538,10 @@ packages:
 
   ethers@5.8.0:
     resolution: {integrity: sha512-DUq+7fHrCg1aPDFCHx6UIPb3nmt2XMpM7Y/g2gLhsl3lIBqeAfOJIl1qEvRf2uq3BiKxmh6Fh5pfp2ieyek7Kg==}
+
+  ethers@6.13.5:
+    resolution: {integrity: sha512-+knKNieu5EKRThQJWwqaJ10a6HE9sSehGeqWN65//wE7j47ZpFhKAnHB/JJFibwwg61I/koxaPsXbXpD/skNOQ==}
+    engines: {node: '>=14.0.0'}
 
   ethers@6.17.0:
     resolution: {integrity: sha512-BpyrpIPJ3ydEVow8zGaz1DuPS7YU8DcWxuBnY9a0UA/lvAPwrMr+EPXsfrul628SRaekPNeIM4UFh/91GWZang==}
@@ -2997,6 +3003,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.21.3:
+    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
@@ -3060,6 +3078,8 @@ packages:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
+
+  '@adraffy/ens-normalize@1.10.1': {}
 
   '@adraffy/ens-normalize@1.11.1': {}
 
@@ -3594,21 +3614,6 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@noir-lang/acvm_js@1.0.0-beta.22': {}
-
-  '@noir-lang/noir_js@1.0.0-beta.22':
-    dependencies:
-      '@noir-lang/acvm_js': 1.0.0-beta.22
-      '@noir-lang/noirc_abi': 1.0.0-beta.22
-      '@noir-lang/types': 1.0.0-beta.22
-      pako: 2.2.0
-
-  '@noir-lang/noirc_abi@1.0.0-beta.22':
-    dependencies:
-      '@noir-lang/types': 1.0.0-beta.22
-
-  '@noir-lang/types@1.0.0-beta.22': {}
-
   '@nomicfoundation/edr-darwin-arm64@0.12.0-next.23': {}
 
   '@nomicfoundation/edr-darwin-x64@0.12.0-next.23': {}
@@ -3767,7 +3772,7 @@ snapshots:
       '@nomicfoundation/solidity-analyzer-linux-x64-musl': 0.1.2
       '@nomicfoundation/solidity-analyzer-win32-x64-msvc': 0.1.2
 
-  '@obsidion/bridge@0.12.2(typescript@5.9.3)':
+  '@obsidion/bridge@0.11.2(typescript@5.9.3)':
     dependencies:
       '@noble/ciphers': 1.3.0
       '@noble/hashes': 1.8.0
@@ -3776,7 +3781,7 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       pako: 2.2.0
       typescript: 5.9.3
-      ws: 8.22.0
+      ws: 8.21.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -4096,46 +4101,76 @@ snapshots:
     dependencies:
       '@types/node': 20.19.43
 
-  '@zk-kit/utils@1.3.0':
+  '@zk-kit/utils@1.4.1':
     dependencies:
       buffer: 6.0.3
+      ethers: 6.13.5
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@zkpassport/poseidon2@0.6.2': {}
 
-  '@zkpassport/registry@0.15.3':
+  '@zkpassport/registry@0.14.0(typescript@5.9.3)':
     dependencies:
       '@zkpassport/poseidon2': 0.6.2
-      '@zkpassport/utils': 0.39.0
+      '@zkpassport/utils': 0.36.0(typescript@5.9.3)
       debug: 4.4.3(supports-color@8.1.1)
       tslib: 2.8.1
+      typescript: 5.9.3
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
-  '@zkpassport/sdk@0.18.2(typescript@5.9.3)(zod@3.25.76)':
+  '@zkpassport/sdk@0.16.2(typescript@5.9.3)(zod@3.25.76)':
     dependencies:
       '@aztec/bb.js': 5.0.0
       '@aztec/bb.js-v4': '@aztec/bb.js@4.2.0-aztecnr-rc.2'
       '@noble/ciphers': 1.3.0
       '@noble/hashes': 2.4.0
       '@noble/secp256k1': 2.3.0
-      '@noir-lang/noir_js': 1.0.0-beta.22
-      '@obsidion/bridge': 0.12.2(typescript@5.9.3)
-      '@zkpassport/registry': 0.15.3
-      '@zkpassport/utils': 0.39.0
+      '@obsidion/bridge': 0.11.2(typescript@5.9.3)
+      '@zkpassport/registry': 0.14.0(typescript@5.9.3)
+      '@zkpassport/utils': 0.37.5(typescript@5.9.3)
       buffer: 6.0.3
       i18n-iso-countries: 7.14.0
       pako: 2.2.0
       tslib: 2.8.1
+      typescript: 5.9.3
       viem: 2.56.5(typescript@5.9.3)(zod@3.25.76)
-      ws: 8.22.0
+      ws: 8.21.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
-      - typescript
       - utf-8-validate
       - zod
 
-  '@zkpassport/utils@0.39.0':
+  '@zkpassport/utils@0.36.0(typescript@5.9.3)':
+    dependencies:
+      '@lapo/asn1js': 2.1.3
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 2.4.0
+      '@noble/hashes': 2.4.0
+      '@noble/secp256k1': 2.3.0
+      '@peculiar/asn1-cms': 2.9.4
+      '@peculiar/asn1-ecc': 2.9.4
+      '@peculiar/asn1-rsa': 2.9.4
+      '@peculiar/asn1-schema': 2.9.4
+      '@peculiar/asn1-x509': 2.9.4
+      '@peculiar/x509': 1.14.3
+      '@taceo/oprf-client': 0.9.0
+      '@zk-kit/utils': 1.4.1
+      '@zkpassport/poseidon2': 0.6.2
+      date-fns: 4.4.0
+      i18n-iso-countries: 7.14.0
+      tslib: 2.8.1
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@zkpassport/utils@0.37.5(typescript@5.9.3)':
     dependencies:
       '@lapo/asn1js': 2.1.3
       '@noble/ciphers': 1.3.0
@@ -4150,11 +4185,15 @@ snapshots:
       '@peculiar/x509': 1.14.3
       '@taceo/oprf-client': 0.9.0
       '@taceo/oprf-core': 0.4.0
-      '@zk-kit/utils': 1.3.0
+      '@zk-kit/utils': 1.4.1
       '@zkpassport/poseidon2': 0.6.2
       date-fns: 4.4.0
       i18n-iso-countries: 7.14.0
       tslib: 2.8.1
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   abbrev@1.0.9: {}
 
@@ -4784,6 +4823,19 @@ snapshots:
       '@ethersproject/wallet': 5.8.0
       '@ethersproject/web': 5.8.0
       '@ethersproject/wordlists': 5.8.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  ethers@6.13.5:
+    dependencies:
+      '@adraffy/ens-normalize': 1.10.1
+      '@noble/curves': 1.2.0
+      '@noble/hashes': 1.3.2
+      '@types/node': 22.7.5
+      aes-js: 4.0.0-beta.5
+      tslib: 2.7.0
+      ws: 8.21.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -6372,6 +6424,8 @@ snapshots:
   ws@7.5.13: {}
 
   ws@8.21.0: {}
+
+  ws@8.21.3: {}
 
   ws@8.22.0: {}
 

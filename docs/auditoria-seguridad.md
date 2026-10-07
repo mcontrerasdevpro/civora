@@ -102,6 +102,14 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
+## Propuestas por contrato y errores del contrato (2026-10-07, rama `feat/propuestas-por-contrato`)
+
+- **Propuestas de contratos anteriores:** al cambiar `CONTRATO_DIRECCION`, las propuestas creadas con el contrato anterior seguían en el listado y el voto fallaba con un error genérico (pasó en la prueba de ZKPassport). La tabla `propuestas` guarda ahora el contrato de cada una (`ALTER TABLE … ADD COLUMN IF NOT EXISTS contrato`, sin migración manual). Las de otro contrato no se listan, no admiten votos ni retos (`obtenerPropuesta` devuelve `null`) y `/api/propuestas/<id>` responde 410 con «Esta propuesta pertenece a una versión anterior de la demostración y ya no admite votos», que muestran `/votar/<id>` y `/resultados/<id>`. Las anteriores a este cambio (sin contrato guardado) se consideran vigentes.
+- **Rechazos del contrato sin mensaje propio:** antes, un revert no reconocido (por ejemplo, del verificador de ZKPassport) acababa en un 500 genérico. Ahora responde 400 con un mensaje claro y el servidor registra solo el selector de 4 bytes del error (`registrarAviso`), sin datos del votante.
+- Tests unitarios de la clasificación por contrato y de la extracción del selector (solo los 4 bytes); E2E del 410 en votar y resultados. Revisado a 375 y 1280 px. La migración de la tabla se comprueba en producción al desplegar.
+
+Verificación: 24 tests de contratos, 59 de web, typecheck, build y 78 E2E.
+
 ## Aviso de escuchas ajenas (2026-10-07, rama `feat/aviso-escuchar`)
 
 - Al pulsar «Escuchar» (instrucciones de cada paso y confirmación de la opción) aparece un aviso con `role="alert"` y suena el mismo aviso por voz: «Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.» El aviso no contiene la opción.

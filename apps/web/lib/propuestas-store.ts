@@ -2,7 +2,8 @@ import { randomUUID } from "crypto";
 import { id as ethersId } from "ethers";
 import { EligibilitySchema, type Eligibility, type OpcionVoto, type Propuesta } from "@civora/shared-types";
 import { asegurarEsquema, query } from "./db";
-import { crearPropuestaOnChain } from "./contrato";
+import { crearPropuestaOnChain, direccionContrato } from "./contrato";
+import { esPropuestaVigente } from "./errores-contrato.mjs";
 
 /** Requisitos fijos de esta PoC (ver README): no se exponen en el formulario todavia. */
 const ELEGIBILIDAD_POR_DEFECTO: Eligibility = EligibilitySchema.parse({});
@@ -18,6 +19,7 @@ interface FilaPropuesta {
   fecha_cierre: Date;
   elegibilidad: Eligibility;
   contenido_hash: string;
+  contrato: string | null;
 }
 
 function filaAPropuesta(fila: FilaPropuesta): Propuesta {
@@ -35,18 +37,34 @@ function filaAPropuesta(fila: FilaPropuesta): Propuesta {
   };
 }
 
+/** Propuestas del contrato actual; las de contratos anteriores no se listan. */
 export async function listarPropuestas(): Promise<Propuesta[]> {
   await asegurarEsquema();
   const filas = await query<FilaPropuesta>(
     "SELECT * FROM propuestas ORDER BY creado_en DESC"
   );
-  return filas.map(filaAPropuesta);
+  const actual = direccionContrato();
+  return filas.filter((fila) => esPropuestaVigente(fila.contrato, actual)).map(filaAPropuesta);
 }
 
-export async function obtenerPropuesta(id: string): Promise<Propuesta | null> {
+/**
+ * Busca una propuesta e indica si es de un contrato anterior (archivada):
+ * existe, pero el contrato actual no la conoce y no admite votos.
+ */
+export async function buscarPropuesta(id: string): Promise<{ propuesta: Propuesta; archivada: boolean } | null> {
   await asegurarEsquema();
   const filas = await query<FilaPropuesta>("SELECT * FROM propuestas WHERE id = $1", [id]);
-  return filas[0] ? filaAPropuesta(filas[0]) : null;
+  if (!filas[0]) return null;
+  return {
+    propuesta: filaAPropuesta(filas[0]),
+    archivada: !esPropuestaVigente(filas[0].contrato, direccionContrato()),
+  };
+}
+
+/** Propuesta del contrato actual, o null si no existe o es de un contrato anterior. */
+export async function obtenerPropuesta(id: string): Promise<Propuesta | null> {
+  const encontrada = await buscarPropuesta(id);
+  return encontrada && !encontrada.archivada ? encontrada.propuesta : null;
 }
 
 export async function crearPropuesta(datos: {
@@ -84,8 +102,8 @@ export async function crearPropuesta(datos: {
 
   await query(
     `INSERT INTO propuestas
-      (id, titulo, descripcion, pregunta, opciones, fecha_apertura, fecha_cierre, elegibilidad, contenido_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      (id, titulo, descripcion, pregunta, opciones, fecha_apertura, fecha_cierre, elegibilidad, contenido_hash, contrato)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       id,
       datos.titulo,
@@ -96,6 +114,7 @@ export async function crearPropuesta(datos: {
       datos.fechaCierre,
       JSON.stringify(ELEGIBILIDAD_POR_DEFECTO),
       contenidoHash,
+      direccionContrato(),
     ]
   );
 

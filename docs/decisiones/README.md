@@ -21,6 +21,7 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0013](0013-postgres-en-el-vps.md) | Postgres de la demo en el VPS | aceptada |
 | [0014](0014-opcion-vinculada-prueba-zk.md) | La opción va vinculada a la prueba ZK | aceptada |
 | [0015](0015-condiciones-voto-organismos-publicos.md) | Condiciones para votar y contraste con organismos públicos | aceptada (conexiones pendientes de convenio) |
+| [0019](0019-ia-punto-asistido-auditoria.md) | IA, punto asistido y auditoría | aceptada (diseño; sin implementar) |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

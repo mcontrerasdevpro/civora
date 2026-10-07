@@ -118,7 +118,10 @@ A-04).
 | Conexiones obligatorias con organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md#conexiones-obligatorias-con-organismos-públicos)): DGP (SVDI: DNI, nacionalidad y fecha de nacimiento), pasaporte español (a confirmar con la DGP), INE (residencia con fecha de última variación padronal e histórico), padrón municipal si convoca un ayuntamiento | pendiente: requiere administración convocante y alta en la PID |
 | Rechazar el registro si la fecha de nacimiento declarada no coincide con la de la DGP o si falta cualquiera de las cuatro condiciones | pendiente |
 | Registro de elegibles: alta de un compromiso de identidad Semaphore tras acreditar elegibilidad | pendiente |
-| Asignación de canal (digital, punto asistido o papel) al registrarse, antes de congelar | pendiente |
+| Asignación de canal (digital o punto asistido; sin canal de papel, [ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md)) y, en el asistido, de punto, al registrarse, antes de congelar | pendiente |
+| Techo por censo en cadena: el contrato cuenta los votos por punto y por canal y rechaza los que superen las personas asignadas ([ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md#4-techo-por-censo-en-cadena)) | pendiente |
+| Quiosco del punto asistido: lector NFC, voto en solitario, papeleta impresa que el votante comprueba antes de emitir el voto, urna sellada y envío por lotes con retraso y orden aleatorios ([ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md#3-papel-como-pista-de-auditoría)) | pendiente |
+| Procedimiento escrito de auditoría de limitación de riesgo (custodia, sorteo con semilla pública, recuento con observadores, comparación, escalado y qué hacer si no coincide) y simulacro completo | pendiente |
 | Grupo y raíz Merkle congelados y publicados antes de abrir la votación | pendiente |
 | Votación con prueba Semaphore de pertenencia y nullifier por propuesta | pendiente |
 | Punto de voto asistido: lector NFC del punto, modo quiosco, identidad generada y destruida en la sesión, registro de «voto asistido» sin contenido | pendiente |
@@ -134,6 +137,11 @@ A-04).
   segundo voto con el mismo nullifier, sea cual sea la vía de registro.
 - Ningún servicio recibe a la vez identidad y opción.
 - La raíz no puede cambiar después de la apertura (test de contrato).
+- Ningún punto ni canal puede superar en cadena el número de personas que
+  tenía asignadas (test); el techo no cambia después de la apertura.
+- En el quiosco, si el votante rechaza la papeleta no se emite el voto
+  digital; un simulacro de auditoría detecta una discrepancia introducida a
+  propósito.
 - Cada persona tiene un solo canal; el canal digital rechaza a quien está
   asignado a otro (test).
 - `votarManual` ya no existe y todos los tests pasan.
@@ -147,6 +155,7 @@ operador.
 |---|---|
 | Página «Intenta hacer trampa» con ataques guiados (doble voto, voto fuera de plazo, prueba falsa) y el resultado esperado | pendiente |
 | Script de auditoría reproducible que recalcula el recuento desde la cadena y lo compara con la aplicación | pendiente |
+| Resultados tras el cierre en `/resultados/[id]`: gráfica SVG y tabla con votos y porcentajes (redondeo explicado), votos por vía, aviso de que la participación requiere el censo y sección «Verifica este resultado» con enlaces al explorador y pasos para rehacer el recuento desde los eventos; el servidor lo rehace si su proveedor RPC lo permite (rama `resultados-graficos`) | hecho; pendiente de comprobar en la demo con el proveedor RPC real |
 
 **Dependencias:** Fase 1, para que los ataques muestren el modelo final.
 
@@ -181,13 +190,18 @@ en el [modelo de amenazas](modelo-amenazas.md#asistente-de-ia-futuro-no-implemen
 | Diseño del servicio aislado y de su desconexión anunciada en el paso de votar | pendiente |
 | Evaluación del Reglamento europeo de IA | pendiente |
 | Contenido de propuestas firmado y resúmenes neutrales aprobados de antemano | pendiente |
+| Detección de anomalías solo sobre datos públicos y agregados, con reglas deterministas primero y avisos a personas, sin herramientas para actuar sobre votos ([ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md#5-ia-solo-ayuda-y-avisos)) | pendiente |
+| Ayuda al ciudadano con cifras que salen siempre de la API de resultados, citadas con su origen | pendiente |
+| Canal de WhatsApp o Telegram solo para ayuda y avisos, nunca para votar ni pedir la opción o documentos | pendiente |
 
 **Dependencias:** Fase 1 e idiomas.
 
 **Criterios de aceptación:** el asistente no tiene herramientas ni acceso a
 identidad, contrato o relayer (revisión de código y test); los registros no
 contienen datos de la sesión de voto; prueba de inyección de instrucciones
-con contenido manipulado sin efecto.
+con contenido manipulado sin efecto; ninguna cifra distinta de la del
+recuento, ni siquiera bajo inyección de instrucciones; el canal de
+mensajería rechaza cualquier intento de votar.
 
 ## Paso a producción
 

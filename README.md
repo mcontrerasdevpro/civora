@@ -76,10 +76,10 @@ banner **MODO DEMOSTRACIÓN**:
 | Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
 | Integridad de la opción | Hecho | La prueba de identidad incluye la opción y no sirve para otra: el certificado firma un reto con la opción (R-04) y la prueba ZKPassport lleva la opción vinculada, comprobada en el contrato (R-01, [ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)). |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
-| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
+| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado ([ADR 0019](docs/decisiones/0019-ia-punto-asistido-auditoria.md)): dos canales (digital y punto asistido presencial con quiosco), un único canal por persona asignado antes de congelar el censo, papeleta impresa como pista de auditoría con auditorías de limitación de riesgo y techo de votos por punto en el contrato. Sin canal de papel independiente. |
 | Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy. Previstas: asignación de canal (Fase 1) y prevalencia del voto presencial sobre el digital (Fase 2, MACI). |
 | Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
-| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. |
+| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. El recuento es siempre determinista: la IA nunca cuenta, decide ni anula votos; solo podría avisar de anomalías en datos públicos agregados ([ADR 0019](docs/decisiones/0019-ia-punto-asistido-auditoria.md)). |
 
 Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
 publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
@@ -96,7 +96,7 @@ y los límites del asistente de IA, en el
 
 | Componente | Ubicacion | Estado |
 |---|---|---|
-| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia |
+| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia. Tras el cierre, /resultados/[id] muestra gráfica, tabla, votos por vía y cómo rehacer el recuento desde los eventos del contrato |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |

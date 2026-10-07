@@ -125,6 +125,36 @@ Verificación: 51 tests de web, typecheck, build y 72 E2E.
 - **Configuración:** el SDK de identidad (`@zkpassport/*`) sale del grupo semanal y llega en su propia PR, porque en 0.x una versión menor puede cambiar la API o el formato de la prueba que verifica el contrato. Dependabot ignora las versiones mayores de TypeScript, `@types/node`, Hardhat y `hardhat-toolbox`, que se harán como tareas propias.
 - PR #11 (`pbkdf2`, seguridad) y #10 (acciones del CI) en verde: se pueden fusionar. #14, #15 y #16 (versiones mayores) se cierran.
 
+## Resultados con gráfica y verificación (2026-10-07, rama `resultados-graficos`)
+
+- **Ocultación hasta el cierre (M-01) intacta:**
+  - `/api/propuestas/<id>` sigue sin devolver resultados antes del cierre.
+  - La nueva ruta `/api/propuestas/<id>/verificacion` responde 423 antes del cierre, y la página no la pide hasta tener los resultados.
+  - El E2E «antes del cierre» comprueba que no aparecen gráfica, tabla, porcentajes ni verificación, y que no se pide la ruta.
+- **Recuento desde eventos:**
+  - El servidor rehace el recuento con los eventos `VotoEmitido` del rango de bloques de la votación (búsqueda binaria por timestamp) y deduce la vía de cada voto por el selector de su transacción (`votarManual` o `votarConPruebaZk`). Solo usa datos públicos de la cadena.
+  - Un nullifier repetido cuenta una vez y se informa; una opción desconocida es un error, no se ignora (tests).
+  - Tras el cierre el resultado es definitivo y se guarda en memoria; un fallo se reintenta al cabo de 60 s.
+- **Proveedor RPC:**
+  - El plan gratuito de Alchemy limita `eth_getLogs` a 10 bloques. Las consultas se trocean (`RPC_MAX_BLOQUES_LOGS`) con un tope por propuesta (`RPC_MAX_CONSULTAS_LOGS`).
+  - Por encima del tope, la web lo explica y remite a los pasos para rehacer el recuento por cuenta propia, sin bloquear la página.
+  - Los errores se registran solo con `registrarError` (código corto), nunca con la consulta.
+- **CSP sin cambios:** gráfica en SVG propio, sin librerías ni scripts inline. Los enlaces al explorador son navegación (`EXPLORADOR_URL`, solo `https`, con `rel="noopener noreferrer"`), sin conexiones nuevas desde el navegador. El E2E de CSP de `/resultados/<id>` sigue en verde.
+- **Accesibilidad (WCAG 2.1 AA):**
+  - Cada opción se distingue por texto, color y trama (lisa, rayas, puntos).
+  - Los colores de las barras tienen contraste ≥ 3:1 y un borde oscuro.
+  - Las cifras son texto, y hay una tabla equivalente con `caption`, `scope` y total.
+  - La verificación es plegable con teclado.
+  - En modo sencillo, la letra y las barras son más grandes, no hay jerga y la verificación queda plegada.
+  - Axe sin infracciones antes y después del cierre, en modo normal y sencillo, a 1280 y 375 px. Revisado a simple vista en ambos anchos.
+- **Diseño ([ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md)):**
+  - Sin canal de papel independiente.
+  - Quiosco con papeleta como pista de auditoría y auditorías de limitación de riesgo.
+  - Envío por lotes para evitar la correlación por hora y techo por censo en cadena.
+  - La IA solo avisa, sobre datos públicos agregados. Modelo de amenazas actualizado.
+
+Verificación: 24 tests de contratos, 73 de web (13 nuevos: porcentajes, redondeo, recuento desde eventos, búsqueda de bloques y rutas anidadas), typecheck, build y 94 E2E (7 nuevos de resultados, en los dos anchos).
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

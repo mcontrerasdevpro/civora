@@ -39,7 +39,9 @@ El votante elige una de tres vías al emitir su voto:
    dentro del propio contrato (`VotacionAnonima.votarConPruebaZk`), contra
    el verificador oficial de ZKPassport: ni este servidor ni quien lo
    opera pueden aceptar un voto por esta vía sin una prueba
-   criptográfica válida.
+   criptográfica válida. La prueba se genera al confirmar el voto y lleva
+   la opción elegida vinculada: no sirve para votar otra opción
+   ([ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)).
 2. **Certificado digital, vía Autofirma.** El navegador firma un código
    aleatorio con el certificado instalado (FNMT, DNIe...); el servidor
    verifica la firma, que el certificado encadena hasta una autoridad real

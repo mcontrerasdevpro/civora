@@ -79,7 +79,7 @@ o registrar el voto.
 | R-04: opción incluida en el reto firmado; firma en la confirmación con aviso de Autofirma | hecho |
 | R-05: constructor sin dirección cero; NatSpec actualizado | hecho |
 | `SECURITY.md` y CI en GitHub Actions | hecho |
-| R-01: atar la opción a la prueba ZK | pendiente: primera tarea del spike |
+| R-01: atar la opción a la prueba ZK | hecho en código ([ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)); pendiente de desplegar el contrato |
 
 ## Spike ZKPassport: deduplicación entre vías
 
@@ -90,7 +90,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 
 | Tarea | Estado |
 |---|---|
-| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | pendiente |
+| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`); pendiente: contrato en Sepolia y prueba con DNIe o pasaporte real |
 | Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
 | Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |

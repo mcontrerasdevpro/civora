@@ -203,9 +203,9 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 
 **Impacto:** un voto ZK puede sustituirse por otro de distinta opción sin que el votante lo note hasta verificar su recibo.
 
-**Estado:** abierto. Es la primera prioridad del [spike ZKPassport](ROADMAP.md#spike-zkpassport-deduplicación-entre-vías). Descrito en el [modelo de amenazas](modelo-amenazas.md#front-running-de-votos-zk-r-01).
+**Estado:** corregido en el código (rama `feat/r01-opcion-en-prueba-zk`, [ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)); pendiente de desplegar el contrato nuevo. Descrito en el [modelo de amenazas](modelo-amenazas.md#front-running-de-votos-zk-r-01).
 
-**Arreglo previsto:** atar la opción a la prueba (por ejemplo, incluirla en los datos vinculados que ZKPassport firma junto al ámbito) y verificar en el contrato que la opción recibida es la de la prueba.
+**Corrección:** la solicitud a ZKPassport vincula `custom_data = civora-voto:<propuesta>:<opción>` y `votarConPruebaZk` lo lee con `getBoundData(committedInputs)`; si no coincide con la propuesta y la opción recibidas, revierte con `OpcionNoVinculada`. El ámbito no cambia, así que el nullifier sigue siendo uno por persona y propuesta. Tests de Hardhat: la misma prueba reenviada con otra opción se rechaza y el voto legítimo entra después; también se rechazan la prueba sin dato vinculado, la de otra propuesta y la que añade texto al final. Test de web: el formato del SDK y el del contrato coinciden. En la vía ZK el QR se muestra al confirmar el voto (E2E con axe a 375 y 1280 px). Verificación: 23 tests de contratos, 54 de web, typecheck, build y 74 E2E.
 
 ### R-02 · Crítico — Nullifier de certificado enumerable y publicado
 

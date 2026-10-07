@@ -3,6 +3,7 @@ import { obtenerPropuesta } from "../../../../lib/propuestas-store";
 import { leerResultados } from "../../../../lib/contrato";
 import { resultadosVisibles } from "../../../../lib/resultados-visibles.mjs";
 import { segmentoFinal } from "../../../../lib/parametros-ruta.mjs";
+import { registrarError } from "../../../../lib/registro.mjs";
 
 // Sin esto, Next.js horneraria el resultado on-chain como contenido
 // estatico en el build y nunca volveria a consultar el contrato.
@@ -19,5 +20,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ propuesta, resultados: null });
   }
 
-  return NextResponse.json({ propuesta, resultados: await leerResultados(id) });
+  try {
+    return NextResponse.json({ propuesta, resultados: await leerResultados(id) });
+  } catch (error) {
+    // Pasa, por ejemplo, con propuestas creadas con un contrato anterior.
+    registrarError("resultados no disponibles", error);
+    return NextResponse.json({ propuesta, resultados: null, resultadosNoDisponibles: true });
+  }
 }

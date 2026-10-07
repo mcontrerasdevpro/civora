@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { connection } from "next/server";
 import { IBM_Plex_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "./components/SiteHeader";
@@ -25,7 +26,10 @@ export const metadata = {
     "Votación digital con identidad certificada (DNIe o certificado digital) y pruebas criptográficas: tu identidad acredita que puedes votar, nunca revela qué has votado.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Next solo añade el nonce de la CSP a las páginas renderizadas en cada
+  // petición: sin esto, las estáticas salen sin nonce y su JS queda bloqueado.
+  await connection();
   return (
     <html lang="es">
       <body className={`${montserrat.variable} ${ibmPlexMono.variable}`}>

@@ -79,6 +79,17 @@ con axe y revisión manual con Playwright del flujo de voto con certificado
 en modo normal (1280 px) y sencillo (375 px), sin errores ni avisos en la
 consola. La imagen Docker la verifica el job «Imagen Docker» del CI.
 
+## Revisión en producción (2026-10-07, rama `actualizar-dependencias`)
+
+- **CSP bloqueaba el JavaScript de las páginas estáticas (crítico, corregido; viene de la Fase 0):** Next solo añade el nonce a las páginas renderizadas en cada petición. `/`, `/propuestas`, `/propuestas/nueva`, `/verificar`, `/resultados` y `/votar` se generaban en el build sin nonce, la CSP bloqueaba sus scripts y React no arrancaba: no se veía el listado, no se podían crear propuestas ni comprobar recibos. Ahora `app/layout.tsx` llama a `connection()` y todas las páginas se renderizan por petición (ninguna se sirve pregenerada; asumible en la demo). Los E2E no lo detectaban porque solo usaban `/votar/<id>`, que ya era dinámica.
+- **E2E nuevo (`e2e/paginas.spec.ts`):** recorre todas las páginas y falla si algún `<script>` del HTML no lleva nonce o si hay alguna violación de CSP; comprueba que `/propuestas` muestra el listado, que `/verificar` comprueba un recibo y que `/resultados/<id>` avisa si no hay resultados. Comprobado que falla sin `connection()` (8 fallos en las 6 páginas estáticas y en las 2 comprobaciones funcionales).
+- **`/resultados/<id>` nunca cargaba (corregido, lo destapó el E2E nuevo):** el identificador del intervalo de refresco ocultaba el `id` de la ruta; la primera carga fallaba y las siguientes pedían `/api/propuestas/<número>`.
+- **500 con propuestas del contrato anterior (corregido):** `GET /api/propuestas/[id]` leía los resultados sin proteger la llamada y Next registraba el error completo de ethers. Ahora registra solo el código con `lib/registro.mjs` y responde `resultados: null` con `resultadosNoDisponibles: true`; la página muestra «Los resultados de esta propuesta no están disponibles».
+- **Cabeceras:** sin `X-Powered-By` (`poweredByHeader: false`) y con `Referrer-Policy: no-referrer`, porque `/verificar?nullifier=…` lleva el recibo en la URL y podría filtrarse en el `Referer` a sitios externos. Las comprueba el E2E nuevo.
+
+Verificación: 20 tests de contratos, 46 de web, typecheck, build (todas las
+páginas dinámicas, `ƒ`) y 60 E2E.
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.

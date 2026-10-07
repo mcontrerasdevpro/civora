@@ -16,6 +16,7 @@ type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
   | { fase: "ocultos"; propuesta: Propuesta }
+  | { fase: "no_disponibles"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
 
 export default function ResultadosPropuestaPage() {
@@ -35,7 +36,9 @@ export default function ResultadosPropuestaPage() {
           setEstado(
             cuerpo.resultados
               ? { fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados }
-              : { fase: "ocultos", propuesta: cuerpo.propuesta }
+              : cuerpo.resultadosNoDisponibles
+                ? { fase: "no_disponibles", propuesta: cuerpo.propuesta }
+                : { fase: "ocultos", propuesta: cuerpo.propuesta }
           );
         }
       } catch {
@@ -44,10 +47,10 @@ export default function ResultadosPropuestaPage() {
     }
 
     cargar();
-    const id = setInterval(cargar, INTERVALO_REFRESCO_MS);
+    const intervalo = setInterval(cargar, INTERVALO_REFRESCO_MS);
     return () => {
       cancelado = true;
-      clearInterval(id);
+      clearInterval(intervalo);
     };
   }, [id]);
 
@@ -65,6 +68,10 @@ export default function ResultadosPropuestaPage() {
           Los resultados se publicarán cuando cierre la votación, el{" "}
           {new Date(estado.propuesta.fechaCierre).toLocaleString("es-ES")}.
         </p>
+      )}
+
+      {estado.fase === "no_disponibles" && (
+        <p className="alert alert-error">Los resultados de esta propuesta no están disponibles.</p>
       )}
 
       {estado.fase === "error" && (

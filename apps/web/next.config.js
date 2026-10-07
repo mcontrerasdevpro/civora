@@ -24,6 +24,7 @@ const salida = process.env.CIVORA_STANDALONE === "true" ? { output: "standalone"
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   ...salida,
   ...trazado,
   transpilePackages: ["@civora/shared-types"],
@@ -35,7 +36,11 @@ const nextConfig = {
     return [
       {
         source: "/:path*",
-        headers: [{ key: "Content-Security-Policy", value: crearCsp("__CSP_NONCE__") }],
+        headers: [
+          { key: "Content-Security-Policy", value: crearCsp("__CSP_NONCE__") },
+          // /verificar?nullifier=… lleva el recibo en la URL: que no salga en el Referer.
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
       },
     ];
   },

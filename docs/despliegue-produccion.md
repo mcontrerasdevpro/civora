@@ -133,7 +133,9 @@ secretos o de contraseñas). Perderla obliga a desplegar un contrato nuevo,
 igual que rotarla ([ADR 0005](decisiones/0005-no-publicar-nif.md)).
 
 Consecuencias de datos: las propuestas guardadas en la base de datos que
-apuntan al contrato antiguo no existen en el nuevo y quedan huérfanas.
+apuntan al contrato antiguo no existen en el nuevo y quedan huérfanas. Siguen
+apareciendo en el listado; sus resultados se muestran como «no disponibles»
+y el contrato rechaza cualquier voto sobre ellas.
 
 ## 3. Comprobar el servicio antes de fusionar
 
@@ -150,7 +152,8 @@ queda en el contrato y la base de datos de la demo.
 | 3 | Votar con certificado digital (Autofirma + certificado FNMT o DNIe) | La confirmación avisa de que se abrirá Autofirma; la firma se pide al pulsar «Sí»; recibo. Un segundo voto con el mismo certificado se rechaza |
 | 4 | Flujo ZK con la app ZKPassport y un DNIe o pasaporte real (NFC) | El QR aparece, la prueba real se acepta y se obtiene recibo |
 | 5 | Sin banner | **MODO DEMOSTRACIÓN** no aparece (`devMode` desactivado) |
-| 6 | CSP: `curl.exe -sI https://civora.nexuraia.com/votar` | `content-security-policy` con `nonce-…`, `strict-dynamic` y `media-src 'self'`, **sin** `unsafe-eval`; ningún error de CSP en la consola del navegador |
+| 6 | CSP: `curl.exe -sI https://civora.nexuraia.com/votar` | `content-security-policy` con `nonce-…`, `strict-dynamic` y `media-src 'self'`, **sin** `unsafe-eval`; `referrer-policy: no-referrer`; sin `x-powered-by` |
+| 6b | Abrir en el navegador `/`, `/propuestas`, `/propuestas/nueva`, `/verificar`, `/resultados`, `/votar`, `/votar/<id>` y `/resultados/<id>` | Ningún error de CSP en la consola en ninguna; `/propuestas` muestra el listado y `/verificar` responde al pulsar «Comprobar» |
 | 7 | Modo sencillo en `/votar/<id>` | El interruptor se recuerda al recargar; letra grande; sin palabras técnicas; confirmación «Va a votar: X. ¿Es correcto?» |
 | 8 | Audios | En la confirmación, «Escuchar» reproduce `/audio/confirmacion/<opción>.wav` (200, `audio/wav`) |
 | 9 | Resultados ocultos hasta el cierre | Antes del cierre, `/resultados/<id>` y la API no muestran recuentos; tras el cierre, sí y coinciden con los votos emitidos |
@@ -167,7 +170,7 @@ Solo con confirmación explícita del responsable.
 2. Fusiona la PR. Los checks obligatorios de `main` impiden hacerlo sin el
    CI en verde.
 3. En el servicio `civora`, cambia la rama de *Source* a `main` y despliega.
-4. Repite las comprobaciones 1, 2, 5, 6, 9 y 10 del paso 3.
+4. Repite las comprobaciones 1, 2, 5, 6, 6b, 9 y 10 del paso 3.
 5. Activa *Auto Deploy* para `main` si quieres despliegues en cada push.
 
 ## 5. Volver atrás si algo falla

@@ -203,6 +203,7 @@ con contenido manipulado sin efecto.
 | Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente |
 | Entorno de pruebas separado (contrato y dominio propios), con el VPS dedicado | pendiente |
 | Dependencias: Next 15.5.27 y React 19.2.8, sin `node-forge` en runtime, `pnpm audit --prod` limpio y Dependabot agrupado ([ADR 0012](decisiones/0012-next-15-react-19.md)) | hecho |
+| CSP con nonce en todas las páginas (renderizado dinámico), resultados «no disponibles» sin 500, `Referrer-Policy: no-referrer` y E2E de todas las páginas ([auditoría](auditoria-seguridad.md#revisión-en-producción-2026-10-07-rama-actualizar-dependencias)) | hecho; pendiente de revisar en producción |
 | Revisar los 4 avisos de desarrollo sin parche (`braces`, `node-forge` en tests, `sprintf-js`, `elliptic`) al migrar a Hardhat 3 | pendiente |
 | Next 16 como tarea propia (versión mayor) | pendiente |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |

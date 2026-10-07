@@ -316,7 +316,7 @@ con contenido manipulado sin efecto.
 | Licencia AGPL-3.0-or-later: `LICENSE`, campo `license` y cabeceras SPDX ([ADR 0018](decisiones/0018-licencia-agpl.md)); el contrato muestra la nueva cabecera desde su próximo despliegue | hecho (rama `adr-arquitectura-servicios`) |
 | Acuerdo de cesión (CLA) revisado por un abogado y `CONTRIBUTING.md`; hasta entonces no se aceptan PR externas ([ADR 0018](decisiones/0018-licencia-agpl.md)) | pendiente |
 | Enlace al código fuente del commit desplegado en el pie de la web (AGPL, sección 13) | pendiente |
-| Confirmar la licencia de `@zkpassport/utils`, que no la declara en su `package.json` ([ADR 0018](decisiones/0018-licencia-agpl.md#dependencias)) | pendiente, antes de producción |
+| Confirmar con ZKPassport, por escrito, la licencia de `@zkpassport/utils`, que no la declara en su `package.json` ([ADR 0018](decisiones/0018-licencia-agpl.md#dependencias)). Bloquea el paso a producción (tarea [e](#servicios-propuestas-y-red-principal)) y la oferta de cualquier licencia comercial | pendiente |
 | Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; CI en verde en GitHub |
 | Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | hecho: *Source* en `main` (2026-10-07); durante la prueba de R-01, en su rama |
 | Contrato en Sepolia `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` (con R-01; sustituye a `0xDCfe…FC3C`) (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia`; la demo usa el de demostración | hecho |

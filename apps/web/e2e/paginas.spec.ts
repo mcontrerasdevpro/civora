@@ -131,6 +131,16 @@ test.describe("las páginas cliente arrancan", () => {
     await expect(page.getByText("Tu voto está contado")).toBeVisible();
   });
 
+  test("/verificar explica que el recibo se consulta tras el cierre (423)", async ({ page }) => {
+    await page.route(/\/api\/propuesta\/votos\/0x/, (ruta) =>
+      ruta.fulfill({ status: 423, json: { error: "Los recibos estarán disponibles tras el cierre." } })
+    );
+    await page.goto(`/verificar?propuestaId=${PROPUESTA_ID}&nullifier=${NULLIFIER}`);
+    await page.getByRole("button", { name: "Comprobar" }).click();
+    await expect(page.getByText("La votación sigue abierta.")).toBeVisible();
+    await expect(page.getByText("No se ha podido comprobar el recibo.")).toHaveCount(0);
+  });
+
   test("/resultados/<id> avisa si los resultados no están disponibles", async ({ page }) => {
     await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) =>
       ruta.fulfill({
@@ -143,5 +153,25 @@ test.describe("las páginas cliente arrancan", () => {
     );
     await page.goto(`/resultados/${PROPUESTA_ID}`);
     await expect(page.getByText("Los resultados de esta propuesta no están disponibles.")).toBeVisible();
+    await expect(page.locator(".page-head p")).toHaveText("Cerrada");
+  });
+
+  test("/resultados/<id> muestra el título mientras los resultados están ocultos", async ({ page }) => {
+    const cierre = new Date(Date.now() + 86_400_000).toISOString();
+    await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) =>
+      ruta.fulfill({
+        json: { propuesta: { id: PROPUESTA_ID, titulo: "Abierta", fechaCierre: cierre }, resultados: null },
+      })
+    );
+    await page.goto(`/resultados/${PROPUESTA_ID}`);
+    await expect(page.getByText("Los resultados se publicarán cuando cierre la votación")).toBeVisible();
+    await expect(page.locator(".page-head p")).toHaveText("Abierta");
+  });
+
+  test("/resultados/<id> no se queda en «Cargando…» si la propuesta no existe", async ({ page }) => {
+    await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) => ruta.fulfill({ status: 404, json: {} }));
+    await page.goto(`/resultados/${PROPUESTA_ID}`);
+    await expect(page.getByText("No se ha podido cargar esta propuesta.")).toBeVisible();
+    await expect(page.getByText("Cargando…")).toHaveCount(0);
   });
 });

@@ -88,6 +88,12 @@ test.describe("CSP en todas las páginas", () => {
     expect(consola).toEqual([]);
   });
 
+  test("/logo.png se sirve como imagen (lo descarga la app de ZKPassport)", async ({ request }) => {
+    const respuesta = await request.get("/logo.png");
+    expect(respuesta.status()).toBe(200);
+    expect(respuesta.headers()["content-type"]).toBe("image/png");
+  });
+
   test("cabeceras: sin X-Powered-By y con Referrer-Policy no-referrer", async ({ request }) => {
     for (const ruta of ["/", "/verificar"]) {
       const cabeceras = (await request.get(ruta)).headers();

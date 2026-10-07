@@ -77,7 +77,9 @@ export async function crearSolicitudVerificacion(params: {
 
   const queryBuilder = await zkPassport.request({
     name: "CÍVORA",
-    logo: "https://civora.example/logo.png",
+    // La app de ZKPassport descarga el logo: debe ser una URL válida y la
+    // sirve la propia web (apps/web/public/logo.png) en el dominio de ZKPassport.
+    logo: `https://${APP_DOMAIN}/logo.png`,
     purpose: "Verificar que puedes votar sin revelar tu identidad",
     // El scope ata el identificador unico a esta propuesta concreta: la
     // misma persona genera un nullifier distinto en cada propuesta, y no es

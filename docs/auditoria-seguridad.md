@@ -238,6 +238,8 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 
 **Prueba con pasaporte simulado en producción (2026-10-07):** voto ZK registrado en el contrato de demostración `0xe5B8…1Ed6` (propuesta «Nueva prueba ZK pASSpport»): recibo `0x04018c…9fe0`, opción «a favor», enviado por el relayer. Recorrido completo: QR, app, prueba con la opción vinculada, contrato y recibo. Se borraron de la base de datos las 5 propuestas creadas en contratos anteriores, que ya no aceptaban votos; sus votos y hashes siguen en esos contratos.
 
+**La app ZKPassport falla al generar la prueba (2026-10-07, tarde):** tras el voto correcto de la mañana, la app muestra «Something went wrong» con cualquier documento, tanto con el SDK 0.18.2 como tras volver a la 0.16.2. Descartado: la petición del QR es la esperada (dominio, edad, dato vinculado, ámbito, `compressed-evm`, `dev`), las dependencias del SDK son las mismas que por la mañana y los registros y servicios de ZKPassport no han cambiado. Lo único incorrecto de la petición era el logo, `https://civora.example/logo.png`, un dominio que no existe (la documentación de ZKPassport exige una URL válida). Hipótesis: una actualización de la app falla al descargarlo. Corregido: la web sirve `public/logo.png` y la petición usa `https://<dominio ZKPassport>/logo.png`, con un test y un E2E. Pendiente de confirmar con la app.
+
 ### R-02 · Crítico — Nullifier de certificado enumerable y publicado
 
 El nullifier de certificado era `SHA-256(propuestaId:certificado:NIF)`, sin secreto, y se publicaba on-chain como nullifier y, además, dentro de la nota de `votarManual`. Con el identificador de la propuesta (público) y el espacio pequeño de DNI, cualquiera podía recalcularlo para cada DNI y saber quién votó y qué.

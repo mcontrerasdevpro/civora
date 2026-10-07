@@ -48,3 +48,15 @@ test("la CSP no abre WebAssembly ni Alchemy para la verificación local del SDK"
   const csp = crearCsp("n", "civora.nexuraia.com", "production");
   assert.doesNotMatch(csp, /wasm-unsafe-eval|alchemy\.com|aztec/);
 });
+
+// ---------- Logo de la solicitud a ZKPassport ----------
+
+test("el logo de la solicitud a ZKPassport es un PNG servido por la propia web", async () => {
+  const identidad = await readFile(new URL("../../../packages/zk-identity/src/index.ts", import.meta.url), "utf8");
+  assert.match(identidad, /logo: `https:\/\/\$\{APP_DOMAIN\}\/logo\.png`/);
+  assert.doesNotMatch(identidad, /civora\.example/);
+
+  const png = await readFile(new URL("../public/logo.png", import.meta.url));
+  assert.deepEqual([...png.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert.ok(png.length < 50_000);
+});

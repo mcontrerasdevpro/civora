@@ -52,6 +52,7 @@ dejar diseñado el voto asistido para la Fase 1. Diseño y amenazas:
 | Confirmación «Va a votar: X. ¿Es correcto?» con Sí / Volver | hecho |
 | Avisos fijos: secreto del voto y cómo pedir ayuda | hecho |
 | Botón «Escuchar» solo con voces locales; audios propios para la confirmación ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)) | hecho |
+| Aviso de escuchas ajenas al pulsar «Escuchar», por escrito y por voz, y confirmación de auriculares antes de leer | hecho (rama `feat/aviso-escuchar`) |
 | WCAG 2.1 AA en el flujo de voto, comprobado con axe en `test:e2e` | hecho |
 | Reintento sin perder progreso si caduca el reto de certificado | hecho |
 | CSP de desarrollo para que `pnpm dev` funcione ([ADR 0007](decisiones/0007-csp-con-nonce.md)) | hecho |

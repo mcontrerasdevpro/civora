@@ -102,6 +102,15 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
+## Aviso de escuchas ajenas (2026-10-07, rama `feat/aviso-escuchar`)
+
+- Al pulsar «Escuchar» (instrucciones de cada paso y confirmación de la opción) aparece un aviso con `role="alert"` y suena el mismo aviso por voz: «Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.» El aviso no contiene la opción.
+- No se lee nada hasta pulsar «Llevo auriculares puestos»; «Cancelar» detiene el aviso. El foco pasa al botón de confirmación. El navegador no puede detectar auriculares, así que la confirmación es declarada.
+- La confirmación sigue sin pasar por `speechSynthesis`: el aviso es un audio propio (`public/audio/confirmacion/aviso-escuchas.wav`, voz local Helena, provisional como los demás). En las demás pantallas se lee con la voz local.
+- E2E: el aviso aparece antes de leer, el texto solo se lee tras confirmar, cancelar no lee nada y axe sin infracciones en el aviso. Revisado a 375 y 1280 px.
+
+Verificación: 51 tests de web, typecheck, build y 72 E2E.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

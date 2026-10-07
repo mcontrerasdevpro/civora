@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { OpcionVoto } from "@civora/shared-types";
-import { AUDIO_AVISO_AUTOFIRMA, AUDIO_CONFIRMACION, elegirVozLocal } from "../../lib/modo-sencillo.mjs";
+import {
+  AUDIO_AVISO_AUTOFIRMA,
+  AUDIO_AVISO_ESCUCHAS,
+  AUDIO_CONFIRMACION,
+  AVISO_ESCUCHAS,
+  elegirVozLocal,
+} from "../../lib/modo-sencillo.mjs";
 
 /** Tiempo máximo de espera a que el navegador publique sus voces. */
 const ESPERA_VOCES_MS = 1500;
@@ -10,14 +16,43 @@ const ESPERA_VOCES_MS = 1500;
 type EstadoVoz = { tipo: "comprobando" } | { tipo: "sin-voz" } | { tipo: "lista"; voz: SpeechSynthesisVoice };
 
 /**
+ * Aviso de escuchas ajenas, por escrito (role="alert") mientras suena el
+ * mismo aviso por voz. Lo leído solo suena tras confirmar que se llevan
+ * auriculares: el navegador no puede detectarlos, así que se pide confirmarlo.
+ */
+function ConfirmarAuriculares({ onConfirmar, onCancelar }: { onConfirmar: () => void; onCancelar: () => void }) {
+  const confirmar = useRef<HTMLButtonElement>(null);
+  useEffect(() => confirmar.current?.focus(), []);
+
+  return (
+    <div className="aviso-auriculares" role="alert">
+      <p>
+        <strong>{AVISO_ESCUCHAS}</strong>
+      </p>
+      <p>Para escuchar, póngase los auriculares y confírmelo.</p>
+      <div className="aviso-auriculares-botones">
+        <button ref={confirmar} type="button" className="btn-primary" onClick={onConfirmar}>
+          Llevo auriculares puestos
+        </button>
+        <button type="button" className="btn-secundario" onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Lee un texto en voz alta con speechSynthesis, solo con voces del propio
  * dispositivo: las voces en red envían el texto fuera. Si no hay ninguna
  * local, el botón se oculta con un aviso. Nunca debe recibir la opción
- * elegida: para eso está AudioConfirmacion.
+ * elegida: para eso está AudioConfirmacion. Antes de leer, avisa de las
+ * escuchas ajenas y pide confirmar que se llevan auriculares.
  */
 export function BotonEscuchar({ texto }: { texto: string }) {
   const [estado, setEstado] = useState<EstadoVoz>({ tipo: "comprobando" });
   const [hablando, setHablando] = useState(false);
+  const [pidiendoAuriculares, setPidiendoAuriculares] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -48,6 +83,7 @@ export function BotonEscuchar({ texto }: { texto: string }) {
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
     setHablando(false);
+    setPidiendoAuriculares(false);
   }, [texto]);
 
   if (estado.tipo === "comprobando") return null;
@@ -60,35 +96,60 @@ export function BotonEscuchar({ texto }: { texto: string }) {
     );
   }
 
+  const voz = estado.voz;
+
+  function enunciado(frase: string) {
+    const resultado = new SpeechSynthesisUtterance(frase);
+    resultado.voice = voz;
+    resultado.lang = voz.lang;
+    resultado.rate = 0.9;
+    return resultado;
+  }
+
   function alternar() {
-    if (estado.tipo !== "lista") return;
     const sintesis = window.speechSynthesis;
     sintesis.cancel();
     if (hablando) {
       setHablando(false);
       return;
     }
-    const enunciado = new SpeechSynthesisUtterance(texto);
-    enunciado.voice = estado.voz;
-    enunciado.lang = estado.voz.lang;
-    enunciado.rate = 0.9;
-    enunciado.onend = () => setHablando(false);
-    enunciado.onerror = () => setHablando(false);
+    // Primero el aviso de escuchas, por voz y por escrito; el texto, después.
+    setPidiendoAuriculares(true);
+    sintesis.speak(enunciado(AVISO_ESCUCHAS));
+  }
+
+  function leer() {
+    const sintesis = window.speechSynthesis;
+    sintesis.cancel();
+    setPidiendoAuriculares(false);
+    const lectura = enunciado(texto);
+    lectura.onend = () => setHablando(false);
+    lectura.onerror = () => setHablando(false);
     setHablando(true);
-    sintesis.speak(enunciado);
+    sintesis.speak(lectura);
+  }
+
+  function cancelar() {
+    window.speechSynthesis.cancel();
+    setPidiendoAuriculares(false);
   }
 
   return (
-    <button type="button" className="btn-escuchar" onClick={alternar} aria-pressed={hablando}>
-      <span aria-hidden="true">🔊</span> {hablando ? "Parar" : "Escuchar"}
-    </button>
+    <>
+      <button type="button" className="btn-escuchar" onClick={alternar} aria-pressed={hablando}>
+        <span aria-hidden="true">🔊</span> {hablando ? "Parar" : "Escuchar"}
+      </button>
+      {pidiendoAuriculares && <ConfirmarAuriculares onConfirmar={leer} onCancelar={cancelar} />}
+    </>
   );
 }
 
 /**
  * Lee la confirmación de la opción elegida con un audio pregrabado de
- * nuestro propio origen (media-src 'self'), sin speechSynthesis. En la vía
- * de certificado, a continuación suena el aviso de que se abrirá Autofirma.
+ * nuestro propio origen (media-src 'self'), sin speechSynthesis. Antes suena
+ * el aviso de escuchas ajenas y la opción no se reproduce hasta confirmar
+ * que se llevan auriculares. En la vía de certificado, a continuación suena
+ * el aviso de que se abrirá Autofirma.
  */
 export function AudioConfirmacion({
   opcion,
@@ -99,14 +160,35 @@ export function AudioConfirmacion({
 }) {
   const audioOpcion = useRef<HTMLAudioElement>(null);
   const audioAviso = useRef<HTMLAudioElement>(null);
+  const audioEscuchas = useRef<HTMLAudioElement>(null);
   const [error, setError] = useState(false);
+  const [pidiendoAuriculares, setPidiendoAuriculares] = useState(false);
+
+  function pararTodo() {
+    for (const audio of [audioOpcion, audioAviso, audioEscuchas]) audio.current?.pause();
+  }
+
+  function avisar() {
+    pararTodo();
+    setPidiendoAuriculares(true);
+    const aviso = audioEscuchas.current;
+    if (!aviso) return;
+    aviso.currentTime = 0;
+    aviso.play().catch(() => setError(true));
+  }
 
   function reproducir() {
+    pararTodo();
+    setPidiendoAuriculares(false);
     const elemento = audioOpcion.current;
     if (!elemento) return;
-    audioAviso.current?.pause();
     elemento.currentTime = 0;
     elemento.play().catch(() => setError(true));
+  }
+
+  function cancelar() {
+    pararTodo();
+    setPidiendoAuriculares(false);
   }
 
   function alTerminarOpcion() {
@@ -128,15 +210,17 @@ export function AudioConfirmacion({
       {conAvisoAutofirma && (
         <audio ref={audioAviso} src={AUDIO_AVISO_AUTOFIRMA} preload="auto" onError={() => setError(true)} />
       )}
+      <audio ref={audioEscuchas} src={AUDIO_AVISO_ESCUCHAS} preload="auto" onError={() => setError(true)} />
       {error ? (
         <p className="aviso-escuchar" role="note">
           No se ha podido reproducir el audio.
         </p>
       ) : (
-        <button type="button" className="btn-escuchar" onClick={reproducir}>
+        <button type="button" className="btn-escuchar" onClick={avisar}>
           <span aria-hidden="true">🔊</span> Escuchar
         </button>
       )}
+      {pidiendoAuriculares && <ConfirmarAuriculares onConfirmar={reproducir} onCancelar={cancelar} />}
     </>
   );
 }

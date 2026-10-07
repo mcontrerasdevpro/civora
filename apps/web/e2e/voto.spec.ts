@@ -12,6 +12,7 @@ import {
 } from "./utilidades";
 
 const VOZ_LOCAL = { name: "Helena", lang: "es-ES", localService: true };
+const AVISO_ESCUCHAS = "Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.";
 const VOZ_EN_RED = { name: "Google español", lang: "es-ES", localService: false };
 
 test.describe("flujo de voto: accesibilidad WCAG 2.1 AA", () => {
@@ -110,7 +111,16 @@ test.describe("confirmación final", () => {
     expect(respuesta.status()).toBe(200);
     expect(respuesta.headers()["content-type"]).toContain("audio/");
 
+    await expect(page.locator(".confirmacion-voto audio[src='/audio/confirmacion/aviso-escuchas.wav']")).toHaveCount(1);
+    expect((await page.request.get("/audio/confirmacion/aviso-escuchas.wav")).status()).toBe(200);
+
     await page.getByRole("button", { name: "Escuchar" }).click();
+    // Primero el aviso de escuchas, por escrito; la opción espera a los auriculares.
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toBeVisible();
+    await comprobarAccesibilidad(page, "aviso de escuchas en la confirmación");
+    await page.getByRole("button", { name: "Llevo auriculares puestos" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toHaveCount(0);
+
     const leido = await page.evaluate(() => (window as unknown as { __leido: unknown[] }).__leido);
     expect(leido).toEqual([]);
   });
@@ -198,13 +208,33 @@ test.describe("botón Escuchar", () => {
     await abrirVotacion(page);
     await activarModoSencillo(page);
 
+    const leido = () =>
+      page.evaluate(() => (window as unknown as { __leido: { texto: string; voz: string }[] }).__leido);
+
     await page.getByRole("button", { name: "Escuchar" }).click();
-    const leido = await page.evaluate(
-      () => (window as unknown as { __leido: { texto: string; voz: string }[] }).__leido
-    );
-    expect(leido).toHaveLength(1);
-    expect(leido[0].voz).toBe("Helena");
-    expect(leido[0].texto).toContain("Primero tiene que identificarse");
+    // El aviso de escuchas suena y se muestra antes; el texto no se lee aún.
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Llevo auriculares puestos" })).toBeFocused();
+    expect((await leido()).map((l) => l.texto)).toEqual([AVISO_ESCUCHAS]);
+
+    await page.getByRole("button", { name: "Llevo auriculares puestos" }).click();
+    const lecturas = await leido();
+    expect(lecturas).toHaveLength(2);
+    expect(lecturas[1].voz).toBe("Helena");
+    expect(lecturas[1].texto).toContain("Primero tiene que identificarse");
+  });
+
+  test("si se cancela el aviso de escuchas, no se lee nada más", async ({ page }) => {
+    await simularVoces(page, [VOZ_LOCAL]);
+    await simularApi(page);
+    await abrirVotacion(page);
+    await activarModoSencillo(page);
+
+    await page.getByRole("button", { name: "Escuchar" }).click();
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toHaveCount(0);
+    const leido = await page.evaluate(() => (window as unknown as { __leido: { texto: string }[] }).__leido);
+    expect(leido.map((l) => l.texto)).toEqual([AVISO_ESCUCHAS]);
   });
 
   test("se oculta con un aviso si solo hay voces en red", async ({ page }) => {

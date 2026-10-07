@@ -45,6 +45,9 @@ detalle en la [auditoría](auditoria-seguridad.md).
   mensajes de error): se descartan tras verificar. Un test lo comprueba con
   un CMS real y un marcador.
 - La firma cubre la opción (R-04): no puede reutilizarse para otra.
+- La firma tiene que estar hecha con el mismo certificado cuya cadena y DNI
+  se validan (C-03): no basta con enviar el certificado público de otra
+  persona y firmar con una clave propia.
 - El nullifier es un HMAC con un secreto del servidor (R-02): un tercero no
   puede recalcularlo enumerando DNI, pero el operador sí (A-01).
 

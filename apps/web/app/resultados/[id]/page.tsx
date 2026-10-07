@@ -58,7 +58,11 @@ export default function ResultadosPropuestaPage() {
     <main className="wrap page-shell">
       <div className="page-head">
         <h1>Resultados</h1>
-        <p>{estado.fase === "lista" ? estado.propuesta.titulo : "Cargando…"}</p>
+        {"propuesta" in estado ? (
+          <p>{estado.propuesta.titulo}</p>
+        ) : (
+          estado.fase === "cargando" && <p>Cargando…</p>
+        )}
       </div>
 
       {estado.fase === "cargando" && <p className="form-hint">Cargando resultados…</p>}

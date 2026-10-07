@@ -224,6 +224,29 @@ test("no expone ni registra la firma, el certificado ni sus datos", async () => 
   }
 });
 
+// ---------- La firma debe hacerse con el certificado enviado ----------
+
+test("rechaza una firma válida hecha con otra clave que el certificado enviado", async () => {
+  const { reto, timestamp } = generarReto(PROPUESTA, "a_favor");
+  // Mismo emisor y número de serie, claves distintas: el atacante firma con
+  // la suya y envía el certificado (público) de la víctima.
+  const atacante = firmarCmsDetached(reto);
+  const victima = firmarCmsDetached(reto);
+
+  const resultado = await verificarFirmaCertificado({
+    propuestaId: PROPUESTA,
+    opcion: "a_favor",
+    timestamp,
+    reto,
+    signatureB64: atacante.signatureB64,
+    certB64: victima.certB64,
+  });
+
+  assert.equal(resultado.valido, false);
+  assert.equal(resultado.identificador, null);
+  assert.equal(resultado.error, "La firma no se ha hecho con el certificado enviado.");
+});
+
 test("el código del voto con certificado no guarda ni registra la firma ni el certificado", async () => {
   const fuentes = await Promise.all(
     ["../lib/certificado-digital.ts", "../app/api/propuesta/votos/certificado/route.ts"].map((ruta) =>

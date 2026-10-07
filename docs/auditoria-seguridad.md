@@ -102,6 +102,15 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
+## Aviso de escuchas ajenas (2026-10-07, rama `feat/aviso-escuchar`)
+
+- Al pulsar «Escuchar» (instrucciones de cada paso y confirmación de la opción) aparece un aviso con `role="alert"` y suena el mismo aviso por voz: «Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.» El aviso no contiene la opción.
+- No se lee nada hasta pulsar «Llevo auriculares puestos»; «Cancelar» detiene el aviso. El foco pasa al botón de confirmación. El navegador no puede detectar auriculares, así que la confirmación es declarada.
+- La confirmación sigue sin pasar por `speechSynthesis`: el aviso es un audio propio (`public/audio/confirmacion/aviso-escuchas.wav`, voz local Helena, provisional como los demás). En las demás pantallas se lee con la voz local.
+- E2E: el aviso aparece antes de leer, el texto solo se lee tras confirmar, cancelar no lee nada y axe sin infracciones en el aviso. Revisado a 375 y 1280 px.
+
+Verificación: 51 tests de web, typecheck, build y 72 E2E.
+
 ## Dependabot (2026-10-07, rama `fix/dependabot`)
 
 - **PR #12 (menores y parches) fallaba en el build:** `@zkpassport/sdk` 0.18.0 exige `@zkpassport/utils` 0.39.0-beta.2 exacta, que no exporta `getChainFromQuery`, y el SDK la importa. Es un fallo de la publicación (lo corrige la 0.18.2). Comprobado que el resto del grupo (React 19.3.0, pg 8.23.1, pkijs 3.4.1 y tipos de React) pasa con el SDK en 0.16.2: 20 tests de contratos, 51 de web, typecheck, build, 70 E2E y `pnpm audit --prod` limpio.
@@ -211,9 +220,15 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 
 **Impacto:** un voto ZK puede sustituirse por otro de distinta opción sin que el votante lo note hasta verificar su recibo.
 
-**Estado:** abierto. Es la primera prioridad del [spike ZKPassport](ROADMAP.md#spike-zkpassport-deduplicación-entre-vías). Descrito en el [modelo de amenazas](modelo-amenazas.md#front-running-de-votos-zk-r-01).
+**Estado:** corregido en el código (rama `feat/r01-opcion-en-prueba-zk`, [ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)); pendiente de desplegar el contrato nuevo. Descrito en el [modelo de amenazas](modelo-amenazas.md#front-running-de-votos-zk-r-01).
 
-**Arreglo previsto:** atar la opción a la prueba (por ejemplo, incluirla en los datos vinculados que ZKPassport firma junto al ámbito) y verificar en el contrato que la opción recibida es la de la prueba.
+**Corrección:** la solicitud a ZKPassport vincula `custom_data = civora-voto:<propuesta>:<opción>` y `votarConPruebaZk` lo lee con `getBoundData(committedInputs)`; si no coincide con la propuesta y la opción recibidas, revierte con `OpcionNoVinculada`. El ámbito no cambia, así que el nullifier sigue siendo uno por persona y propuesta. Tests de Hardhat: la misma prueba reenviada con otra opción se rechaza y el voto legítimo entra después; también se rechazan la prueba sin dato vinculado, la de otra propuesta y la que añade texto al final. Test de web: el formato del SDK y el del contrato coinciden. En la vía ZK el QR se muestra al confirmar el voto (E2E con axe a 375 y 1280 px). Verificación: 23 tests de contratos, 54 de web, typecheck, build y 74 E2E. Contrato desplegado en Sepolia en `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` y comprobado con `verificar:sepolia` (relayer, dominio, `devMode` desactivado) y con `datosVinculados` on-chain.
+
+**El voto ZK no llegaba al contrato en producción (corregido, 2026-10-07):** en la primera prueba real, la app leyó el documento y generó la prueba, pero la web se quedó en «Generando la prueba…». Antes de `onResult`, el SDK verifica la prueba en el navegador: carga Barretenberg (WebAssembly y Web Workers), descarga sus parámetros de `crs.aztec-cdn.foundation` y consulta el verificador en un nodo de Alchemy (`eth-mainnet.g.alchemy.com`). La CSP bloquea las tres cosas (`script-src wasm-eval` y `connect-src`, reproducido en `civora.nexuraia.com`) y la carga de Barretenberg falla sin `try/catch`, así que `onResult` nunca llegaba. No se abre la CSP: la consulta a Alchemy le enviaría la prueba, con el nullifier y la opción, junto con la IP del votante. La web toma la prueba `outer_evm` en `onProofGenerated`, que el SDK llama antes de verificar, y la envía al contrato, que es quien la verifica. Además, `disableProofStorage: true` evita que el SDK suba las pruebas al panel de ZKPassport. Tests: el flujo usa `onProofGenerated`, el SDK se crea con `disableProofStorage` y la CSP no incluye `wasm-unsafe-eval`, Alchemy ni Aztec.
+
+**Con un documento real, el contrato de Sepolia rechaza la prueba (2026-10-07):** tras el arreglo anterior, la prueba de un DNIe real llegó al contrato y revirtió. El verificador de ZKPassport comprueba la raíz del registro de certificados, y el de Sepolia solo conoce los certificados de los pasaportes simulados: su raíz (`0x0230…00c0`) no es la de mainnet (`0x1a46…527f`) y ninguno acepta la del otro; Base sí comparte la de mainnet (comprobado con `RegistryClient.isCertificateRootValid`). Decisión: la demo sigue en Sepolia, con el contrato de demostración del [ADR 0010](decisiones/0010-demo-publica-testnet.md) (`devModeZk=true`), y la vía DNIe avisa de que solo admite pasaportes simulados. En ese contrato no se exige la nacionalidad, porque los pasaportes simulados no son españoles; con `devModeZk=false` se sigue exigiendo `ESP` (test de contrato). La validación con documentos reales queda para una red principal.
+
+**Prueba con pasaporte simulado en producción (2026-10-07):** voto ZK registrado en el contrato de demostración `0xe5B8…1Ed6` (propuesta «Nueva prueba ZK pASSpport»): recibo `0x04018c…9fe0`, opción «a favor», enviado por el relayer. Recorrido completo: QR, app, prueba con la opción vinculada, contrato y recibo. Se borraron de la base de datos las 5 propuestas creadas en contratos anteriores, que ya no aceptaban votos; sus votos y hashes siguen en esos contratos.
 
 ### R-02 · Crítico — Nullifier de certificado enumerable y publicado
 

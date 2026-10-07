@@ -12,6 +12,7 @@ import {
 } from "./utilidades";
 
 const VOZ_LOCAL = { name: "Helena", lang: "es-ES", localService: true };
+const AVISO_ESCUCHAS = "Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.";
 const VOZ_EN_RED = { name: "Google español", lang: "es-ES", localService: false };
 
 test.describe("flujo de voto: accesibilidad WCAG 2.1 AA", () => {
@@ -24,7 +25,7 @@ test.describe("flujo de voto: accesibilidad WCAG 2.1 AA", () => {
       await comprobarAccesibilidad(page, "elección de método");
 
       await page.locator(".metodo-card").first().click();
-      await expect(page.locator(".alert-error, .estado-zk").first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
       await comprobarAccesibilidad(page, "identificación con DNIe");
       if (sencillo) await comprobarSinJerga(page, "identificación con DNIe");
       await page.locator(".metodo-volver").click();
@@ -110,7 +111,16 @@ test.describe("confirmación final", () => {
     expect(respuesta.status()).toBe(200);
     expect(respuesta.headers()["content-type"]).toContain("audio/");
 
+    await expect(page.locator(".confirmacion-voto audio[src='/audio/confirmacion/aviso-escuchas.wav']")).toHaveCount(1);
+    expect((await page.request.get("/audio/confirmacion/aviso-escuchas.wav")).status()).toBe(200);
+
     await page.getByRole("button", { name: "Escuchar" }).click();
+    // Primero el aviso de escuchas, por escrito; la opción espera a los auriculares.
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toBeVisible();
+    await comprobarAccesibilidad(page, "aviso de escuchas en la confirmación");
+    await page.getByRole("button", { name: "Llevo auriculares puestos" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toHaveCount(0);
+
     const leido = await page.evaluate(() => (window as unknown as { __leido: unknown[] }).__leido);
     expect(leido).toEqual([]);
   });
@@ -198,13 +208,33 @@ test.describe("botón Escuchar", () => {
     await abrirVotacion(page);
     await activarModoSencillo(page);
 
+    const leido = () =>
+      page.evaluate(() => (window as unknown as { __leido: { texto: string; voz: string }[] }).__leido);
+
     await page.getByRole("button", { name: "Escuchar" }).click();
-    const leido = await page.evaluate(
-      () => (window as unknown as { __leido: { texto: string; voz: string }[] }).__leido
-    );
-    expect(leido).toHaveLength(1);
-    expect(leido[0].voz).toBe("Helena");
-    expect(leido[0].texto).toContain("Primero tiene que identificarse");
+    // El aviso de escuchas suena y se muestra antes; el texto no se lee aún.
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Llevo auriculares puestos" })).toBeFocused();
+    expect((await leido()).map((l) => l.texto)).toEqual([AVISO_ESCUCHAS]);
+
+    await page.getByRole("button", { name: "Llevo auriculares puestos" }).click();
+    const lecturas = await leido();
+    expect(lecturas).toHaveLength(2);
+    expect(lecturas[1].voz).toBe("Helena");
+    expect(lecturas[1].texto).toContain("Primero tiene que identificarse");
+  });
+
+  test("si se cancela el aviso de escuchas, no se lee nada más", async ({ page }) => {
+    await simularVoces(page, [VOZ_LOCAL]);
+    await simularApi(page);
+    await abrirVotacion(page);
+    await activarModoSencillo(page);
+
+    await page.getByRole("button", { name: "Escuchar" }).click();
+    await page.getByRole("button", { name: "Cancelar" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: AVISO_ESCUCHAS })).toHaveCount(0);
+    const leido = await page.evaluate(() => (window as unknown as { __leido: { texto: string }[] }).__leido);
+    expect(leido.map((l) => l.texto)).toEqual([AVISO_ESCUCHAS]);
   });
 
   test("se oculta con un aviso si solo hay voces en red", async ({ page }) => {
@@ -224,6 +254,42 @@ test.describe("botón Escuchar", () => {
     await expect(page.getByText("La lectura en voz alta no está disponible en este navegador.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Escuchar" })).toHaveCount(0);
   });
+});
+
+test.describe("voto con DNIe o pasaporte (R-01)", () => {
+  for (const sencillo of [false, true]) {
+    test(`el QR de ZKPassport aparece al confirmar, ya elegida la opción ${sencillo ? "(modo sencillo)" : "(modo normal)"}`, async ({ page }) => {
+      const peticionesZk: string[] = [];
+      page.on("request", (peticion) => {
+        if (/zkpassport\.id/.test(peticion.url())) peticionesZk.push(peticion.url());
+      });
+      await simularApi(page);
+      await abrirVotacion(page);
+      if (sencillo) await activarModoSencillo(page);
+
+      await page.locator(".metodo-card").first().click();
+      await page.getByRole("button", { name: "Continuar" }).click();
+      // Sin opción elegida todavía no se contacta con ZKPassport.
+      await page.getByLabel("A favor").check();
+      expect(peticionesZk).toEqual([]);
+      await page.getByRole("button", { name: "Continuar" }).click();
+
+      const aviso = page.locator("#aviso-zk");
+      await expect(aviso).toContainText("ZKPassport");
+      await expect(page.getByRole("button", { name: "Sí", exact: true })).toHaveAttribute("aria-describedby", "aviso-zk");
+      await expect(page.locator(".prueba-zk")).toHaveCount(0);
+
+      await page.getByRole("button", { name: "Sí", exact: true }).click();
+      // La conexión con ZKPassport está cortada en los tests: se ve el estado o el error.
+      await expect(page.locator(".prueba-zk .estado-zk, .prueba-zk .alert-error").first()).toBeVisible();
+      await comprobarAccesibilidad(page, "QR de ZKPassport en la confirmación");
+      if (sencillo) await comprobarSinJerga(page, "QR de ZKPassport en la confirmación");
+
+      await page.locator(".prueba-zk .btn-secundario").click();
+      await expect(page.locator(".prueba-zk")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Sí", exact: true })).toBeEnabled();
+    });
+  }
 });
 
 test.describe("firma del voto con certificado (R-04)", () => {

@@ -115,3 +115,11 @@ export const AUDIO_CONFIRMACION = Object.freeze({
  * «Sí» se abre Autofirma. No contiene la opción.
  */
 export const AUDIO_AVISO_AUTOFIRMA = "/audio/confirmacion/aviso-autofirma.wav";
+
+/**
+ * Aviso de escuchas ajenas: se muestra al pulsar «Escuchar» y suena antes de
+ * cualquier lectura en voz alta. El audio no suena hasta que la persona
+ * confirma que lleva auriculares (el navegador no puede detectarlos).
+ */
+export const AVISO_ESCUCHAS = "Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.";
+export const AUDIO_AVISO_ESCUCHAS = "/audio/confirmacion/aviso-escuchas.wav";

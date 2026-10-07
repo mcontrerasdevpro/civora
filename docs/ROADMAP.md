@@ -52,6 +52,7 @@ dejar diseñado el voto asistido para la Fase 1. Diseño y amenazas:
 | Confirmación «Va a votar: X. ¿Es correcto?» con Sí / Volver | hecho |
 | Avisos fijos: secreto del voto y cómo pedir ayuda | hecho |
 | Botón «Escuchar» solo con voces locales; audios propios para la confirmación ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)) | hecho |
+| Aviso de escuchas ajenas al pulsar «Escuchar», por escrito y por voz, y confirmación de auriculares antes de leer | hecho (rama `feat/aviso-escuchar`) |
 | WCAG 2.1 AA en el flujo de voto, comprobado con axe en `test:e2e` | hecho |
 | Reintento sin perder progreso si caduca el reto de certificado | hecho |
 | CSP de desarrollo para que `pnpm dev` funcione ([ADR 0007](decisiones/0007-csp-con-nonce.md)) | hecho |
@@ -79,7 +80,7 @@ o registrar el voto.
 | R-04: opción incluida en el reto firmado; firma en la confirmación con aviso de Autofirma | hecho |
 | R-05: constructor sin dirección cero; NatSpec actualizado | hecho |
 | `SECURITY.md` y CI en GitHub Actions | hecho |
-| R-01: atar la opción a la prueba ZK | pendiente: primera tarea del spike |
+| R-01: atar la opción a la prueba ZK | hecho en código ([ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)); pendiente de desplegar el contrato |
 
 ## Spike ZKPassport: deduplicación entre vías
 
@@ -90,7 +91,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 
 | Tarea | Estado |
 |---|---|
-| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | pendiente |
+| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`), contrato en Sepolia; primera prueba real: la CSP bloqueaba la verificación local del SDK, corregido tomando la prueba en `onProofGenerated`; pendiente: repetir la prueba con DNIe o pasaporte real |
 | Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
 | Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |
@@ -114,6 +115,8 @@ A-04).
 | Tarea | Estado |
 |---|---|
 | Definir la autoridad y el proceso de formación del censo (padrón e INE requieren convenio oficial) | pendiente |
+| Conexiones obligatorias con organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md#conexiones-obligatorias-con-organismos-públicos)): DGP (SVDI: DNI, nacionalidad y fecha de nacimiento), pasaporte español (a confirmar con la DGP), INE (residencia con fecha de última variación padronal e histórico), padrón municipal si convoca un ayuntamiento | pendiente: requiere administración convocante y alta en la PID |
+| Rechazar el registro si la fecha de nacimiento declarada no coincide con la de la DGP o si falta cualquiera de las cuatro condiciones | pendiente |
 | Registro de elegibles: alta de un compromiso de identidad Semaphore tras acreditar elegibilidad | pendiente |
 | Asignación de canal (digital, punto asistido o papel) al registrarse, antes de congelar | pendiente |
 | Grupo y raíz Merkle congelados y publicados antes de abrir la votación | pendiente |
@@ -193,11 +196,12 @@ con contenido manipulado sin efecto.
 | Tarea | Estado |
 |---|---|
 | Procedimiento de despliegue y PR #5 a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | hecho: PR #5 fusionado en `main` (2026-10-07) |
-| Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | hecho; no se usa: el contrato desplegado tiene `devMode` desactivado |
+| Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | en uso desde 2026-10-07: en Sepolia solo pasan los pasaportes simulados de ZKPassport; contrato de demostración `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6` (`devMode`, sin exigir nacionalidad) |
+| Validar la vía ZK con un DNIe o pasaporte real: requiere red principal (Base o Ethereum), tope de gasto del relayer y autorización para crear propuestas | pendiente |
 | Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
 | Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; CI en verde en GitHub |
-| Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | hecho: *Source* en `main` (2026-10-07) |
-| Contrato en Sepolia `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia` | hecho |
+| Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | hecho: *Source* en `main` (2026-10-07); durante la prueba de R-01, en su rama |
+| Contrato en Sepolia `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` (con R-01; sustituye a `0xDCfe…FC3C`) (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia`; la demo usa el de demostración | hecho |
 | Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
 | Creación de propuestas abierta en la demo, sin `ADMIN_SECRET` (M-04 como riesgo aceptado) | hecho |
 | Volver a exigir autorización (cuentas individuales) y un tope de gasto del relayer antes de producción real | pendiente |

@@ -19,6 +19,8 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0011](0011-alojamiento-vps-propio.md) | Alojamiento en VPS propio con Easypanel | aceptada |
 | [0012](0012-next-15-react-19.md) | Next 15.5 y React 19.2 | aceptada |
 | [0013](0013-postgres-en-el-vps.md) | Postgres de la demo en el VPS | aceptada |
+| [0014](0014-opcion-vinculada-prueba-zk.md) | La opción va vinculada a la prueba ZK | aceptada |
+| [0015](0015-condiciones-voto-organismos-publicos.md) | Condiciones para votar y contraste con organismos públicos | aceptada (conexiones pendientes de convenio) |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

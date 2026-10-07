@@ -1,6 +1,6 @@
 # 0017. Separación en servicios por frontera de confianza, en monorepo
 
-- **Estado:** propuesta (diseño; pendiente de las decisiones del responsable listadas al final)
+- **Estado:** aceptada (diseño; sin implementar). Decisiones del responsable del 2026-10-07 incorporadas ([al final](#decisiones-del-responsable-2026-10-07))
 - **Fecha:** 2026-10-07
 - **Amplía:** [ADR 0001](0001-monorepo.md) (monorepo) y [ADR 0011](0011-alojamiento-vps-propio.md) (un solo servicio `civora`)
 - **Relacionada:** [ADR 0004](0004-relayer-inmutable.md), [ADR 0016](0016-propuestas-registro-ideas-multifirma-ipfs.md), M-02 de la [auditoría](../auditoria-seguridad.md#m-02--medio--el-relayer-reduce-la-exposición-de-la-wallet-del-votante-pero-concentra-confianza-y-correlación)
@@ -61,9 +61,9 @@ con su imagen Docker y solo los secretos que necesita.
 
 | Servicio | Responsabilidad | Secretos | Expuesto a Internet |
 |---|---|---|---|
-| `web` (`apps/web`) | Páginas, lectura de la cadena y de IPFS, caché en `civora-db`, entrada de votos ZK y de propuestas | `DATABASE_URL` (rol de Postgres limitado a sus tablas), RPC de solo lectura, `TOKEN_RELAYER_WEB` | Sí, `civora.nexuraia.com` |
-| `relayer` (`apps/relayer`) | Única clave que paga gas; retransmite solo llamadas de la lista blanca | `HARDHAT_RELAYER_PRIVATE_KEY`, RPC de envío, `TOKEN_RELAYER_WEB` y `TOKEN_RELAYER_IDENTIDAD` (para verificar) | **No.** Solo red interna |
-| `identidad` (`apps/identidad`) | Reto y verificación del certificado (CMS, cadena FNMT/DGP, OCSP), cálculo del nullifier de certificado y, con el ADR 0016, cupo de propuestas por persona | `NULLIFIER_CERTIFICADO_SECRET`, `RETO_CERTIFICADO_SECRET`, `FALLO_ABIERTO_REVOCACION`, `TOKEN_RELAYER_IDENTIDAD` | Solo las rutas del flujo de certificado (ver abajo) |
+| `web` (`apps/web`) | Páginas, lectura de la cadena y de IPFS, caché en Postgres, entrada de votos ZK y de propuestas | `DATABASE_URL` (rol de Postgres limitado a sus tablas), RPC de solo lectura, `TOKEN_RELAYER_WEB`, credenciales de escritura de Pinata y Filebase ([ADR 0016](0016-propuestas-registro-ideas-multifirma-ipfs.md#3-ipfs)) | Sí, en el dominio de `WEB_ORIGEN` |
+| `relayer` (`apps/relayer`) | Única clave que paga gas; retransmite solo llamadas de la lista blanca | `HARDHAT_RELAYER_PRIVATE_KEY`, RPC de envío, `TOKEN_RELAYER_WEB` y `TOKEN_RELAYER_IDENTIDAD` (para verificar) | **No, en ningún entorno.** Sin dominio ni puerto publicado; solo red interna |
+| `identidad` (`apps/identidad`) | Reto y verificación del certificado (CMS, cadena FNMT/DGP, OCSP), cálculo del nullifier de certificado y, con el ADR 0016, cupo de propuestas por persona | `NULLIFIER_CERTIFICADO_SECRET`, `RETO_CERTIFICADO_SECRET`, `FALLO_ABIERTO_REVOCACION`, `TOKEN_RELAYER_IDENTIDAD` | Sí, en **su propio subdominio** (`IDENTIDAD_ORIGEN`; ver abajo) |
 
 - **«Web sin secretos»** quiere decir sin secretos que permitan votar,
   firmar o pagar. La web sigue necesitando credenciales de base de datos y
@@ -91,22 +91,41 @@ con su imagen Docker y solo los secretos que necesita.
   | `web` | Safe del consejo (ADR 0016) | `execTransaction` |
   | `identidad` | `VotacionAnonima` | `votarManual` |
 
-  - Además: `estimateGas` previo, tope de gas por transacción y **tope de
-    gasto diario** (hoy pendiente en el
-    [ROADMAP](../ROADMAP.md#paso-a-producción)).
+  - Además: `estimateGas` previo y tope de gas por transacción.
+  - **Tope de gasto diario de 10 € con alerta al 50 %**, y 20 ideas al día
+    sin cartera.
+    - Los valores se leen de variables de entorno: se cambian sin
+      reconstruir la imagen
+      ([ADR 0016](0016-propuestas-registro-ideas-multifirma-ipfs.md#4-quién-paga-qué)).
+    - Al llegar al 100 % rechaza transacciones hasta el día siguiente
+      (UTC).
   - Una sola instancia gestiona el *nonce*, y el saldo de la cuenta se
     mantiene bajo y se recarga a mano.
   - La lista blanca se genera con el ABI compilado del mismo commit (ver
     [Por qué monorepo](#por-qué-monorepo)).
-- **Flujo de certificado:** el navegador habla con `identidad` sin pasar
-  por la web. Recomendado: el proxy de Easypanel enruta
-  `civora.nexuraia.com/identidad/*` a ese servicio, en el mismo origen, sin
-  tocar la CSP. Si Easypanel no permite enrutar por ruta, se usa un
-  subdominio `identidad.civora.nexuraia.com` con CORS limitado al origen de
-  la web y `connect-src` ampliado.
+- **Flujo de certificado:** el navegador habla con `identidad` **en su
+  propio subdominio**, sin pasar por la web.
+  - **Dominios por configuración, nunca fijos en el código:**
+    - `WEB_ORIGEN` y `IDENTIDAD_ORIGEN` en `identidad`, para el CORS.
+    - `NEXT_PUBLIC_IDENTIDAD_ORIGEN` en la web, como *build arg*, para
+      `fetch` y la CSP.
+
+    | Entorno | Web | Identidad |
+    |---|---|---|
+    | Entorno de pruebas actual | `civora.nexuraia.com` | `identidad.civora.nexuraia.com` |
+    | Producción en VPS dedicado | dominio definitivo, por decidir | `identidad.<dominio definitivo>` |
+
+  - **CORS:** `identidad` solo acepta el origen exacto de `WEB_ORIGEN`, sin
+    credenciales ni cookies. Responde con
+    `Access-Control-Allow-Origin` fijo y sin comodines.
+  - **CSP:** la web añade `IDENTIDAD_ORIGEN` a `connect-src` y nada más; el
+    resto de la política del [ADR 0007](0007-csp-con-nonce.md) no cambia.
+    `identidad` sirve solo JSON, con `default-src 'none'`.
   - Así **la web deja de ver el certificado**.
   - No cambia A-01: `identidad` sigue recibiendo certificado y opción a la
     vez hasta la Fase 1.
+  - El flujo de ZKPassport no cambia: la prueba se pide desde la web y su
+    dominio sigue siendo el que fija el contrato (`dominioZk`).
 - **Registros:** los tres servicios usan `lib/registro.mjs`, que pasa a un
   paquete compartido. Contexto fijo y código corto, nunca IPs, cuerpos,
   firmas ni nullifiers.
@@ -152,11 +171,9 @@ docker/
   se construye, arranca, responde a su `/salud` y se comprueba que no
   contiene `.env` ni secretos de otro servicio. En los tests de
   `apps/web` ya no puede aparecer `HARDHAT_RELAYER_PRIVATE_KEY`.
-- **Easypanel**, en el proyecto `nexuraia`:
-  - `civora` (web, con dominio), `civora-relayer` (sin dominio) y
-    `civora-identidad` (ruta o subdominio), más `civora-db`.
-  - Las variables de cada servicio solo incluyen sus secretos.
-  - Orden de despliegue: `relayer` → `identidad` → `web`.
+- **Despliegue:** las variables de cada servicio solo incluyen sus secretos.
+  El orden es `relayer` → `identidad` → `web`. Ningún dominio está fijo en
+  el código ni en las imágenes.
 - **Memoria estimada:**
 
   | Servicio | Memoria estimada |
@@ -164,13 +181,28 @@ docker/
   | `web` | 200-300 MB |
   | `relayer` | 60-100 MB |
   | `identidad` | 80-120 MB |
-  | `civora-db` | 50-150 MB |
+  | Postgres | 50-150 MB |
+  | Kubo (solo en producción) | 300-500 MB |
 
-  - En total, entre 150 y 250 MB más que hoy, en un VPS KVM 2 (8 GB)
-    compartido con los n8n de producción.
-  - Son estimaciones: hay que medirlas con `docker stats` y fijar un límite
-    de memoria por servicio en Easypanel, para que un fallo de Civora no
-    deje sin memoria a n8n.
+  Son estimaciones: hay que medirlas con `docker stats`.
+
+### Entornos
+
+| Aspecto | Entorno de pruebas actual | Producción en VPS dedicado |
+|---|---|---|
+| Servidor | VPS KVM 2 (8 GB) **compartido con el n8n de producción**, Easypanel, proyecto `nexuraia` | VPS **exclusivo para Civora**, endurecido y supervisado |
+| Dominio | `civora.nexuraia.com` e `identidad.civora.nexuraia.com` | Dominio propio definitivo y su subdominio de identidad, por configuración |
+| Servicios | `civora`, `civora-relayer` (sin dominio), `civora-identidad` y `civora-db` | Los mismos más `ipfs` (Kubo), en su propia red interna |
+| Aislamiento | Solo por contenedores y red interna de Docker. Un fallo de Easypanel o de otro servicio del VPS puede afectar a Civora, y al revés ([ADR 0011](0011-alojamiento-vps-propio.md)). **Límite de memoria por servicio** obligatorio, para no dejar sin memoria a n8n | Servidor dedicado; cortafuegos que solo abre 443 (y 4001 para Kubo); panel de administración sin exposición pública |
+| Autenticación entre servicios | HMAC por cliente | HMAC por cliente; se reconsidera mTLS |
+| Postgres | `civora-db`, sin copias de seguridad, `sslmode=disable` en la red interna ([ADR 0013](0013-postgres-en-el-vps.md)) | Copias de seguridad automáticas y probadas, TLS o red aislada; solo caché ([ADR 0016](0016-propuestas-registro-ideas-multifirma-ipfs.md)) |
+| IPFS | Pinata y Filebase | Pinata, Filebase y Kubo propio como tercera copia |
+| Clave del relayer | Variable de entorno de Easypanel | Variable de entorno; se valora un gestor de secretos (ver [Alternativas](#alternativas)) |
+
+El paso de un entorno a otro va unido al paso a Base y al redespliegue de
+los contratos con el dominio definitivo. `dominioZk` se fija en el contrato
+al desplegarlo, así que cambiar de dominio obliga a redesplegar igualmente
+([ROADMAP](../ROADMAP.md#servicios-propuestas-y-red-principal)).
 
 ### Por qué monorepo
 
@@ -200,14 +232,18 @@ docker/
 - **Ritmos de publicación incompatibles:** por ejemplo, contratos
   congelados durante una votación real mientras la web sigue cambiando.
 
-### Licencia (recomendación; decide el responsable)
+### Licencia
 
-Situación actual:
+**Decidido el 2026-10-07: AGPL-3.0-or-later en todo el repositorio**
+([ADR 0018](0018-licencia-agpl.md)). Se conserva el análisis que llevó a
+la decisión:
 
-- El repositorio es **público, pero no tiene archivo `LICENSE`** ni campo
-  `license` en ningún `package.json`. Por defecto, eso significa «todos los
+Situación antes de la decisión:
+
+- El repositorio era **público, pero no tiene archivo `LICENSE`** ni campo
+  `license` en ningún `package.json`. Por defecto, eso significaba «todos los
   derechos reservados».
-- `VotacionAnonima.sol` declara `SPDX-License-Identifier: GPL-3.0-only`.
+- `VotacionAnonima.sol` declaraba `SPDX-License-Identifier: GPL-3.0-only`.
 - Las interfaces de ZKPassport que incluye son Apache-2.0.
 
 Opciones:
@@ -218,14 +254,17 @@ Opciones:
 | B. GPL-3.0 en todo el repositorio | Coherente con el contrato actual. Permite reutilizar `registry`, `deployed-contracts`, `council-dao` y `app`, **pero no código del `gateway`**. Quien modifique la web y la sirva no está obligado a publicar sus cambios |
 | C. Sin reutilizar código y licencia libre a elegir | Diseños inspirados sin copiar código (lo que proponen este ADR y el 0016). Libertad total, pero hay que escribirlo todo |
 
-- **Recomendación:** A. Si se reutiliza código del gateway, Civora pasa
-  obligatoriamente a AGPL-3.0, y en todo caso conviene añadir ya un
-  `LICENSE`.
+- **Elegida: A**, con `LICENSE` y cabeceras SPDX unificadas
+  ([ADR 0018](0018-licencia-agpl.md)).
+- **Matiz que añade el ADR 0018:** el titular se reserva ofrecer licencias
+  comerciales aparte. El código de terceros con *copyleft* (por ejemplo,
+  del `gateway`) se puede reutilizar bajo la AGPL, pero no se puede
+  incluir en una licencia comercial sin permiso de sus autores.
 - **En esta tarea no se copia código** de spain-in-parallel. El relayer
   propuesto se escribe desde cero con el diseño descrito, así que la
   decisión de licencia no bloquea la implementación.
-- Antes de cambiar de licencia hay que revisar las licencias de las
-  dependencias de runtime, por ejemplo con `pnpm licenses list --prod`.
+- La revisión de las licencias de las dependencias de runtime está en el
+  [ADR 0018](0018-licencia-agpl.md#dependencias).
 
 ## Alternativas
 
@@ -290,10 +329,15 @@ Opciones:
 - **Operación:** memoria medida con `docker stats`, límites fijados en
   Easypanel y apuntados en [despliegue-vps.md](../despliegue-vps.md).
 
-## Decisiones pendientes del responsable
+## Decisiones del responsable (2026-10-07)
 
-1. Licencia: A (AGPL-3.0-or-later), B (GPL-3.0) o C (sin reutilizar
-   código), y añadir `LICENSE` en cualquier caso.
-2. Ruta (`/identidad/*`) o subdominio para el servicio de identidad,
-   según lo que permita Easypanel.
-3. Tope de gasto diario del relayer y saldo máximo de la cuenta en la demo.
+1. **Licencia:** AGPL-3.0-or-later en todo el repositorio
+   ([ADR 0018](0018-licencia-agpl.md)).
+2. **Identidad:** en su propio subdominio (`identidad.<dominio>`, por
+   configuración). El relayer no tiene dominio público en ningún entorno:
+   solo red interna.
+3. **Topes del relayer:** 10 € al día con alerta al 50 % y 20 ideas al día
+   sin cartera, configurables sin reconstruir la imagen.
+4. **Entornos:** `civora.nexuraia.com` y el VPS compartido son el entorno
+   de pruebas. La producción irá en un VPS exclusivo con dominio propio
+   ([Entornos](#entornos)).

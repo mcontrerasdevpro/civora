@@ -1,6 +1,6 @@
 # 0016. Propuestas con registro de ideas, multifirma e IPFS
 
-- **Estado:** propuesta (diseño; pendiente de las decisiones del responsable listadas al final)
+- **Estado:** aceptada (diseño; sin implementar). Decisiones del responsable del 2026-10-07 incorporadas ([al final](#decisiones-del-responsable-2026-10-07))
 - **Fecha:** 2026-10-07
 - **Sustituirá, al aceptarse:** la creación de propuestas por `POST /api/propuestas` y el relayer ([ADR 0004](0004-relayer-inmutable.md), solo en lo relativo a `crearPropuesta`)
 - **Cierra:** M-04 de la [auditoría](../auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)
@@ -118,7 +118,11 @@ IPFS y su CID queda en cadena.
     despliegues ni entre redes. El formato exacto se cierra al implementarlo,
     junto con `packages/zk-identity`.
   - Exige `apertura >= block.timestamp`, y la duración entre un mínimo y un
-    máximo fijados al desplegar (por ejemplo, entre 1 y 90 días).
+    máximo fijados al desplegar. El máximo debe ser menor que la espera para
+    cambiar el Safe (ver [Inmutabilidad](#encaje-con-la-inmutabilidad)):
+    con 7 días de espera, la duración máxima es de 6 días.
+  - Mientras haya un cambio de Safe pendiente, `resolver` exige que la
+    votación cierre antes de que el cambio pueda ejecutarse.
   - Al rechazar retiene `base` y el resto queda reclamable, con pagos *pull*
     como en el original (`claim()`).
 - **`setConfig` limitado** (ver [Inmutabilidad](#encaje-con-la-inmutabilidad)).
@@ -127,8 +131,25 @@ IPFS y su CID queda en cadena.
 
 | Entorno | Safe | Umbral | Quién firma |
 |---|---|---|---|
-| Demo (Sepolia) | Safe oficial en Sepolia | 2 de 3 | Responsable de Civora y dos personas de NexuraIA, cada una con su propia cartera y dispositivo. Si solo firma el responsable, **mejor 1 de 1 declarado** que un 2 de 3 con las tres claves en las mismas manos |
-| Producción (Base) | Safe de la administración convocante | 3 de 5, por ejemplo | Personas de órganos distintos (secretaría, junta o mesa, oposición, observador independiente). **Nunca el operador técnico**; NexuraIA no debe poder aprobar propuestas |
+| Entorno de pruebas actual (Sepolia) | Safe oficial en Sepolia | **1 de 1, declarado abiertamente** | Solo el responsable de Civora. El README y la página `/consejo` lo dicen: hoy una sola persona decide qué se vota, igual que con la clave de administración de la Fase 0, pero en cadena y de forma pública |
+| Producción en VPS dedicado (Base) | Safe de la administración convocante | 3 de 5, por ejemplo | Personas de órganos distintos (secretaría, junta o mesa, oposición, observador independiente). **Nunca el operador técnico**; NexuraIA no debe poder aprobar propuestas |
+
+**Criterio para pasar de 1 de 1 a 2 de 3 en pruebas:** en cuanto haya dos
+firmantes externos a NexuraIA, cada uno con su propia cartera en un
+dispositivo que solo controla él, y que hayan aceptado revisar las ideas
+pendientes. El responsable queda como uno de los tres. No se pasa a 2 de 3
+con claves de la misma persona o guardadas en el mismo equipo. El cambio se
+anota en el README y en
+[despliegue-produccion.md](../despliegue-produccion.md).
+
+- **Cambiar los propietarios no cambia la dirección del Safe.** Se hace
+  dentro del propio Safe (`addOwnerWithThreshold`), así que no pasa por
+  `RegistroIdeas` ni por su espera. Es inmediato y queda en cadena como
+  evento.
+  - En pruebas es aceptable.
+  - En producción, un módulo de retardo sobre el Safe (por ejemplo, Zodiac
+    Delay) daría a los cambios de propietarios la misma espera que el
+    cambio de Safe.
 
 - Los firmantes revisan en la web de Civora (página `/consejo`, solo
   lectura) y firman en la app oficial de Safe o con `approveHash`, como
@@ -151,18 +172,42 @@ IPFS y su CID queda en cadena.
   `idea-v1`, **sin datos personales**: es público y permanente.
 - **Dónde se fija (pinning):**
 
-  | Copia | Demo | Producción |
+  | Copia | Entorno de pruebas actual (VPS compartido) | Producción en VPS dedicado |
   |---|---|---|
-  | Bytes en `civora-db` (caché y fuente para la web) | sí | sí |
-  | Servicio externo de pinning (Pinata, Filebase o Storacha) con credencial solo de escritura | sí | sí |
-  | Nodo IPFS propio (Kubo) | **no** (ver motivo) | sí, en el VPS dedicado |
+  | Bytes en Postgres (caché y fuente para la web) | sí, `civora-db` sin copias de seguridad ([ADR 0013](0013-postgres-en-el-vps.md)) | sí, con copias de seguridad automáticas y probadas, y TLS o red aislada |
+  | **Pinata** (principal) | sí | sí |
+  | **Filebase** (respaldo) | sí | sí |
+  | Nodo IPFS propio (Kubo), tercera copia | **no** (ver motivo) | sí |
 
-  - **Motivo para no tener nodo propio en la demo:** Kubo consume entre 300
+  - **Motivo para no tener nodo propio en pruebas:** Kubo consume entre 300
     y 500 MB y abre el puerto 4001 a la red P2P. Eso es incompatible con un
     VPS compartido con el n8n de producción
-    ([ADR 0011](0011-alojamiento-vps-propio.md)).
-  - **Regla:** el Safe solo aprueba si el CID está fijado al menos en dos
-    sitios. La página `/consejo` lo comprueba y lo muestra.
+    ([ADR 0011](0011-alojamiento-vps-propio.md)). En el VPS dedicado sí
+    cabe, y da una copia que no depende de terceros.
+  - **Por qué Filebase de respaldo y no Storacha:**
+    - API compatible con S3, con credenciales por *bucket*, sin cliente
+      propio.
+    - Importa archivos CAR (`import=car`), así que conserva exactamente
+      nuestro CID, y lo devuelve en `x-amz-meta-cid` para compararlo
+      ([documentación](https://filebase.com/docs/ipfs/pinning/pinning-files)).
+    - Admite la Pinning Service API estándar, que facilita migrar los pins.
+    - Storacha exige delegaciones UCAN y su propio cliente
+      ([documentación](https://docs.storacha.network/concepts/ucans-and-storacha)),
+      más complejidad para una copia de respaldo. Además, el servicio ya
+      cambió de API y de nombre al pasar de web3.storage a Storacha.
+    - Ninguno de los dos está en la UE. Es aceptable porque el contenido es
+      público y no puede llevar datos personales.
+  - **El CID lo calcula Civora, no el proveedor:**
+    - Cada subida se hace como CAR con nuestro bloque.
+    - Si el CID que devuelve el proveedor no coincide con el calculado, la
+      subida falla.
+    - Al implementar hay que confirmar cómo sube Pinata un CAR con su API
+      v3. Si no conserva el CID, se fija por CID (*pin by CID*) a partir de
+      la copia de Filebase.
+  - **Credenciales:** variables de entorno con permiso solo de escritura en
+    un *bucket* o grupo propio. Nunca en código.
+  - **Regla:** el Safe solo aprueba si el CID está fijado en los dos
+    proveedores. La página `/consejo` lo comprueba y lo muestra.
 - **Cómo lo verifica la web:**
   - Lee el CID del contrato.
   - Obtiene los bytes, primero de `civora-db` y, si faltan, de su pinning o
@@ -198,23 +243,44 @@ IPFS y su CID queda en cadena.
 | Ejecutar la aprobación o el rechazo (`execTransaction`) | Relayer, cuando hay quórum | Relayer | — |
 | Votar | Relayer | Relayer | — |
 
-- Los depósitos aprobados y el `base` de los rechazados van a la tesorería,
-  que en la demo es la propia cartera del relayer, para que se
+- Los depósitos aprobados y el `base` de los rechazados van a la tesorería.
+  En pruebas, la tesorería es la propia cartera del relayer, para que se
   autofinancie.
-- **Proponente sin cartera:** es lo habitual en la demo. Mientras no exista
+- **Proponente sin cartera:** es lo habitual en pruebas. Mientras no exista
   el servicio de identidad ([ADR 0017](0017-servicios-por-frontera-de-confianza.md)),
   el relayer solo envía `proponer` con dos límites:
   - el límite por IP actual;
-  - un **tope diario global** de ideas retransmitidas (por ejemplo, 20).
+  - un **tope global de 20 ideas al día** retransmitidas.
 - Con el servicio de identidad, el tope pasa a ser **una idea por persona
-  verificada y semana**. El servicio lo lleva con un HMAC por periodo,
-  como el nullifier de certificado.
-- El dinero no es lo que frena el spam en la demo: el ETH de Sepolia es
-  gratis. Lo frenan el tope del relayer y la revisión del Safe; el spam se
-  queda en la cola y nunca llega a votación.
-- **Depósito en producción:** equivalente a unos 5 € (`deposito`), de los
-  que 2 € no se devuelven (`base`). Se fija en wei al desplegar. El gas de
-  `proponer` en Base es despreciable frente a esa cifra.
+  verificada y semana**, sin dejar de respetar el tope global. El servicio
+  lo lleva con un HMAC por periodo, como el nullifier de certificado.
+- En pruebas, el dinero no frena el spam: el ETH de Sepolia es gratis. Lo
+  frenan el tope del relayer y la revisión del Safe; el spam se queda en la
+  cola y nunca llega a votación.
+
+**Importes decididos.** Todos se pueden cambiar sin redesplegar contratos ni
+reconstruir imágenes:
+
+| Parámetro | Valor | Dónde vive | Cómo se cambia |
+|---|---|---|---|
+| Depósito (`deposito`) | 5 € | `RegistroIdeas`, en wei | `setConfig` del Safe, con el tope inmutable `depositoMaximo` (equivalente a 50 € al desplegar) |
+| No reembolsable (`base`) | 2 € | `RegistroIdeas`, en wei | `setConfig` del Safe; cada idea guarda el `base` vigente al proponerla |
+| Ideas sin cartera al día | 20 | Servicio `relayer` (`IDEAS_SIN_CARTERA_POR_DIA`) | Variable de entorno y reinicio del servicio |
+| Gasto del relayer | 10 € al día | Servicio `relayer` (`TOPE_GASTO_DIARIO_EUR`) | Variable de entorno y reinicio del servicio |
+| Alerta de gasto | al 50 % del tope | Servicio `relayer` (`ALERTA_GASTO_PORCENTAJE`) | Variable de entorno y reinicio del servicio |
+
+- **De euros a wei:**
+  - El depósito se convierte al precio del día y el Safe lo actualiza
+    con `setConfig` si el precio del ETH se desvía más de un 20 %.
+  - El relayer convierte su tope con `PRECIO_ETH_EUR`, una variable
+    actualizada a mano. No se usa un oráculo de precios, para no añadir una
+    dependencia externa al camino del voto.
+  - En Sepolia los importes son nominales.
+- **Alerta:** al alcanzar el 50 % del tope, el relayer registra un aviso
+  con `lib/registro.mjs` (código corto, sin datos). Si `ALERTA_GASTO_URL`
+  está definida, también hace un POST con el gasto acumulado y el tope.
+  Ese destino puede ser, por ejemplo, un flujo de n8n. Al llegar al 100 %
+  rechaza nuevas transacciones hasta el día siguiente (UTC).
 - **Relayer** ([ADR 0017](0017-servicios-por-frontera-de-confianza.md)):
   su lista blanca añade `RegistroIdeas.proponer` y `Safe.execTransaction`
   (solo sobre el Safe configurado) y quita `crearPropuesta`.
@@ -270,7 +336,7 @@ espera, hacer lo siguiente:
 | Poder | Riesgo | Propuesta para `RegistroIdeas` |
 |---|---|---|
 | Cambiar `proposals` (el contrato de destino) | Mandar las aprobaciones futuras a otro contrato | **Inmutable.** `VotacionAnonima` solo acepta este registro; cambiar de destino es desplegar los dos |
-| Cambiar `safe` | Ceder todo el control de golpe | Permitido con **espera de 7 días** y evento: propuesta, ejecución y cancelación. Si se pierden las claves del Safe, no hay recuperación: desplegar de nuevo |
+| Cambiar `safe` | Ceder todo el control de golpe | Permitido con **espera de 7 días** y evento: propuesta, ejecución y cancelación. La espera es **siempre mayor que la duración máxima de una votación**: el constructor rechaza `esperaCambioSafe <= duracionMaxima`, y las dos son inmutables. Así, toda votación abierta antes de anunciar el cambio cierra bajo el Safe que la aprobó. Además, mientras haya un cambio pendiente, `resolver` exige que la nueva votación cierre antes de que el cambio pueda ejecutarse. Si se pierden las claves del Safe, no hay recuperación: desplegar de nuevo |
 | Cambiar `fee` | Subirla tanto que nadie pueda proponer (censura) | Con **tope inmutable** `depositoMaximo` |
 | Cambiar `base` | Quedarse con más depósito de los rechazados | Limitado por `deposito` y fijado en cada idea al proponer (no se aplica con efecto retroactivo) |
 | Cambiar `treasury` | Desviar comisiones futuras | Permitido. Lo ya acumulado sigue siendo de la tesorería anterior (`owed`) |
@@ -297,6 +363,12 @@ operador pueden cambiar una propuesta ya creada.
   muestra el estado de cada idea.
 - **Redespliegue:** cambia `VotacionAnonima`, así que las propuestas
   actuales se archivan ([AGENTS.md](../../AGENTS.md#reglas-de-trabajo)).
+- **Votaciones más cortas:** con 7 días de espera, una votación dura como
+  máximo 6 días. Hoy el formulario admite hasta 365. Para votaciones más
+  largas hay que desplegar con una espera mayor.
+- **Un solo firmante en pruebas:** con el Safe 1 de 1, la aprobación es
+  pública y queda en cadena, pero no es colegiada. Se declara así hasta
+  cumplir el [criterio de 2 de 3](#2-quién-es-el-safe).
 
 ## Consecuencias
 
@@ -325,6 +397,9 @@ operador pueden cambiar una propuesta ya creada.
     contrato ≥ depósitos pendientes + `owed`.
   - El destino es inmutable, `safe` solo cambia tras la espera y el
     depósito no supera `depositoMaximo`.
+  - El constructor rechaza una espera menor o igual que la duración máxima.
+    Con un cambio de Safe pendiente, `resolver` rechaza votaciones que
+    cerrarían después de la fecha en que el cambio puede ejecutarse.
 - **Despliegue:** el script falla si la dirección del registro no coincide
   con la que se fijó en `VotacionAnonima`.
 - **Web** (`node --test` y E2E):
@@ -333,19 +408,37 @@ operador pueden cambiar una propuesta ya creada.
   - El listado sale de los eventos.
   - Axe sin infracciones en `/propuestas/nueva` y `/consejo`, a 375 y
     1280 px.
-- **Operación:** el Safe de la demo está desplegado y anotado en
-  [despliegue-produccion.md](../despliegue-produccion.md). El pinning
-  externo está configurado con una credencial solo de escritura en las
-  variables del servicio. Se ha probado que, tras borrar `civora-db`, la web
-  reconstruye las propuestas desde la cadena y el pinning.
+- **Pinning:** el CID que devuelven Pinata y Filebase coincide con el
+  calculado; si no coincide, la subida falla (test con un proveedor
+  simulado).
+- **Relayer:** aplica el tope de 20 ideas al día sin cartera, avisa al 50 %
+  del gasto diario y rechaza al llegar al 100 % (tests).
+- **Operación:**
+  - El Safe 1 de 1 de pruebas está desplegado, anotado en
+    [despliegue-produccion.md](../despliegue-produccion.md) y declarado en
+    el README y en `/consejo`.
+  - Pinata y Filebase están configurados con credenciales solo de
+    escritura en las variables del servicio.
+  - Se ha probado que, tras borrar `civora-db`, la web reconstruye las
+    propuestas desde la cadena y el pinning.
 - **Documentación:** M-04 cerrado en la auditoría, y tabla de garantías y
   modelo de amenazas actualizados.
 
-## Decisiones pendientes del responsable
+## Decisiones del responsable (2026-10-07)
 
-1. Quién firma en el Safe de la demo y con qué umbral: 2 de 3 con
-   personas distintas, o 1 de 1 declarado.
-2. Importe del depósito y de `base` en producción, y tope diario de ideas
-   retransmitidas en la demo.
-3. Proveedor de pinning externo.
-4. Espera para cambiar el Safe: 7 días u otro valor.
+1. **Safe de pruebas:** 1 de 1, declarado abiertamente. Pasa a 2 de 3
+   cuando haya dos firmantes externos
+   ([criterio](#2-quién-es-el-safe)).
+2. **Importes:** depósito de 5 € (2 € no reembolsables), 20 ideas al día
+   sin cartera y tope del relayer de 10 € al día con alerta al 50 %. Todo
+   se puede cambiar sin redesplegar ([tabla](#4-quién-paga-qué)).
+3. **Pinning:** Pinata como principal y Filebase como respaldo
+   ([justificación](#3-ipfs)). En producción, en el VPS dedicado, se añade
+   un nodo Kubo propio como tercera copia.
+4. **Espera para cambiar el Safe:** 7 días, siempre mayor que la duración
+   máxima de una votación (6 días con esta espera).
+5. **Entornos:** `civora.nexuraia.com` y el VPS compartido son el entorno
+   de pruebas. La producción irá en un VPS exclusivo con dominio propio,
+   junto con el paso a Base y el redespliegue de los contratos
+   ([ROADMAP](../ROADMAP.md#servicios-propuestas-y-red-principal)). Los
+   dominios se leen siempre de la configuración.

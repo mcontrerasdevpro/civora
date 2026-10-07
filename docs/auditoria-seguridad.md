@@ -142,10 +142,21 @@ Tarea solo de diseño: [ADR 0016](decisiones/0016-propuestas-registro-ideas-mult
   - `StateKeeper` está desplegado como *mock* actualizable.
   - En `deployed-contracts`, el bytecode de `IdeaRegistry` no se compara.
   - Las propuestas de los ADR 0016 y 0017 evitan cada uno de estos puntos.
-- **Licencia:** el repositorio es público y no tiene `LICENSE`. `VotacionAnonima.sol` declara GPL-3.0-only. La decisión queda pendiente del responsable (ADR 0017).
+- **Licencia (decidida, [ADR 0018](decisiones/0018-licencia-agpl.md)):**
+  - El repositorio era público sin `LICENSE`. Ahora es AGPL-3.0-or-later, con `LICENSE` (texto oficial de la FSF, igual al del `gateway`), campo `license` en los cinco `package.json` y cabecera SPDX en los dos contratos propios.
+  - El cambio de cabecera solo altera el *hash* de metadatos de `solc`. Es efectivo en el próximo despliegue, y los contratos de Sepolia siguen correspondiendo a su commit.
+  - `pnpm licenses list --prod`: dependencias compatibles. Queda pendiente `@zkpassport/utils`, que no declara licencia.
+- **Decisiones del responsable (2026-10-07):**
+  - Safe 1 de 1 declarado en pruebas, que pasa a 2 de 3 con firmantes externos.
+  - Depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera y tope del relayer de 10 € al día con alerta al 50 %, configurables sin redesplegar.
+  - Pinata como principal y Filebase como respaldo.
+  - Espera de 7 días para cambiar el Safe, comprobada mayor que la duración máxima de una votación, y bloqueo de votaciones que cierren después de un cambio pendiente.
+  - Identidad en su propio subdominio, configurable, y relayer solo en la red interna.
+- **Hallazgo de diseño al aplicar las decisiones:** los propietarios del Safe se cambian dentro del propio Safe, sin pasar por la espera del registro. En pruebas es aceptable; en producción se propone un módulo de retardo ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#2-quién-es-el-safe)).
+- **Entornos:** `civora.nexuraia.com` y el VPS compartido quedan documentados como entorno de pruebas. La producción en un VPS dedicado va unida al paso a Base y al redespliegue con el dominio definitivo.
 - **Verificación del bytecode:** propuesta en el [ROADMAP](ROADMAP.md#verificación-pública-del-bytecode), sin implementar.
 
-Verificación: solo documentación y el README (sangría y tildes). Los enlaces y anclas de los documentos tocados se han comprobado con un script. Además, 24 tests de contratos y 60 de web en verde. No se ejecutan typecheck, build ni E2E porque no cambia código.
+Verificación: documentación, README, `LICENSE`, campo `license` y cabeceras SPDX (solo comentarios, sin cambios de lógica). Enlaces y anclas comprobados con un script; 24 tests de contratos, 60 de web, typecheck, build e instalación con lockfile congelado en verde.
 
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 

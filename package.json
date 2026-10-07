@@ -1,5 +1,6 @@
 {
   "name": "civora",
+  "license": "AGPL-3.0-or-later",
   "private": true,
   "version": "0.0.1",
   "description": "CIVORA: infraestructura de votacion verificable, PoC para presentar a organismos y ciudadania.",

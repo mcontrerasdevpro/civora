@@ -46,8 +46,15 @@ pendientes de aprobación, así que hoy no todos los requisitos se verifican.
 
 ## Estado de la demo pública
 
-`https://civora.nexuraia.com` es una demo de pruebas en Sepolia, con el
-banner **MODO DEMOSTRACIÓN**:
+`https://civora.nexuraia.com` es el **entorno de pruebas**: corre en Sepolia,
+en un VPS compartido con otros servicios, y muestra el banner **MODO
+DEMOSTRACIÓN**. Si el proyecto sigue adelante, la producción irá en un VPS
+exclusivo para Civora, con dominio propio, en la red principal Base y con
+los contratos redesplegados para ese dominio
+([ROADMAP](docs/ROADMAP.md#servicios-propuestas-y-red-principal)). Los
+dominios se configuran por variables de entorno, nunca en el código.
+
+Estado del entorno de pruebas:
 
 - **Certificado digital (Autofirma):** funciona con certificados reales
   (probado en Edge y Brave). La edad se declara y no se contrasta.
@@ -246,6 +253,19 @@ propuestas, con un límite por IP. El contrato restringe la creación al
 relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
 ([auditoría, M-04](docs/auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
 
+**Cambio previsto** ([ADR 0016](docs/decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md),
+sin implementar):
+
+- Cualquiera propone una idea con un depósito y la aprueba o rechaza una
+  multifirma (Safe), en cadena. El contenido se publica en IPFS.
+- **En el entorno de pruebas, el Safe será 1 de 1: lo controla solo el
+  responsable de Civora.** La aprobación será pública y verificable, pero
+  la decidirá una sola persona.
+- Pasará a 2 de 3 cuando haya dos firmantes externos a NexuraIA, cada uno
+  con su propia cartera y dispositivo.
+- En producción, el Safe será de la administración convocante y nunca del
+  operador técnico.
+
 ## Estructura
 
     civora/
@@ -259,6 +279,18 @@ relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
 
 Cada decisión, con su contexto y alternativas, está en
 [docs/decisiones/](docs/decisiones/README.md).
+
+## Licencia
+
+Civora se publica bajo la [GNU Affero General Public License v3.0 o
+posterior](LICENSE) (AGPL-3.0-or-later). Quien ofrezca una versión
+modificada como servicio en red debe dar a sus usuarios acceso a su código
+fuente. El titular de los derechos puede ofrecer licencias comerciales
+aparte. Por eso, las contribuciones externas requerirán un acuerdo de
+cesión (CLA), todavía no publicado; hasta entonces no se aceptan PR
+externas. Algunos componentes de terceros conservan su licencia (por
+ejemplo, las interfaces de ZKPassport, en Apache-2.0, y `autoscript.js` de
+Autofirma). Detalle en el [ADR 0018](docs/decisiones/0018-licencia-agpl.md).
 
 ## Aviso legal
 

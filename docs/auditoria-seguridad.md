@@ -102,6 +102,17 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
+## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
+
+Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.
+
+- **C-03, crítico (corregido):** la firma podía hacerse con un certificado distinto del validado. Ver [C-03](#c-03--crítico--la-firma-no-se-ataba-al-certificado-validado-corregido).
+- **«Verificar mi voto ahora» fallaba siempre con la votación abierta (corregido):** la API responde 423 a los recibos hasta el cierre (M-01), pero el asistente ofrecía verificar al momento y `/verificar` lo mostraba como «No se ha podido comprobar el recibo». Ahora el recibo indica la fecha de cierre y `/verificar` explica que la votación sigue abierta. Los resultados de `/verificar` se anuncian con `aria-live`.
+- **El título de `/resultados/<id>` se quedaba en «Cargando…» (corregido)** con los resultados ocultos, no disponibles o tras un error.
+- E2E de los tres casos; revisado a 375 y 1280 px.
+
+Verificación: 20 tests de contratos, 51 de web, typecheck, build y 70 E2E.
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.
@@ -125,6 +136,12 @@ En el estado inicial, web y despliegue habilitaban demo si faltaba configuració
 **Impacto:** un despliegue público con variables omitidas puede aceptar pruebas de demostración, no solo pruebas de documentos reales; la elegibilidad deja de tener la garantía esperada.
 
 **Arreglo propuesto:** invertir el valor por defecto: producción debe fallar al arrancar/desplegar si no hay dominio registrado y `devMode=false`. Añadir un control de CI o de despliegue que rechace el modo mock en redes públicas y verificar las variables efectivas contra el constructor inmutable.
+
+### C-03 · Crítico — La firma no se ataba al certificado validado (corregido)
+
+`verificarFirmaCertificado` validaba la cadena FNMT/DGP, el DNI y la revocación sobre el certificado enviado en `certB64`, pero `SignedData.verify` de pkijs busca el certificado firmante solo dentro del CMS (por emisor y número de serie o por identificador de clave). Nada exigía que fueran el mismo. Con el certificado público de otra persona (por ejemplo, el incluido en cualquier PDF firmado) y un certificado propio con el mismo emisor y número de serie dentro del CMS, firmado con una clave propia, la firma y la cadena se daban por buenas y el voto contaba con el DNI de la víctima, una vez por propuesta y por cada certificado público obtenido. Existía desde la primera versión de la vía de certificado.
+
+**Corrección:** `verify` con `extendedMode: true` devuelve el certificado firmante, y se rechaza la firma si no coincide (misma serialización DER) con `certB64`. El test `rechaza una firma válida hecha con otra clave que el certificado enviado` reproduce el ataque; sin la corrección, la firma pasaba y solo la paraba la cadena porque el certificado de prueba no es de la FNMT.
 
 ### A-01 · Alto — La vía de certificado vincula identidad y opción en el servidor (NIF endurecido en Fase 0)
 

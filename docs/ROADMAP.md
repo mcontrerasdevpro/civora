@@ -213,6 +213,8 @@ con contenido manipulado sin efecto.
 | Revisión completa del PR #5: C-03 (firma atada al certificado validado), aviso de recibo antes del cierre y título de resultados ([auditoría](auditoria-seguridad.md#revisión-del-pr-5-2026-10-07-rama-fixrevision-pr5)) | hecho |
 | Revisar los 4 avisos de desarrollo sin parche (`braces`, `node-forge` en tests, `sprintf-js`, `elliptic`) al migrar a Hardhat 3 | pendiente |
 | Next 16 como tarea propia (versión mayor) | pendiente |
+| `@zkpassport/sdk` 0.18.2 o posterior como tarea propia: compatibilidad con el verificador del contrato y prueba con un documento real (la 0.18.0 se publicó rota, PR #12) | pendiente |
+| TypeScript 7 y `@types/node` acorde al Node de ejecución, como tareas propias (Dependabot ignora sus versiones mayores) | pendiente |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (checks obligatorios «Tests, typecheck, build y E2E» e «Imagen Docker») | hecho |

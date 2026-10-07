@@ -54,7 +54,11 @@ export function asegurarEsquema(): Promise<void> {
         tx_hash TEXT,
         creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
       )
-    `).then(() => undefined);
+    `)
+      // Contrato con el que se creó cada propuesta: al cambiar de contrato,
+      // las anteriores dejan de listarse y de admitir votos.
+      .then(() => query("ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS contrato TEXT"))
+      .then(() => undefined);
   }
   return esquemaListo;
 }

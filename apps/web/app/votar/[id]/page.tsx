@@ -8,6 +8,7 @@ import { VotarWizard } from "../VotarWizard";
 type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
+  | { fase: "archivada"; mensaje: string }
   | { fase: "lista"; propuesta: Propuesta };
 
 export default function VotarPropuestaPage() {
@@ -20,6 +21,12 @@ export default function VotarPropuestaPage() {
 
     fetch(`/api/propuestas/${id}`, { cache: "no-store" })
       .then(async (respuesta) => {
+        // 410: la propuesta es de un contrato anterior y ya no admite votos.
+        if (respuesta.status === 410) {
+          const cuerpo = await respuesta.json();
+          if (!cancelado) setEstado({ fase: "archivada", mensaje: cuerpo.error });
+          return;
+        }
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
         if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta });
@@ -50,6 +57,16 @@ export default function VotarPropuestaPage() {
           consulta{" "}
           <a className="link-quiet" href="/propuestas">
             el listado de propuestas
+          </a>
+          .
+        </div>
+      )}
+
+      {estado.fase === "archivada" && (
+        <div className="alert alert-info" role="status">
+          {estado.mensaje} Consulta{" "}
+          <a className="link-quiet" href="/propuestas">
+            las propuestas abiertas
           </a>
           .
         </div>

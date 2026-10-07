@@ -15,6 +15,7 @@ const INTERVALO_REFRESCO_MS = 4000;
 type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
+  | { fase: "archivada"; mensaje: string }
   | { fase: "ocultos"; propuesta: Propuesta }
   | { fase: "no_disponibles"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
@@ -30,6 +31,12 @@ export default function ResultadosPropuestaPage() {
     async function cargar() {
       try {
         const respuesta = await fetch(`/api/propuestas/${id}`, { cache: "no-store" });
+        // 410: propuesta de un contrato anterior; sus resultados ya no se leen.
+        if (respuesta.status === 410) {
+          const cuerpo = await respuesta.json();
+          if (!cancelado) setEstado({ fase: "archivada", mensaje: cuerpo.error });
+          return;
+        }
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
         if (!cancelado) {
@@ -76,6 +83,12 @@ export default function ResultadosPropuestaPage() {
 
       {estado.fase === "no_disponibles" && (
         <p className="alert alert-error">Los resultados de esta propuesta no están disponibles.</p>
+      )}
+
+      {estado.fase === "archivada" && (
+        <p className="alert alert-info" role="status">
+          {estado.mensaje}
+        </p>
       )}
 
       {estado.fase === "error" && (

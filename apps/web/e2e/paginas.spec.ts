@@ -168,6 +168,21 @@ test.describe("las páginas cliente arrancan", () => {
     await expect(page.locator(".page-head p")).toHaveText("Abierta");
   });
 
+  test("una propuesta de un contrato anterior (410) avisa al votar y en resultados", async ({ page }) => {
+    const mensaje = "Esta propuesta pertenece a una versión anterior de la demostración y ya no admite votos.";
+    await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) =>
+      ruta.fulfill({ status: 410, json: { error: mensaje, archivada: true } })
+    );
+    await page.goto(`/votar/${PROPUESTA_ID}`);
+    await expect(page.getByText(mensaje)).toBeVisible();
+    await expect(page.getByRole("link", { name: "las propuestas abiertas" })).toHaveAttribute("href", "/propuestas");
+    await expect(page.getByText("No se ha podido cargar esta propuesta.")).toHaveCount(0);
+
+    await page.goto(`/resultados/${PROPUESTA_ID}`);
+    await expect(page.getByText(mensaje)).toBeVisible();
+    await expect(page.getByText("Cargando…")).toHaveCount(0);
+  });
+
   test("/resultados/<id> no se queda en «Cargando…» si la propuesta no existe", async ({ page }) => {
     await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) => ruta.fulfill({ status: 404, json: {} }));
     await page.goto(`/resultados/${PROPUESTA_ID}`);

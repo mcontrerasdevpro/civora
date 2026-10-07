@@ -5,7 +5,8 @@ import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
 import { derivarNullifierCertificado, secretoNullifierCertificado } from "../../../../../lib/nullifier-certificado.mjs";
-import { registrarError } from "../../../../../lib/registro.mjs";
+import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
+import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
 import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
 
 /**
@@ -81,6 +82,10 @@ export async function POST(request: Request) {
       razon.includes("todavia no ha comenzado")
     ) {
       return NextResponse.json({ error: razon }, { status: 400 });
+    }
+    if (esRechazoDelContrato(error)) {
+      registrarAviso("voto de certificado rechazado por el contrato", selectorDeRevert(error) ?? "sin selector");
+      return NextResponse.json({ error: "El contrato ha rechazado el voto." }, { status: 400 });
     }
     // No se relanza: Next registraría el error entero, con la transacción
     // (nullifier y opción).

@@ -33,17 +33,14 @@ test("la solicitud a ZKPassport vincula el dato con bind(\"custom_data\")", asyn
 
 // ---------- La prueba va al contrato sin verificación local en el navegador ----------
 
-test("la prueba se envía al llegar (onProofGenerated) y el SDK no la verifica ni la sube", async () => {
+test("la prueba se envía al llegar (onProofGenerated) y no se sube al panel de ZKPassport", async () => {
   const identidad = await readFile(new URL("../../../packages/zk-identity/src/index.ts", import.meta.url), "utf8");
-  // Sin políticas del panel (que activan el almacenamiento de pruebas) ni verificación por API.
-  assert.doesNotMatch(identidad, /\.policy\(|verifierMode/);
+  assert.match(identidad, /new ZKPassport\(APP_DOMAIN, \{ disableProofStorage: true \}\)/);
+  assert.doesNotMatch(identidad, /new ZKPassport\(APP_DOMAIN\)/);
 
   const flujo = await readFile(new URL("../app/votar/IdentificacionDnie.tsx", import.meta.url), "utf8");
   assert.match(flujo, /solicitud\.onProofGenerated\(/);
   assert.match(flujo, /esPruebaVerificableEnContrato\(proof\)/);
-  // onResult hace que el SDK verifique la prueba (en el navegador o en su API).
-  assert.match(flujo, /solicitud\.onSuccess\(/);
-  assert.doesNotMatch(flujo, /solicitud\.onResult\(/);
 });
 
 test("la CSP no abre WebAssembly ni Alchemy para la verificación local del SDK", async () => {

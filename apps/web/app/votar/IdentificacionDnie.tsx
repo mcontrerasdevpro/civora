@@ -177,9 +177,7 @@ export function PruebaZk({
         });
 
         // Solo cuenta si la app termina sin entregar una prueba para el contrato.
-        // onSuccess no verifica nada; onResult haría verificar al SDK (ver
-        // packages/zk-identity), así que no se registra.
-        solicitud.onSuccess(() => {
+        solicitud.onResult(() => {
           if (cancelado || enviada) return;
           setMensajeError(
             "La app no ha generado una prueba válida. Comprueba que cumples los requisitos (mayoría de edad, documento español)."

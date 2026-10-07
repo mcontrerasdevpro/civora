@@ -172,6 +172,12 @@ Diseño acordado; los canales y la asignación se implementan en la Fase 1
   externos y filtrarían el voto si leyeran la opción. Mitigación: solo voces
   locales y audios propios para la confirmación
   ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)).
+- **Escuchas ajenas al usar «Escuchar»**: quien esté cerca puede oír la
+  opción leída en voz alta. Mitigación: al pulsar «Escuchar» se avisa por
+  escrito y por voz («Baje el volumen o use auriculares: otras personas
+  cerca de usted podrían oír su voto.») y no se lee nada hasta que la
+  persona confirma que lleva auriculares. El navegador no puede detectar
+  los auriculares: la confirmación es declarada.
 - **Caducidad del reto de certificado**: el servidor da 5 minutos para
   firmar el reto. La interfaz no impone límites de tiempo y, si el reto
   caduca, avisa y permite reintentar sin perder el progreso; eliminar ese

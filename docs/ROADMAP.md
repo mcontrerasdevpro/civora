@@ -199,6 +199,8 @@ con contenido manipulado sin efecto.
 | Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | pendiente |
 | Contrato en Sepolia `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia` | hecho |
 | Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
+| Creación de propuestas abierta en la demo, sin `ADMIN_SECRET` (M-04 como riesgo aceptado) | hecho |
+| Volver a exigir autorización (cuentas individuales) y un tope de gasto del relayer antes de producción real | pendiente |
 | Postgres de la demo en el VPS (`civora-db`, sin puerto externo) ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) | hecho; pendiente de revisar en producción |
 | Copias de seguridad automáticas y probadas de la base de datos, antes de producción real | pendiente |
 | Retirar la base de Neon cuando se valide la del VPS | pendiente |

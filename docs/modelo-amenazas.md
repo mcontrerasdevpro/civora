@@ -113,13 +113,12 @@ Ver [ADR 0011](decisiones/0011-alojamiento-vps-propio.md) y
   pruebas `demo.zkpassport.id` en modo `devMode`, que acepta pruebas mock.
   Antes de cualquier uso real hay que registrar el dominio propio y
   desactivar `devMode` (ver README).
-- **Creación de propuestas protegida por una única clave compartida**:
-  `/propuestas/nueva` exige `ADMIN_SECRET`, pero es una clave compartida sin
-  usuarios individuales ni caducidad — quien la tenga puede crear
-  propuestas indefinidamente, y no hay forma de revocar el acceso a una
-  sola persona sin cambiar la clave para todos. Suficiente para una demo
-  con un solo operador; antes de varios administradores reales haría falta
-  un sistema de cuentas de verdad.
+- **Creación de propuestas abierta en la demo**: `/propuestas/nueva` no
+  pide clave; solo hay un límite de 5 propuestas por IP cada 15 minutos,
+  en memoria. Cualquiera puede gastar saldo del relayer en Sepolia y
+  publicar contenido sin moderar. Antes de producción real hace falta
+  autorización con cuentas individuales
+  ([auditoría, M-04](auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
 - **Coacción o compra de voto**: el sistema no puede impedir que alguien
   vote bajo presión en el momento de emitir el voto (problema abierto en
   todo el e-voting remoto, no exclusivo de este proyecto). La coacción

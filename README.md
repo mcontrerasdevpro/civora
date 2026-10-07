@@ -202,12 +202,10 @@ Variables de entorno (`apps/web/.env.local`):
 
 ## Crear propuestas
 
-El endpoint `POST /api/propuestas` exige `ADMIN_SECRET` en una cabecera
-Bearer, la compara en tiempo constante y limita los intentos por IP. El
-contrato también restringe la creación al relayer inmutable. Variable de
-entorno necesaria (`apps/web/.env.local` y Easypanel):
-
-    ADMIN_SECRET=<una cadena aleatoria larga>
+En la demo, `POST /api/propuestas` no pide clave: cualquiera puede crear
+propuestas, con un límite por IP. El contrato restringe la creación al
+relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
+([auditoría, M-04](docs/auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
 
 ## Estructura
 

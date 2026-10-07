@@ -5,6 +5,8 @@ import QRCode from "qrcode";
 import { crearSolicitudVerificacion, obtenerParametrosVerificacionOnChain } from "@civora/zk-identity";
 import type { Propuesta } from "@civora/shared-types";
 import type { Identificacion } from "./identificacion";
+import { useModoSencillo } from "./ModoSencillo";
+import { mensajeParaVotante } from "../../lib/modo-sencillo.mjs";
 
 type Estado = "iniciando" | "esperando" | "generando" | "preparando" | "error";
 
@@ -16,6 +18,16 @@ const MENSAJES: Record<Estado, string> = {
   error: "No se ha podido completar la verificación.",
 };
 
+const MENSAJES_SENCILLOS: Record<Estado, string> = {
+  iniciando: "Preparando…",
+  esperando: "Abra la app ZKPassport en su móvil y apunte la cámara a este código.",
+  generando: "Su móvil está comprobando sus datos. Espere, por favor…",
+  preparando: "Comprobado. Preparando su voto…",
+  error: "No se ha podido comprobar su identidad.",
+};
+
+const ERROR_SENCILLO = "No se ha podido comprobar su identidad. Inténtelo de nuevo o elija otra forma.";
+
 export function IdentificacionDnie({
   propuesta,
   onVerificado,
@@ -25,6 +37,7 @@ export function IdentificacionDnie({
   onVerificado: (identificacion: Identificacion) => void;
   onCambiarMetodo: () => void;
 }) {
+  const { sencillo } = useModoSencillo();
   const [estado, setEstado] = useState<Estado>("iniciando");
   const [url, setUrl] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -118,38 +131,57 @@ export function IdentificacionDnie({
   return (
     <div className="panel">
       <button type="button" className="link-quiet metodo-volver" onClick={onCambiarMetodo}>
-        ← Elegir otro método
+        ← {sencillo ? "Elegir otra forma" : "Elegir otro método"}
       </button>
 
-      <p className="form-hint" style={{ marginTop: 0, marginBottom: 20 }}>
-        Escanea este código con la app móvil de{" "}
-        <a
-          href="https://zkpassport.id"
-          target="_blank"
-          rel="noreferrer"
-          className="link-quiet"
-        >
-          ZKPassport
-        </a>{" "}
-        tras leer el chip NFC de tu DNIe o pasaporte. La app genera una
-        prueba de que cumples los requisitos (edad, nacionalidad) sin enviar
-        tu documento ni tus datos personales a este servidor: la prueba se
-        verifica dentro del propio contrato al emitir el voto.
-      </p>
+      {sencillo ? (
+        <p className="form-hint" style={{ marginTop: 0, marginBottom: 20 }}>
+          Necesita la app ZKPassport en su móvil. Cuando la app se lo pida,
+          acerque su DNI o pasaporte a la parte de atrás del móvil. Sus datos
+          no se envían a esta web.
+        </p>
+      ) : (
+        <p className="form-hint" style={{ marginTop: 0, marginBottom: 20 }}>
+          Escanea este código con la app móvil de{" "}
+          <a
+            href="https://zkpassport.id"
+            target="_blank"
+            rel="noreferrer"
+            className="link-quiet"
+          >
+            ZKPassport
+          </a>{" "}
+          tras leer el chip NFC de tu DNIe o pasaporte. La app genera una
+          prueba de que cumples los requisitos (edad, nacionalidad) sin enviar
+          tu documento ni tus datos personales a este servidor: la prueba se
+          verifica dentro del propio contrato al emitir el voto.
+        </p>
+      )}
 
       {estado === "error" ? (
-        <div className="alert alert-error">{mensajeError}</div>
+        <div className="alert alert-error" role="alert">
+          {mensajeParaVotante(mensajeError ?? MENSAJES.error, sencillo, ERROR_SENCILLO)}
+        </div>
       ) : (
         <>
           {qr && (estado === "esperando" || estado === "generando") && (
             <div className="qr-box">
-              <img src={qr} alt="Código QR para verificar tu identidad con ZKPassport" width={240} height={240} />
+              <img
+                src={qr}
+                alt={sencillo ? "Código para leer con la app ZKPassport" : "Código QR para verificar tu identidad con ZKPassport"}
+                width={240}
+                height={240}
+              />
             </div>
           )}
-          <p className="estado-zk">{MENSAJES[estado]}</p>
+          <p className="estado-zk" role="status">
+            {(sencillo ? MENSAJES_SENCILLOS : MENSAJES)[estado]}
+          </p>
           {url && estado === "esperando" && (
             <a className="link-quiet" href={url} target="_blank" rel="noreferrer">
-              ¿Estás viendo esto en el móvil? Abrir directamente en la app
+              {sencillo
+                ? "¿Está usando el móvil? Pulse aquí para abrir la app"
+                : "¿Estás viendo esto en el móvil? Abrir directamente en la app"}
             </a>
           )}
         </>
@@ -157,7 +189,7 @@ export function IdentificacionDnie({
 
       {estado === "error" && (
         <button type="button" className="btn-primary" onClick={onCambiarMetodo}>
-          Elegir otro método
+          {sencillo ? "Elegir otra forma" : "Elegir otro método"}
         </button>
       )}
     </div>

@@ -1,23 +1,69 @@
 # CÍVORA
 
-Infraestructura de votación verificable — prueba de concepto pensada para
-presentar a organismos y ciudadanía: demostrar que es posible construir un
-mecanismo de voto fiable, resistente al fraude y con la identidad del
-votante certificada sin quedar nunca vinculada a su voto.
+Infraestructura de votación verificable — prueba de concepto para explorar
+verificación de elegibilidad y voto digital. Las garantías dependen de la
+vía de identificación: hoy no ofrece anonimato integral, censo verificable
+ni acreditación de todos los requisitos legales.
+
+## Documentación
+
+| Para | Ver |
+|---|---|
+| Comandos, convenciones y reglas para agentes de IA | [AGENTS.md](AGENTS.md) |
+| Fases, tareas y estado | [docs/ROADMAP.md](docs/ROADMAP.md) |
+| Desplegar el contrato y fusionar a `main` | [docs/despliegue-produccion.md](docs/despliegue-produccion.md) |
+| Desplegar la web en el VPS (Easypanel, Docker) | [docs/despliegue-vps.md](docs/despliegue-vps.md) |
+| Decisiones de arquitectura y su porqué | [docs/decisiones/](docs/decisiones/README.md) |
+| Amenazas y limitaciones | [docs/modelo-amenazas.md](docs/modelo-amenazas.md) |
+| Auditoría de seguridad | [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) |
+| Especificación funcional | [docs/especificacion-publica.md](docs/especificacion-publica.md) |
+| Reportar una vulnerabilidad | [SECURITY.md](SECURITY.md) |
+
+Este README cubre qué es Civora, qué garantiza hoy y cómo configurar el
+entorno. Los comandos están solo en [AGENTS.md](AGENTS.md#comandos).
 
 ## La idea en una frase
 
-El votante se identifica con su DNIe o certificado digital, el sistema
-comprueba que cumple los requisitos legales, y genera una prueba
-criptografica de elegibilidad que no revela quien es. Esa prueba es lo
-unico que llega al voto.
+La vía ZKPassport puede acreditar edad mínima y nacionalidad española sin
+revelar esos atributos al contrato. La vía de certificado verifica una
+firma en el servidor y puede vincular certificado y opción. Consulta la
+tabla de garantías antes de interpretar los resultados de esta PoC.
 
-## Requisitos para votar
+## Requisitos objetivo
 
 - Estar empadronado en cualquier municipio de Espana.
 - Ser titular de un DNI espanol.
 - Residencia continuada en Espana de al menos 5 anios.
 - Tener 18 anios cumplidos.
+
+La lista expresa el objetivo del producto; no todos estos requisitos se
+verifican actualmente.
+
+## Garantías por requisito
+
+| Requisito | Estado | Qué se garantiza hoy |
+|---|---|---|
+| Edad mínima (18 años) | Parcial | ZKPassport genera una prueba comprobada on-chain. En la vía de certificado la edad se declara en el navegador y no se contrasta con una fuente oficial. |
+| Nacionalidad española | Parcial | La prueba ZK exige `ESP` on-chain. La vía de certificado valida una cadena FNMT/DNIe y un NIF, pero no presenta una prueba ZK de nacionalidad. |
+| Empadronamiento en España | Pendiente | Ninguna vía consulta el padrón ni una atestación equivalente. |
+| Residencia continuada de 5 años | Pendiente | Ninguna vía acredita duración de residencia. |
+| Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
+| Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
+| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
+| Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy. Previstas: asignación de canal (Fase 1) y prevalencia del voto presencial sobre el digital (Fase 2, MACI). |
+| Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
+| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. |
+
+Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
+publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
+los votos individuales y sus recuentos siguen siendo observables en la
+cadena pública.
+
+La red de producción está pendiente de decidir
+([ROADMAP](docs/ROADMAP.md#paso-a-producción)). El diseño del voto asistido
+está en el [modelo de amenazas](docs/modelo-amenazas.md#inclusión-y-voto-asistido)
+y los límites del asistente de IA, en el
+[ADR 0009](docs/decisiones/0009-limites-asistente-ia.md).
 
 ## Que hay montado ahora mismo
 
@@ -25,35 +71,30 @@ unico que llega al voto.
 |---|---|---|
 | Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
-| Identidad | packages/zk-identity + apps/web/lib | /votar ofrece tres vias: DNIe/pasaporte por NFC (ZKPassport, prueba verificada dentro del contrato), certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor) y datos manuales (solo valida formato de DNI y edad, sin contrastar con registros oficiales) |
-| Contratos | packages/contracts | VotacionAnonima.sol - varias propuestas con apertura/cierre, voto por nullifier, sin doble voto, recuento y recibo por nullifier; la via DNIe verifica la prueba ZKPassport dentro del propio contrato, contra el RootVerifier oficial |
-| Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
-| Documentacion | docs/ | Especificacion publica y modelo de amenazas |
-
-Ver docs/especificacion-publica.md para el detalle de cada componente y
-docs/modelo-amenazas.md para que garantiza el sistema y que queda
-todavia por resolver.
+| Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
+| Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
+| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); Neon u otro en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
+| Documentacion | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
 
 Este repo esta preparado para abrirse directamente en GitHub Codespaces
-(.devcontainer ya configurado) o en local con pnpm:
-
-pnpm install
+(.devcontainer ya configurado) o en local con pnpm. Los comandos de
+instalación, nodo local, despliegue y arranque están en
+[AGENTS.md](AGENTS.md#comandos).
 
 El contrato necesita un nodo Ethereum local corriendo antes de arrancar la
-web (en dos terminales):
-
-pnpm --filter @civora/contracts node
-pnpm --filter @civora/contracts deploy:localhost
-
-El script de despliegue escribe la direccion + ABI en
+web. El script de despliegue escribe la direccion + ABI en
 apps/web/lib/generated/despliegue-localhost.json (se regenera en cada
 despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
 siguiente seccion).
 
-## Base de datos (Neon)
+## Base de datos (Neon, en local)
+
+En la demo pública, Postgres corre en el VPS
+([despliegue-vps.md](docs/despliegue-vps.md#base-de-datos-civora-db)). Para
+desarrollo local:
 
 El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
 cierre) se guarda en Postgres; el contrato solo ancla el hash de ese
@@ -63,7 +104,7 @@ de gestionar un servidor):
 
 1. Crea una cuenta y un proyecto en Neon.
 2. Copia la cadena de conexion "pooled" (la que trae `-pooler` en el host,
-   pensada para entornos serverless como Vercel).
+   pensada para entornos con muchas conexiones cortas).
 3. En `apps/web/.env.local` (no se versiona):
 
    DATABASE_URL=postgresql://usuario:contraseña@host-pooler.neon.tech/neondb?sslmode=require
@@ -72,45 +113,24 @@ La tabla `propuestas` se crea sola la primera vez que la web la necesita
 (no hace falta ejecutar ninguna migracion a mano).
 
 Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
-ya se puede arrancar la web:
-
-pnpm dev
-
-La web queda disponible en http://localhost:3000. Crea tu primera propuesta
+ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta
 en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
 Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
 cambia con cada nodo nuevo; las propuestas guardadas en Neon quedan
 huerfanas hasta que las recrees).
 
-## Desplegar en Sepolia + Vercel
+## Desplegar en Sepolia + VPS
 
-Para una demo publica (Vercel) el contrato no puede vivir en un nodo
-Hardhat local: se despliega en la testnet Sepolia, gratuita (ver
-docs/especificacion-publica.md).
-
-1. Consigue una URL de RPC de Sepolia (Alchemy o Infura, plan gratuito) y
-   una cuenta con ETH de Sepolia de un faucet.
-2. En `packages/contracts/.env` (no se versiona):
-
-   SEPOLIA_RPC_URL=...
-   SEPOLIA_PRIVATE_KEY=...   # clave de la cuenta del paso anterior, sin 0x opcional
-
-3. Despliega:
-
-   pnpm --filter @civora/contracts deploy:sepolia
-
-   El script imprime la direccion del contrato desplegado.
-4. En Vercel (Settings -> Environment Variables del proyecto), define:
-
-   CONTRATO_DIRECCION=<direccion impresa en el paso anterior>
-   HARDHAT_RPC_URL=<la misma SEPOLIA_RPC_URL>
-   HARDHAT_RELAYER_PRIVATE_KEY=<una clave con ETH de Sepolia; paga el gas de los votos>
-   DATABASE_URL=<cadena de conexion "pooled" de tu proyecto Neon>
-   ADMIN_SECRET=<clave para poder crear propuestas desde /propuestas/nueva>
-   RETO_CERTIFICADO_SECRET=<clave para la via de certificado digital>
-
-   Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en
-   local y busca el despliegue de Hardhat.
+La demo pública se sirve en `https://civora.nexuraia.com` desde un VPS con
+Easypanel, con la imagen del [`Dockerfile`](Dockerfile)
+([ADR 0011](docs/decisiones/0011-alojamiento-vps-propio.md)); el contrato no
+puede vivir en un nodo Hardhat local y se despliega en la testnet Sepolia.
+El contrato, las variables (obligatorias, build arg o ejecución, cambios) y
+las comprobaciones antes de fusionar están en
+[docs/despliegue-produccion.md](docs/despliegue-produccion.md); DNS,
+Easypanel y la imagen, en [docs/despliegue-vps.md](docs/despliegue-vps.md).
+Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
+busca el despliegue de Hardhat.
 
 ## Identidad con ZKPassport (verificacion on-chain)
 
@@ -122,27 +142,34 @@ llamando al **RootVerifier oficial de ZKPassport**
 Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
 genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
 Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
-prueba criptografica valida. En redes locales de Hardhat se despliega en su
+prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)). En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes publicas.
 
-Por defecto se usa el dominio de pruebas de ZKPassport (`demo.zkpassport.id`,
-en `devMode`), que acepta pruebas mock sin necesidad de un documento fisico.
-Variables de entorno (deben coincidir en la web y en el despliegue del
-contrato, o `votarConPruebaZk` rechaza toda prueba):
+`DEV_MODE` está desactivado por defecto tanto en la web como en el contrato.
+En local, actívalo explícitamente solo para una demo con pruebas mock. Las
+variables deben coincidir entre web y despliegue, o el contrato rechazará
+las pruebas:
 
     # apps/web/.env.local
-    NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
-    NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
+   NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
+   NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
 
     # packages/contracts/.env
-    ZKPASSPORT_DOMAIN=tu-dominio.com
-    ZKPASSPORT_DEV_MODE=false
+   ZKPASSPORT_DOMAIN=tu-dominio.com
+   ZKPASSPORT_DEV_MODE=false
+   RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
 
-Para una demo publica con documentos reales, registra el dominio del
-despliegue de Vercel en el dashboard de ZKPassport, desactiva `devMode` en
-ambos sitios y vuelve a desplegar el contrato (`devModeZk` es inmutable,
-fijado en el constructor).
+En redes no locales el despliegue falla si no defines un dominio propio,
+`ZKPASSPORT_DEV_MODE=false` explícito y `RELAYER_ADDRESS`. La web aplica la
+misma validación en producción. Única excepción: la demo pública en
+Sepolia con `CIVORA_DEMO_TESTNET=true`
+([ADR 0010](docs/decisiones/0010-demo-publica-testnet.md)); pasos y
+variables en [docs/despliegue-produccion.md](docs/despliegue-produccion.md). `devModeZk` y el relayer son inmutables:
+para cambiarlos hay que desplegar otro contrato. Para demo local, define
+`NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true` en la web y
+`ZKPASSPORT_DEV_MODE=true` al desplegar; se mostrará el banner
+**MODO DEMOSTRACIÓN**.
 
 ## Identidad con certificado digital (Autofirma)
 
@@ -161,10 +188,12 @@ instalado (FNMT, DNIe...) y el servidor comprueba, en
    respondedor que el propio certificado declara.
 
 A diferencia de ZKPassport, aquí no hay verificador on-chain: la
-verificación ocurre en este servidor, y el voto se envía al contrato por la
-vía "manual" existente (`votarManual`) con el nullifier ya calculado a
-partir del certificado verificado. Tampoco se comprueba la edad (un
-certificado no lleva la fecha de nacimiento) — ver docs/modelo-amenazas.md.
+verificación ocurre en este servidor. Si el certificado no declara un NIF,
+se rechaza; no se usa el emisor y número de serie como respaldo. El voto se
+envía con `votarManual`, función que solo acepta transacciones del relayer
+inmutable. La opción llega al mismo servidor que verifica la identidad, por
+lo que esta vía no es anónima frente al operador. Tampoco se comprueba
+criptográficamente la edad (un certificado no lleva la fecha de nacimiento).
 
 Variables de entorno (`apps/web/.env.local`):
 
@@ -173,13 +202,10 @@ Variables de entorno (`apps/web/.env.local`):
 
 ## Crear propuestas
 
-Como todas las transacciones las firma la misma cuenta "relayer" del
-servidor (el contrato no puede distinguir usuarios de la web), el control
-de acceso a `/propuestas/nueva` vive a nivel de aplicación: hace falta una
-clave de administrador. Variable de entorno necesaria
-(`apps/web/.env.local` y Vercel):
-
-    ADMIN_SECRET=<una cadena aleatoria larga>
+En la demo, `POST /api/propuestas` no pide clave: cualquiera puede crear
+propuestas, con un límite por IP. El contrato restringe la creación al
+relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
+([auditoría, M-04](docs/auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
 
 ## Estructura
 
@@ -188,22 +214,12 @@ civora/
   packages/contracts    -> Contrato de votacion (Solidity)
   packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)
   packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
-  docs/            -> Especificacion publica y modelo de amenazas
+  docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoria y especificacion
 
 ## Por que estas decisiones
 
-- Monorepo: la web, los contratos y la logica de identidad comparten un
-  unico esquema de datos (shared-types), evitando que diverjan.
-- Identidad en capa aislada: zk-identity expone una interfaz propia en vez
-  de acoplar la app directamente al SDK de ZKPassport, para poder migrar
-  en el futuro a la Cartera Europea de Identidad Digital (eIDAS 2.0) sin
-  tocar el resto del sistema.
-- Voto por nullifier: cada prueba de elegibilidad genera un identificador
-  unico que impide votar dos veces sin revelar quien voto.
-- Verificacion ZK dentro del contrato, no en un servidor de confianza:
-  `votarConPruebaZk` llama directamente al RootVerifier oficial de
-  ZKPassport, así que no hay que confiar en que el operador de este sistema
-  verifique honestamente antes de aceptar un voto.
+Cada decisión, con su contexto y alternativas, está en
+[docs/decisiones/](docs/decisiones/README.md).
 
 ## Aviso legal
 

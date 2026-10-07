@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
 import { obtenerPropuesta } from "../../../../lib/propuestas-store";
 import { leerResultados } from "../../../../lib/contrato";
+import { resultadosVisibles } from "../../../../lib/resultados-visibles.mjs";
+import { segmentoFinal } from "../../../../lib/parametros-ruta.mjs";
+import { registrarError } from "../../../../lib/registro.mjs";
 
 // Sin esto, Next.js horneraria el resultado on-chain como contenido
 // estatico en el build y nunca volveria a consultar el contrato.
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const propuesta = await obtenerPropuesta(params.id);
+export async function GET(request: Request) {
+  const id = segmentoFinal(request);
+  const propuesta = await obtenerPropuesta(id);
   if (!propuesta) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
-  return NextResponse.json({
-    propuesta,
-    resultados: await leerResultados(params.id),
-  });
+  if (!resultadosVisibles(propuesta.fechaCierre)) {
+    return NextResponse.json({ propuesta, resultados: null });
+  }
+
+  try {
+    return NextResponse.json({ propuesta, resultados: await leerResultados(id) });
+  } catch (error) {
+    // Pasa, por ejemplo, con propuestas creadas con un contrato anterior.
+    registrarError("resultados no disponibles", error);
+    return NextResponse.json({ propuesta, resultados: null, resultadosNoDisponibles: true });
+  }
 }

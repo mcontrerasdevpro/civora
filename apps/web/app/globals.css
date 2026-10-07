@@ -16,8 +16,6 @@
   --linea-fuerte: #bfdad2;
   --contra: #d6544e;
   --contra-soft: #e79a95;
-  --sans: "Montserrat", -apple-system, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * {
@@ -29,6 +27,8 @@ html {
 }
 
 body {
+  --sans: var(--font-montserrat), sans-serif;
+  --mono: var(--font-ibm-plex-mono), monospace;
   margin: 0;
   background: var(--papel);
   color: var(--tinta-suave);
@@ -64,6 +64,19 @@ header.site {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.demo-banner {
+  position: sticky;
+  top: 76px;
+  z-index: 19;
+  padding: 8px 16px;
+  background: #f3c969;
+  color: #271d08;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .site-bar {
@@ -678,7 +691,9 @@ footer.site-footer {
 /* ---------- Paginas internas (votar / resultados / verificar) ---------- */
 
 .page-shell {
-  padding: 56px 0 88px;
+  /* Solo vertical: el padding lateral lo pone .wrap. */
+  padding-top: 56px;
+  padding-bottom: 88px;
 }
 
 .page-head {
@@ -1069,5 +1084,381 @@ footer.site-footer {
   }
   nav.site-nav {
     display: none;
+  }
+}
+
+/* ---------- Flujo de voto: accesibilidad (WCAG 2.1 AA) ---------- */
+
+.flujo-voto {
+  --texto-enlace: #00735c;
+  --texto-secundario: #4b615d;
+  --texto-error: #a8302b;
+  --foco: #00735c;
+}
+
+.flujo-voto .link-quiet,
+.flujo-voto .wizard-steps .activo {
+  color: var(--texto-enlace);
+}
+
+.flujo-voto .form-hint,
+.flujo-voto .wizard-steps {
+  color: var(--texto-secundario);
+}
+
+.flujo-voto .alert-error {
+  color: var(--texto-error);
+}
+
+.flujo-voto a:focus-visible,
+.flujo-voto button:focus-visible,
+.flujo-voto input:focus-visible,
+.flujo-voto summary:focus-visible,
+.flujo-voto .paso-titulo:focus-visible {
+  outline: 3px solid var(--foco);
+  outline-offset: 3px;
+}
+
+.flujo-voto .paso-titulo:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.flujo-voto .wizard-steps {
+  list-style: none;
+  padding: 0;
+}
+
+.paso-titulo {
+  /* Que la cabecera fija no tape el título al recibir el foco. */
+  scroll-margin-top: 120px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--tinta);
+  margin: 0 0 20px;
+}
+
+.opciones-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.opciones-legend {
+  font-weight: 700;
+  color: var(--tinta);
+  margin-bottom: 12px;
+  padding: 0;
+}
+
+.opcion-voto input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--texto-enlace, var(--primario));
+}
+
+.btn-secundario {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 15px;
+  background: var(--blanco);
+  color: var(--tinta);
+  border: 2px solid var(--tinta-suave);
+  padding: 12px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.btn-secundario:hover {
+  background: var(--papel-raised);
+}
+
+.btn-secundario:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirmacion-texto {
+  font-size: 22px;
+  color: var(--tinta);
+  margin: 0 0 16px;
+}
+
+.aviso-autofirma {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tinta);
+  margin: 0 0 16px;
+}
+
+.confirmacion-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.confirmacion-botones button {
+  min-width: 120px;
+  min-height: 48px;
+}
+
+.btn-escuchar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: 20px;
+  padding: 8px 18px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--tinta);
+  background: var(--blanco);
+  border: 2px solid var(--tinta-suave);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.aviso-escuchar {
+  font-size: 14px;
+  color: var(--texto-secundario, var(--tinta-suave));
+  margin: 0 0 20px;
+}
+
+/* Barra superior: interruptor y avisos fijos */
+
+.barra-voto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 32px;
+  padding-top: 24px;
+}
+
+.interruptor-sencillo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.interruptor-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 18px 8px 10px;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tinta);
+  background: var(--blanco);
+  border: 2px solid var(--tinta-suave);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.interruptor-pista {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: #6b7f7b;
+  transition: background 0.15s ease;
+}
+
+.interruptor-bola {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blanco);
+  transition: transform 0.15s ease;
+}
+
+.interruptor-boton[aria-checked="true"] .interruptor-pista {
+  background: var(--texto-enlace);
+}
+
+.interruptor-boton[aria-checked="true"] .interruptor-bola {
+  transform: translateX(20px);
+}
+
+.interruptor-desc {
+  font-size: 13.5px;
+  color: var(--texto-secundario);
+}
+
+.avisos-voto {
+  flex: 1 1 320px;
+  max-width: 560px;
+  padding: 12px 16px;
+  border: 2px solid var(--tinta-suave);
+  border-radius: 12px;
+  background: var(--blanco);
+  color: var(--tinta);
+  font-size: 15px;
+}
+
+.avisos-voto p {
+  margin: 0;
+}
+
+.aviso-ayuda {
+  margin-top: 8px;
+}
+
+.aviso-ayuda summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--texto-enlace);
+  min-height: 24px;
+}
+
+.aviso-ayuda p {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interruptor-pista,
+  .interruptor-bola {
+    transition: none;
+  }
+}
+
+/* ---------- Modo sencillo ---------- */
+
+.modo-sencillo {
+  --texto-secundario: var(--tinta);
+  --foco: #071b1a;
+  font-size: 20px;
+  line-height: 1.6;
+  color: var(--tinta);
+}
+
+.modo-sencillo :is(
+    p,
+    label,
+    legend,
+    summary,
+    .form-hint,
+    .alert,
+    .link-quiet,
+    .opcion-voto,
+    .form-check,
+    .metodo-card-desc,
+    .estado-zk,
+    .avisos-voto,
+    .aviso-escuchar,
+    .interruptor-desc,
+    .form-field label
+  ) {
+  font-size: 20px;
+  color: var(--tinta);
+}
+
+.modo-sencillo .alert-error {
+  color: var(--texto-error);
+}
+
+.modo-sencillo .wizard-steps {
+  font-family: var(--sans);
+  font-size: 18px;
+  color: var(--tinta);
+}
+
+.modo-sencillo .paso-titulo {
+  font-size: 28px;
+}
+
+.modo-sencillo .page-head p {
+  font-size: 22px;
+  color: var(--tinta);
+}
+
+.modo-sencillo .metodo-card-title {
+  font-size: 22px;
+  color: var(--tinta);
+}
+
+.modo-sencillo :is(.btn-primary, .btn-secundario, .btn-escuchar, .interruptor-boton, .metodo-card) {
+  min-height: 56px;
+  font-size: 20px;
+}
+
+.modo-sencillo .btn-primary {
+  background: var(--oscuro);
+  border-color: var(--oscuro);
+  color: var(--blanco);
+  padding: 14px 28px;
+}
+
+.modo-sencillo .btn-primary:hover {
+  background: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.modo-sencillo :is(.btn-secundario, .btn-escuchar, .interruptor-boton, .avisos-voto, .metodo-card, .panel) {
+  border: 2px solid var(--tinta);
+}
+
+.modo-sencillo .opcion-voto {
+  min-height: 64px;
+  padding: 16px 20px;
+}
+
+.modo-sencillo .opcion-voto input[type="radio"],
+.modo-sencillo .form-check input[type="checkbox"] {
+  width: 28px;
+  height: 28px;
+}
+
+.modo-sencillo .opciones-voto {
+  background: var(--tinta);
+  border-color: var(--tinta);
+  gap: 2px;
+}
+
+.modo-sencillo .opcion-voto:has(input:checked) {
+  background: #d4f1e8;
+  font-weight: 700;
+}
+
+.modo-sencillo .form-field input[type="date"] {
+  min-height: 56px;
+  font-size: 20px;
+  border: 2px solid var(--tinta);
+}
+
+.modo-sencillo .confirmacion-texto {
+  font-size: 28px;
+}
+
+.modo-sencillo .recibo {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  .barra-voto {
+    padding-top: 16px;
+  }
+  .confirmacion-botones button {
+    flex: 1 1 100%;
+  }
+}
+
+.modo-sencillo button {
+  min-height: 48px;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 0 16px;
+  }
+  .page-shell {
+    padding-top: 32px;
   }
 }

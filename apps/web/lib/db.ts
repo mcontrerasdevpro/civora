@@ -1,13 +1,12 @@
 import { Pool, type QueryResultRow } from "pg";
 
 /**
- * Conexion a Postgres (pensada para Neon, pero cualquier Postgres vale: no
- * se usa nada especifico del proveedor mas alla de exigir TLS).
+ * Conexion a Postgres. En la demo es el servicio civora-db del VPS, con
+ * ?sslmode=disable en la URL (red interna; ver ADR 0013); en local, Neon u
+ * otro Postgres con TLS. El sslmode de la URL prevalece sobre `ssl`.
  *
  * DATABASE_URL no se versiona (ver README): en local se define en
- * apps/web/.env.local, en Vercel en las variables de entorno del proyecto.
- * Usa la cadena de conexion "pooled" que da Neon si vas a desplegar en
- * serverless (Vercel), para no agotar las conexiones directas a Postgres.
+ * apps/web/.env.local y en el VPS en las variables del servicio.
  */
 let pool: Pool | undefined;
 

@@ -1,0 +1,29 @@
+# Nada de secretos, artefactos locales ni historial en el contexto de build.
+.git
+.github
+**/.env
+**/.env.*
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+civora.zip
+*.zip
+
+# Tests y artefactos de pruebas
+apps/web/test
+apps/web/e2e
+apps/web/playwright.config.ts
+apps/web/test-results
+apps/web/playwright-report
+packages/contracts/test
+packages/contracts/artifacts
+packages/contracts/cache
+
+# Despliegue local generado por Hardhat (apunta a un nodo local)
+apps/web/lib/generated
+
+# Documentación y entorno de desarrollo
+docs
+*.md
+.devcontainer
+.vscode

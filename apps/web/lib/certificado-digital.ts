@@ -1,9 +1,18 @@
-import { createHmac, timingSafeEqual, webcrypto } from "crypto";
+import { X509Certificate, createHmac, timingSafeEqual, webcrypto } from "crypto";
 import fs from "fs";
 import path from "path";
 import * as asn1js from "asn1js";
 import * as pkijs from "pkijs";
-import forge from "node-forge";
+import { validarFalloAbiertoRevocacion } from "./runtime-security.js";
+import { nifDeCertificado } from "./nif-certificado.mjs";
+import { verificarCadena } from "./cadena-certificados.mjs";
+import { registrarAviso } from "./registro.mjs";
+
+validarFalloAbiertoRevocacion(
+  process.env.FALLO_ABIERTO_REVOCACION === "true",
+  process.env.HARDHAT_RPC_URL,
+  process.env.NODE_ENV
+);
 
 /**
  * Verificacion de identidad por certificado digital (FNMT / DNIe), via
@@ -12,7 +21,12 @@ import forge from "node-forge";
  * del usuario (ver public/js/autoscript.js), y este modulo comprueba en el
  * servidor:
  *   1. Que el reto no ha caducado y no ha sido manipulado (HMAC propio, sin
- *      guardar estado: nada que limpiar ni base de datos de retos).
+ *      guardar estado: nada que limpiar ni base de datos de retos). El reto
+ *      incluye la opción de voto (R-04): la firma solo vale para esa opción.
+ *
+ * La firma CMS y el certificado recibidos solo viven en memoria durante la
+ * verificación: no se guardan ni se registran (logs, base de datos o
+ * mensajes de error). Ver docs/modelo-amenazas.md.
  *   2. Que la firma CMS/CAdES es criptograficamente valida.
  *   3. Que lo firmado es exactamente el reto esperado (no basta con que la
  *      firma sea valida sobre "algo": tiene que cubrir este reto).
@@ -59,71 +73,40 @@ function claveReto(): string {
   return clave;
 }
 
-function hmacReto(propuestaId: string, timestamp: number): string {
-  return createHmac("sha256", claveReto()).update(`${propuestaId}:${timestamp}`).digest("hex");
+function hmacReto(propuestaId: string, timestamp: number, opcion: string): string {
+  return createHmac("sha256", claveReto()).update(`${propuestaId}:${timestamp}:${opcion}`).digest("hex");
 }
 
-export function generarReto(propuestaId: string): { reto: string; timestamp: number } {
+export function generarReto(propuestaId: string, opcion: string): { reto: string; timestamp: number } {
   const timestamp = Date.now();
-  return { reto: hmacReto(propuestaId, timestamp), timestamp };
+  return { reto: hmacReto(propuestaId, timestamp, opcion), timestamp };
 }
 
-function retoValido(propuestaId: string, timestamp: number, reto: string): boolean {
+function retoValido(propuestaId: string, timestamp: number, opcion: string, reto: string): boolean {
   const ahora = Date.now();
   if (timestamp > ahora || ahora - timestamp > RETO_TTL_MS) return false;
-  const esperado = hmacReto(propuestaId, timestamp);
+  const esperado = hmacReto(propuestaId, timestamp, opcion);
   const a = Buffer.from(reto, "hex");
   const b = Buffer.from(esperado, "hex");
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-function raicesDeConfianza(): forge.pki.Certificate[] {
+/** Raíces de confianza (FNMT-RCM y DGP/DNIe) en PEM, tal cual se descargaron. */
+function raicesDeConfianzaPem(): string[] {
   const dir = path.join(process.cwd(), "lib", "certificados-raiz");
   return fs
     .readdirSync(dir)
     .filter((archivo) => archivo.endsWith(".pem"))
-    .map((archivo) => forge.pki.certificateFromPem(fs.readFileSync(path.join(dir, archivo), "utf8")));
+    .map((archivo) => fs.readFileSync(path.join(dir, archivo), "utf8"));
+}
+
+function aPkijs(der: Buffer): pkijs.Certificate {
+  return new pkijs.Certificate({ schema: asn1js.fromBER(new Uint8Array(der).buffer).result });
 }
 
 /** Las mismas raices de confianza, en formato pkijs (para verificar la firma de la respuesta OCSP). */
 function raicesDeConfianzaPkijs(): pkijs.Certificate[] {
-  const dir = path.join(process.cwd(), "lib", "certificados-raiz");
-  return fs
-    .readdirSync(dir)
-    .filter((archivo) => archivo.endsWith(".pem"))
-    .map((archivo) => {
-      const pem = fs.readFileSync(path.join(dir, archivo), "utf8");
-      const der = Buffer.from(forge.pki.pemToDer(pem).getBytes(), "binary");
-      return new pkijs.Certificate({ schema: asn1js.fromBER(new Uint8Array(der).buffer).result });
-    });
-}
-
-interface CertificadoPar {
-  forge: forge.pki.Certificate;
-  pkijs: pkijs.Certificate;
-}
-
-/**
- * Ordena la hoja seguida de sus emisores intermedios (buscando en la lista
- * de candidatos, no confiables por si solos, cual firma a cual) hasta llegar
- * a un certificado autofirmado o quedarse sin candidatos. El resultado se le
- * pasa a verifyCertificateChain junto con un almacen que solo tiene las
- * raices reales: eso es lo que impide que un intermedio (o la propia hoja)
- * se cuele como si fuera de confianza. Se conserva tambien la version pkijs
- * de cada certificado (necesaria para la comprobacion OCSP).
- */
-function ordenarCadenaHastaRaiz(hoja: CertificadoPar, candidatos: CertificadoPar[]): CertificadoPar[] {
-  const cadena = [hoja];
-  const restantes = [...candidatos];
-  let actual = hoja;
-  while (!actual.forge.isIssuer(actual.forge)) {
-    const indice = restantes.findIndex((candidato) => actual.forge.isIssuer(candidato.forge));
-    if (indice === -1) break;
-    actual = restantes[indice];
-    cadena.push(actual);
-    restantes.splice(indice, 1);
-  }
-  return cadena;
+  return raicesDeConfianzaPem().map((pem) => aPkijs(new X509Certificate(pem).raw));
 }
 
 /** URL del respondedor OCSP declarado en la extension Authority Information Access, si existe. */
@@ -241,7 +224,9 @@ async function comprobarRevocacion(
   emisor: pkijs.Certificate
 ): Promise<{ comprobado: boolean; revocado: boolean; razon?: string }> {
   const fallo = (razon: string) => {
-    console.error("Comprobacion OCSP fallida:", razon);
+    // `razon` es texto fijo de este módulo (más el mensaje técnico de la
+    // excepción de red), sin datos del certificado ni del votante.
+    registrarAviso("comprobacion OCSP fallida", razon);
     return { comprobado: false, revocado: false, razon };
   };
 
@@ -295,15 +280,6 @@ async function comprobarRevocacion(
   }
 }
 
-/** DNI/NIF del titular si el certificado lo declara en el subject; si no, un identificador estable del propio certificado. */
-function identificadorDeCertificado(cert: forge.pki.Certificate): string {
-  const campoSerie =
-    cert.subject.getField({ shortName: "serialNumber" }) ?? cert.subject.getField({ type: "2.5.4.5" });
-  if (campoSerie?.value) return String(campoSerie.value);
-  const emisor = cert.issuer.attributes.map((a) => `${a.shortName ?? a.type}=${a.value}`).join(",");
-  return `${emisor}#${cert.serialNumber}`;
-}
-
 export interface ResultadoVerificacionCertificado {
   valido: boolean;
   identificador: string | null;
@@ -312,6 +288,8 @@ export interface ResultadoVerificacionCertificado {
 
 export async function verificarFirmaCertificado(params: {
   propuestaId: string;
+  /** Opción enviada con el voto; debe ser la incluida en el reto firmado. */
+  opcion: string;
   timestamp: number;
   reto: string;
   signatureB64: string;
@@ -319,7 +297,7 @@ export async function verificarFirmaCertificado(params: {
 }): Promise<ResultadoVerificacionCertificado> {
   asegurarMotorCriptografico();
 
-  if (!retoValido(params.propuestaId, params.timestamp, params.reto)) {
+  if (!retoValido(params.propuestaId, params.timestamp, params.opcion, params.reto)) {
     return { valido: false, identificador: null, error: "El reto ha caducado o no es válido." };
   }
 
@@ -364,19 +342,34 @@ export async function verificarFirmaCertificado(params: {
     retoEsperado.byteOffset + retoEsperado.byteLength
   );
 
-  let firmaValida: unknown;
+  // pkijs busca el certificado firmante solo dentro del CMS (por emisor y
+  // número de serie o por identificador de clave), nunca en `certB64`. La
+  // cadena y el DNI se validan sobre `certB64`, así que hay que exigir que
+  // sean el mismo certificado: si no, cualquiera podría firmar con su clave
+  // y enviar el certificado público de otra persona.
+  let firmaValida = false;
+  let certificadoFirmanteDer: Buffer | null = null;
   try {
-    firmaValida = await signedData.verify({
+    const resultado = await signedData.verify({
       signer: 0,
       data: retoEsperadoArrayBuffer,
-      trustedCerts: [certificadoLeaf, ...certificadosDeLaFirma],
       checkChain: false,
+      extendedMode: true,
     });
+    firmaValida = resultado.signatureVerified === true;
+    if (resultado.signerCertificate) {
+      certificadoFirmanteDer = Buffer.from(resultado.signerCertificate.toSchema().toBER(false));
+    }
   } catch {
     firmaValida = false;
   }
-  if (firmaValida !== true) {
+  if (!firmaValida) {
     return { valido: false, identificador: null, error: "La firma no ha superado la verificación criptográfica." };
+  }
+  // Ambos se serializan igual para no depender de cómo los codificó el cliente.
+  const certificadoEnviadoDer = Buffer.from(certificadoLeaf.toSchema().toBER(false));
+  if (!certificadoFirmanteDer || !certificadoFirmanteDer.equals(certificadoEnviadoDer)) {
+    return { valido: false, identificador: null, error: "La firma no se ha hecho con el certificado enviado." };
   }
 
   // Si el CMS es "enveloping" (eContent presente) comprobamos ademas que
@@ -391,49 +384,21 @@ export async function verificarFirmaCertificado(params: {
   }
 
   // Cadena de confianza: el certificado debe encadenar hasta la FNMT o la
-  // DGP (DNIe).
-  let hojaPar: CertificadoPar;
-  try {
-    hojaPar = {
-      pkijs: certificadoLeaf,
-      forge: forge.pki.certificateFromAsn1(
-        forge.asn1.fromDer(forge.util.createBuffer(certificadoLeafDer.toString("binary")))
-      ),
-    };
-  } catch {
-    return { valido: false, identificador: null, error: "No se ha podido leer el certificado (X.509)." };
-  }
-
-  const candidatos: CertificadoPar[] = [];
+  // DGP (DNIe). Los intermedios salen del propio CMS (los pone quien firma):
+  // solo completan el camino; la confianza la dan las raíces locales. La
+  // verificación usa crypto.X509Certificate (OpenSSL), no node-forge
+  // (ver lib/cadena-certificados.mjs).
+  const intermediosDer: Buffer[] = [];
   for (const cert of certificadosDeLaFirma) {
     try {
-      const der = Buffer.from(cert.toSchema().toBER(false));
-      candidatos.push({
-        pkijs: cert,
-        forge: forge.pki.certificateFromAsn1(forge.asn1.fromDer(forge.util.createBuffer(der.toString("binary")))),
-      });
+      intermediosDer.push(Buffer.from(cert.toSchema().toBER(false)));
     } catch {
-      // certificado no parseable; se ignora, no participa en la cadena
+      // certificado no serializable; se ignora, no participa en la cadena
     }
   }
 
-  // IMPORTANTE: los "candidatos" salen del propio CMS, es decir, los pone
-  // quien firma. Solo sirven para completar la cadena hasta una raiz real;
-  // nunca deben entrar en el mismo almacen de confianza que las raices, o
-  // un certificado autofirmado (o cualquier cadena inventada) se
-  // "confiaria a si mismo" y la verificacion no serviria de nada.
-  const caStore = forge.pki.createCaStore(raicesDeConfianza());
-  const cadena = ordenarCadenaHastaRaiz(hojaPar, candidatos);
-  let cadenaValida = false;
-  try {
-    cadenaValida = forge.pki.verifyCertificateChain(
-      caStore,
-      cadena.map((par) => par.forge)
-    );
-  } catch {
-    cadenaValida = false;
-  }
-  if (!cadenaValida) {
+  const cadena = verificarCadena(certificadoLeafDer, intermediosDer, raicesDeConfianzaPem());
+  if (!cadena.valida) {
     return {
       valido: false,
       identificador: null,
@@ -441,7 +406,16 @@ export async function verificarFirmaCertificado(params: {
     };
   }
 
-  const emisorInmediato = cadena[1]?.pkijs;
+  const nif = nifDeCertificado(cadena.hoja);
+  if (!nif) {
+    return {
+      valido: false,
+      identificador: null,
+      error: "El certificado no declara un DNI español válido del titular.",
+    };
+  }
+
+  const emisorInmediato = aPkijs(cadena.emisor.raw);
   const falloAbierto = process.env.FALLO_ABIERTO_REVOCACION === "true";
   if (emisorInmediato) {
     const { comprobado, revocado } = await comprobarRevocacion(certificadoLeaf, emisorInmediato);
@@ -450,7 +424,7 @@ export async function verificarFirmaCertificado(params: {
     }
     if (!comprobado && !falloAbierto) {
       // La razon detallada del fallo ya queda registrada en el servidor via
-      // console.error dentro de comprobarRevocacion; no se expone al cliente.
+      // registrarAviso dentro de comprobarRevocacion; no se expone al cliente.
       return {
         valido: false,
         identificador: null,
@@ -465,12 +439,5 @@ export async function verificarFirmaCertificado(params: {
     };
   }
 
-  return { valido: true, identificador: identificadorDeCertificado(hojaPar.forge) };
-}
-
-/** Nullifier final, propuesta-especifico, a partir del identificador del certificado ya verificado. */
-export async function derivarNullifierCertificado(propuestaId: string, identificador: string): Promise<string> {
-  const datos = new TextEncoder().encode(`${propuestaId}:certificado:${identificador}`);
-  const hash = await crypto.subtle.digest("SHA-256", datos);
-  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { valido: true, identificador: nif };
 }

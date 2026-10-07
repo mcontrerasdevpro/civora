@@ -31,46 +31,59 @@ export const OPCIONES: OpcionVoto[] = ["a_favor", "en_contra", "abstencion"];
 const RPC_URL_HARDHAT_LOCAL = "http://127.0.0.1:8545";
 const CLAVE_HARDHAT_LOCAL = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
-const RPC_URL = process.env.HARDHAT_RPC_URL ?? RPC_URL_HARDHAT_LOCAL;
+type Conexion = { direccion: string; provider: JsonRpcProvider; relayer: Wallet };
 
-if (RPC_URL !== RPC_URL_HARDHAT_LOCAL && !process.env.HARDHAT_RELAYER_PRIVATE_KEY) {
-  throw new Error(
-    "HARDHAT_RPC_URL apunta fuera de localhost: define tambien HARDHAT_RELAYER_PRIVATE_KEY, " +
-      "no uses la clave de prueba de Hardhat en una red real."
-  );
-}
+let conexion: Conexion | null = null;
 
-let direccionContrato: string;
+/**
+ * La configuración se resuelve en el primer uso y no al importar el módulo:
+ * así `next build` (y la imagen Docker) no necesita CONTRATO_DIRECCION ni el
+ * despliegue local, y los errores de configuración aparecen al atender la
+ * primera petición que usa el contrato.
+ */
+function obtenerConexion(): Conexion {
+  if (conexion) return conexion;
 
-if (process.env.CONTRATO_DIRECCION) {
-  direccionContrato = process.env.CONTRATO_DIRECCION;
-} else {
-  const rutaDespliegue = path.join(process.cwd(), "lib", "generated", "despliegue-localhost.json");
-  if (!fs.existsSync(rutaDespliegue)) {
+  const rpcUrl = process.env.HARDHAT_RPC_URL ?? RPC_URL_HARDHAT_LOCAL;
+  if (rpcUrl !== RPC_URL_HARDHAT_LOCAL && !process.env.HARDHAT_RELAYER_PRIVATE_KEY) {
     throw new Error(
-      "Falta lib/generated/despliegue-localhost.json: ejecuta `pnpm --filter @civora/contracts node` " +
-        "y `pnpm --filter @civora/contracts deploy:localhost`, o define CONTRATO_DIRECCION para usar una red publica."
+      "HARDHAT_RPC_URL apunta fuera de localhost: define tambien HARDHAT_RELAYER_PRIVATE_KEY, " +
+        "no uses la clave de prueba de Hardhat en una red real."
     );
   }
-  const despliegue = JSON.parse(fs.readFileSync(rutaDespliegue, "utf8"));
-  direccionContrato = despliegue.address;
+
+  let direccion: string;
+  if (process.env.CONTRATO_DIRECCION) {
+    direccion = process.env.CONTRATO_DIRECCION;
+  } else {
+    const rutaDespliegue = path.join(process.cwd(), "lib", "generated", "despliegue-localhost.json");
+    if (!fs.existsSync(rutaDespliegue)) {
+      throw new Error(
+        "Falta lib/generated/despliegue-localhost.json: ejecuta `pnpm --filter @civora/contracts node` " +
+          "y `pnpm --filter @civora/contracts deploy:localhost`, o define CONTRATO_DIRECCION para usar una red publica."
+      );
+    }
+    direccion = JSON.parse(fs.readFileSync(rutaDespliegue, "utf8")).address;
+  }
+
+  const provider = new JsonRpcProvider(rpcUrl);
+  const relayer = new Wallet(process.env.HARDHAT_RELAYER_PRIVATE_KEY ?? CLAVE_HARDHAT_LOCAL, provider);
+  conexion = { direccion, provider, relayer };
+  return conexion;
 }
-
-const CLAVE_RELAYER = process.env.HARDHAT_RELAYER_PRIVATE_KEY ?? CLAVE_HARDHAT_LOCAL;
-
-const provider = new JsonRpcProvider(RPC_URL);
-const relayer = new Wallet(CLAVE_RELAYER, provider);
 
 export function propuestaIdBytes32(propuestaId: string): string {
   return ethersId(propuestaId);
 }
 
 export function contratoLectura(): Contract {
-  return new Contract(direccionContrato, abi, provider);
+  const { direccion, provider } = obtenerConexion();
+  return new Contract(direccion, abi, provider);
 }
 
 export function contratoEscritura(): Contract {
-  return new Contract(direccionContrato, abi, relayer);
+  const { direccion, relayer } = obtenerConexion();
+  return new Contract(direccion, abi, relayer);
 }
 
 export function nullifierABytes32(nullifierHex: string): string {

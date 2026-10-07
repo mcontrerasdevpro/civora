@@ -5,26 +5,42 @@ import {
   nullifierABytes32,
   propuestaIdBytes32,
 } from "../../../../../lib/contrato";
+import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
+import { resultadosVisibles } from "../../../../../lib/resultados-visibles.mjs";
+import { segmentoFinal } from "../../../../../lib/parametros-ruta.mjs";
+import { registrarError } from "../../../../../lib/registro.mjs";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { nullifier: string } }
-) {
+export async function GET(request: Request) {
   const propuestaId = new URL(request.url).searchParams.get("propuestaId");
   if (!propuestaId) {
     return NextResponse.json({ error: "Falta propuestaId" }, { status: 400 });
   }
 
+  const propuesta = await obtenerPropuesta(propuestaId);
+  if (!propuesta) {
+    return NextResponse.json({ error: "Propuesta inexistente" }, { status: 404 });
+  }
+  if (!resultadosVisibles(propuesta.fechaCierre)) {
+    return NextResponse.json({ error: "Los recibos estarán disponibles tras el cierre." }, { status: 423 });
+  }
+
   let nullifierBytes32: string;
   try {
-    nullifierBytes32 = nullifierABytes32(params.nullifier);
+    nullifierBytes32 = nullifierABytes32(segmentoFinal(request));
   } catch {
     return NextResponse.json({ encontrado: false });
   }
 
   const idBytes32 = propuestaIdBytes32(propuestaId);
   const contrato = contratoLectura();
-  const [registrado, opcion]: [boolean, bigint] = await contrato.votoDe(idBytes32, nullifierBytes32);
+  let registrado: boolean;
+  let opcion: bigint;
+  try {
+    [registrado, opcion] = await contrato.votoDe(idBytes32, nullifierBytes32);
+  } catch (error) {
+    registrarError("consulta de recibo fallida", error);
+    return NextResponse.json({ error: "No se ha podido consultar el voto." }, { status: 502 });
+  }
 
   if (!registrado) {
     return NextResponse.json({ encontrado: false });
@@ -43,7 +59,8 @@ export async function GET(
     const bloque = eventos[0] ? await eventos[0].getBlock() : null;
     timestamp = bloque ? bloque.timestamp * 1000 : null;
   } catch (error) {
-    console.error("No se ha podido obtener el timestamp del voto:", error);
+    // Nunca el objeto: el error de ethers incluye la petición con el nullifier.
+    registrarError("timestamp del voto no disponible", error);
   }
 
   return NextResponse.json({

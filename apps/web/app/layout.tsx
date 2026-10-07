@@ -1,7 +1,24 @@
 import type { ReactNode } from "react";
+import { connection } from "next/server";
+import { IBM_Plex_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "./components/SiteHeader";
 import { SiteFooter } from "./components/SiteFooter";
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-ibm-plex-mono",
+  display: "swap",
+});
 
 export const metadata = {
   title: "CÍVORA — Infraestructura de votación verificable",
@@ -9,23 +26,17 @@ export const metadata = {
     "Votación digital con identidad certificada (DNIe o certificado digital) y pruebas criptográficas: tu identidad acredita que puedes votar, nunca revela qué has votado.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Next solo añade el nonce de la CSP a las páginas renderizadas en cada
+  // petición: sin esto, las estáticas salen sin nonce y su JS queda bloqueado.
+  await connection();
   return (
     <html lang="es">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body>
+      <body className={`${montserrat.variable} ${ibmPlexMono.variable}`}>
         <SiteHeader />
+        {process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true" && (
+          <div className="demo-banner" role="status">MODO DEMOSTRACIÓN</div>
+        )}
         {children}
         <SiteFooter />
       </body>

@@ -27,7 +27,7 @@ se comprueba realmente hoy y cuál queda pendiente.
 | Identidad por certificado | `apps/web/lib/certificado-digital.ts` | Verifica firmas Autofirma (FNMT/DNIe): firma, cadena de confianza y revocación OCSP |
 | Tipos compartidos | `packages/shared-types` | Esquema de propuesta, voto y resultados (Zod) |
 | Contratos | `packages/contracts` | Registro de propuestas (con apertura/cierre) y votos por nullifier; verificación on-chain de la prueba ZKPassport |
-| Base de datos | Postgres (Neon) | Contenido de cada propuesta (título, pregunta, fechas); el contrato ancla el hash de ese contenido |
+| Base de datos | Postgres (en el VPS de la demo) | Contenido de cada propuesta (título, pregunta, fechas); el contrato ancla el hash de ese contenido |
 
 ## Cómo se identifica el votante
 

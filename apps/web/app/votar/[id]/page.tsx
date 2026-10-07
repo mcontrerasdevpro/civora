@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import type { Propuesta } from "@civora/shared-types";
 import { VotarWizard } from "../VotarWizard";
 
@@ -9,13 +10,15 @@ type Estado =
   | { fase: "error" }
   | { fase: "lista"; propuesta: Propuesta };
 
-export default function VotarPropuestaPage({ params }: { params: { id: string } }) {
+export default function VotarPropuestaPage() {
+  // useParams funciona igual en Next 14 y 15 (en 15 la prop `params` es una promesa).
+  const { id } = useParams<{ id: string }>();
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
 
   useEffect(() => {
     let cancelado = false;
 
-    fetch(`/api/propuestas/${params.id}`, { cache: "no-store" })
+    fetch(`/api/propuestas/${id}`, { cache: "no-store" })
       .then(async (respuesta) => {
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
@@ -28,7 +31,7 @@ export default function VotarPropuestaPage({ params }: { params: { id: string } 
     return () => {
       cancelado = true;
     };
-  }, [params.id]);
+  }, [id]);
 
   return (
     <main className="wrap page-shell">

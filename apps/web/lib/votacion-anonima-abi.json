@@ -15,6 +15,11 @@
         "internalType": "bool",
         "name": "_devModeZk",
         "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "_relayer",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -23,6 +28,11 @@
   {
     "inputs": [],
     "name": "AmbitoIncorrecto",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DireccionCero",
     "type": "error"
   },
   {
@@ -48,6 +58,11 @@
   {
     "inputs": [],
     "name": "PruebaInvalida",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SoloRelayer",
     "type": "error"
   },
   {
@@ -254,6 +269,19 @@
         "internalType": "bool",
         "name": "existe",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "relayer",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

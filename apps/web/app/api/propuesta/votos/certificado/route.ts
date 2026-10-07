@@ -3,15 +3,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
-import { derivarNullifierCertificado, verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
-import { OPCIONES, contratoEscritura, leerResultados, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
+import { verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
+import { derivarNullifierCertificado, secretoNullifierCertificado } from "../../../../../lib/nullifier-certificado.mjs";
+import { registrarError } from "../../../../../lib/registro.mjs";
+import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
 
 /**
  * Voto con certificado digital (FNMT/DNIe vía Autofirma). A diferencia de
  * votarConPruebaZk, aqui no hay un verificador on-chain: la firma se
  * verifica en este servidor (ver lib/certificado-digital.ts) y el nullifier
- * que resulta se envia al contrato por la via "manual" existente, con una
- * nota que dice de donde viene, para quien audite los eventos on-chain.
+ * que resulta se envia al contrato por la via "manual" existente, con la
+ * nota "certificado" (sin el nullifier) para quien audite los eventos.
+ *
+ * El nullifier es un HMAC con NULLIFIER_CERTIFICADO_SECRET (R-02) y el reto
+ * firmado incluye la opcion (R-04). La firma y el certificado recibidos no
+ * se guardan ni se registran: solo se usan para verificar.
  */
 const CuerpoSchema = z.object({
   propuestaId: z.string().uuid(),
@@ -43,12 +49,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
-  const verificacion = await verificarFirmaCertificado({ propuestaId, timestamp, reto, signatureB64, certB64 });
+  const verificacion = await verificarFirmaCertificado({ propuestaId, opcion, timestamp, reto, signatureB64, certB64 });
   if (!verificacion.valido || !verificacion.identificador) {
     return NextResponse.json({ error: verificacion.error ?? "Certificado no válido." }, { status: 400 });
   }
 
-  const nullifier = await derivarNullifierCertificado(propuestaId, verificacion.identificador);
+  const nullifier = derivarNullifierCertificado(
+    propuestaId,
+    verificacion.identificador,
+    secretoNullifierCertificado(process.env)
+  );
   const nullifierBytes32 = nullifierABytes32(nullifier);
 
   try {
@@ -57,7 +67,7 @@ export async function POST(request: Request) {
       propuestaIdBytes32(propuestaId),
       nullifierBytes32,
       OPCIONES.indexOf(opcion),
-      toUtf8Bytes(`certificado:${nullifier}`)
+      toUtf8Bytes("certificado")
     );
     await tx.wait();
   } catch (error) {
@@ -72,8 +82,11 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: razon }, { status: 400 });
     }
-    throw error;
+    // No se relanza: Next registraría el error entero, con la transacción
+    // (nullifier y opción).
+    registrarError("voto de certificado no registrado", error);
+    return NextResponse.json({ error: "No se ha podido registrar el voto." }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, nullifier, resultados: await leerResultados(propuestaId) });
+  return NextResponse.json({ ok: true, nullifier });
 }

@@ -1,0 +1,49 @@
+# Dependabot. Decisión de versiones de Next y React: docs/decisiones/0012-next-15-react-19.md
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    # Workspace de pnpm: un único pnpm-lock.yaml en la raíz.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Madrid"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "fix(deps)"
+      prefix-development: "chore(deps)"
+    # Las versiones mayores de Next y React se actualizan como tarea propia
+    # (cambios de API, CSP con nonce, validaciones de arranque y salida
+    # standalone). Ojo: `update-types` solo afecta a las actualizaciones de
+    # versión; GitHub sigue abriendo las de seguridad aunque sean mayores.
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # Todas las actualizaciones de seguridad en una sola PR.
+      seguridad:
+        applies-to: security-updates
+        patterns: ["*"]
+      # Actualizaciones de versión menores y parches, agrupadas por semana.
+      menores-y-parches:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "ci"
+    groups:
+      acciones:
+        patterns: ["*"]

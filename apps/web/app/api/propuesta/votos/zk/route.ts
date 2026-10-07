@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
-import { OPCIONES, leerResultados, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
+import { OPCIONES, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
+import { registrarError } from "../../../../../lib/registro.mjs";
 
 /**
  * Voto con prueba ZKPassport verificada dentro del propio contrato (ver
@@ -87,12 +88,10 @@ export async function POST(request: Request) {
     if (razon.includes("Propuesta inexistente") || razon.includes("Votacion cerrada") || razon.includes("todavia no ha comenzado")) {
       return NextResponse.json({ error: razon }, { status: 400 });
     }
-    throw error;
+    // No se relanza: Next registraría el error entero, con la transacción.
+    registrarError("voto zk no registrado", error);
+    return NextResponse.json({ error: "No se ha podido registrar el voto." }, { status: 500 });
   }
 
-  return NextResponse.json({
-    ok: true,
-    nullifier,
-    resultados: await leerResultados(propuestaId),
-  });
+  return NextResponse.json({ ok: true, nullifier });
 }

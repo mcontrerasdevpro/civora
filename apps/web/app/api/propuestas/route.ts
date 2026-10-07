@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
+import { registrarError } from "../../../lib/registro.mjs";
 import { crearPropuesta, listarPropuestas } from "../../../lib/propuestas-store";
 
 export const dynamic = "force-dynamic";
@@ -16,10 +18,17 @@ export async function GET() {
   return NextResponse.json({ propuestas: await listarPropuestas() });
 }
 
-// TODO: sin control de acceso de momento (ver historial de este archivo):
-// cualquiera puede crear una propuesta on-chain. Restaurar la comprobacion
-// de ADMIN_SECRET (o un flujo de aprobacion) antes de un uso real.
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "unknown";
+  const rateLimit = checkAdminRateLimit(ip);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Inténtalo más tarde." },
+      { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+    );
+  }
+
+  // Creación abierta en la demo (riesgo aceptado M-04): solo la limita el tope por IP.
   const cuerpo = await request.json().catch(() => null);
   const parseo = CuerpoCreacionSchema.safeParse(cuerpo);
 
@@ -44,9 +53,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ propuesta }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message ?? "No se ha podido crear la propuesta." },
-      { status: 500 }
-    );
+    // El mensaje de ethers incluye la transacción y datos del proveedor RPC:
+    // ni se devuelve ni se registra entero.
+    registrarError("propuesta no creada", error);
+    return NextResponse.json({ error: "No se ha podido crear la propuesta." }, { status: 500 });
   }
 }

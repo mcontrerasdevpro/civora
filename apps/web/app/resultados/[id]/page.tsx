@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import type { Propuesta, ResultadoPropuesta } from "@civora/shared-types";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
@@ -14,9 +15,13 @@ const INTERVALO_REFRESCO_MS = 4000;
 type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
+  | { fase: "ocultos"; propuesta: Propuesta }
+  | { fase: "no_disponibles"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
 
-export default function ResultadosPropuestaPage({ params }: { params: { id: string } }) {
+export default function ResultadosPropuestaPage() {
+  // useParams funciona igual en Next 14 y 15 (en 15 la prop `params` es una promesa).
+  const { id } = useParams<{ id: string }>();
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
 
   useEffect(() => {
@@ -24,31 +29,54 @@ export default function ResultadosPropuestaPage({ params }: { params: { id: stri
 
     async function cargar() {
       try {
-        const respuesta = await fetch(`/api/propuestas/${params.id}`, { cache: "no-store" });
+        const respuesta = await fetch(`/api/propuestas/${id}`, { cache: "no-store" });
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados });
+        if (!cancelado) {
+          setEstado(
+            cuerpo.resultados
+              ? { fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados }
+              : cuerpo.resultadosNoDisponibles
+                ? { fase: "no_disponibles", propuesta: cuerpo.propuesta }
+                : { fase: "ocultos", propuesta: cuerpo.propuesta }
+          );
+        }
       } catch {
         if (!cancelado) setEstado((anterior) => (anterior.fase === "lista" ? anterior : { fase: "error" }));
       }
     }
 
     cargar();
-    const id = setInterval(cargar, INTERVALO_REFRESCO_MS);
+    const intervalo = setInterval(cargar, INTERVALO_REFRESCO_MS);
     return () => {
       cancelado = true;
-      clearInterval(id);
+      clearInterval(intervalo);
     };
-  }, [params.id]);
+  }, [id]);
 
   return (
     <main className="wrap page-shell">
       <div className="page-head">
         <h1>Resultados</h1>
-        <p>{estado.fase === "lista" ? estado.propuesta.titulo : "Cargando…"}</p>
+        {"propuesta" in estado ? (
+          <p>{estado.propuesta.titulo}</p>
+        ) : (
+          estado.fase === "cargando" && <p>Cargando…</p>
+        )}
       </div>
 
       {estado.fase === "cargando" && <p className="form-hint">Cargando resultados…</p>}
+
+      {estado.fase === "ocultos" && (
+        <p className="alert alert-info">
+          Los resultados se publicarán cuando cierre la votación, el{" "}
+          {new Date(estado.propuesta.fechaCierre).toLocaleString("es-ES")}.
+        </p>
+      )}
+
+      {estado.fase === "no_disponibles" && (
+        <p className="alert alert-error">Los resultados de esta propuesta no están disponibles.</p>
+      )}
 
       {estado.fase === "error" && (
         <div className="alert alert-error">

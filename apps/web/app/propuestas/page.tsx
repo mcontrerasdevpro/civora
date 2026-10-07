@@ -82,9 +82,13 @@ export default function PropuestasPage() {
                   <Link className="btn-primary btn-small" href={`/votar/${propuesta.id}`}>
                     Votar
                   </Link>
-                  <Link className="link-quiet" href={`/resultados/${propuesta.id}`}>
-                    Ver resultados
-                  </Link>
+                  {Date.now() >= Date.parse(propuesta.fechaCierre) ? (
+                    <Link className="link-quiet" href={`/resultados/${propuesta.id}`}>
+                      Ver resultados
+                    </Link>
+                  ) : (
+                    <span className="form-hint">Resultados al cierre</span>
+                  )}
                 </div>
               </div>
             );

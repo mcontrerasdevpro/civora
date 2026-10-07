@@ -1,22 +1,24 @@
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const { obtenerConfiguracionDespliegue } = require("./deployment-config");
 
 // Mismo address en Ethereum, Sepolia y Base (ver https://docs.zkpassport.id).
 const ROOT_VERIFIER_ZKPASSPORT = "0x1D000001000EFD9a6371f4d90bB8920D5431c0D8";
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
+  const { chainId } = await hre.ethers.provider.getNetwork();
 
-  const esLocal = hre.network.name === "localhost" || hre.network.name === "hardhat";
-
-  // Deben coincidir con NEXT_PUBLIC_ZKPASSPORT_DOMAIN / NEXT_PUBLIC_ZKPASSPORT_DEV_MODE
-  // de la web (ver README): de lo contrario votarConPruebaZk rechaza toda prueba. En
-  // local se ignora ZKPASSPORT_DOMAIN/DEV_MODE del .env (que es para Sepolia/mainnet):
-  // el MockRootVerifier no comprueba nada de esto, y así coincide con los valores por
-  // defecto que usa la web en local (demo.zkpassport.id / devMode true).
-  const DOMINIO_ZK = esLocal ? "demo.zkpassport.id" : process.env.ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
-  const DEV_MODE_ZK = esLocal ? true : process.env.ZKPASSPORT_DEV_MODE !== "false";
+  const { esLocal, dominioZk, devModeZk, relayerAddress, demoTestnet } = obtenerConfiguracionDespliegue(
+    hre.network.name,
+    process.env,
+    deployer.address,
+    chainId
+  );
+  if (demoTestnet) {
+    console.log(`AVISO: demo pública en Sepolia (CIVORA_DEMO_TESTNET=true), devMode ${devModeZk}.`);
+  }
 
   let direccionVerificador;
   if (esLocal) {
@@ -33,7 +35,7 @@ async function main() {
   }
 
   const VotacionAnonima = await hre.ethers.getContractFactory("VotacionAnonima");
-  const contrato = await VotacionAnonima.deploy(direccionVerificador, DOMINIO_ZK, DEV_MODE_ZK);
+  const contrato = await VotacionAnonima.deploy(direccionVerificador, dominioZk, devModeZk, relayerAddress);
   await contrato.waitForDeployment();
 
   const artifact = await hre.artifacts.readArtifact("VotacionAnonima");
@@ -54,15 +56,17 @@ async function main() {
   );
 
   console.log("VotacionAnonima desplegado en", deployment.address);
-  console.log(`Verificador ZK: ${direccionVerificador} · dominio: ${DOMINIO_ZK} · devMode: ${DEV_MODE_ZK}`);
+  console.log(`Verificador ZK: ${direccionVerificador} · dominio: ${dominioZk} · devMode: ${devModeZk}`);
+  console.log(`Relayer inmutable: ${relayerAddress}`);
   console.log(
     "Las propuestas ya no se crean aqui: usa el formulario /propuestas/nueva de la web " +
       "(necesita DATABASE_URL configurada, ver README)."
   );
   if (hre.network.name !== "localhost") {
     console.log(
-      `\nEn Vercel, define CONTRATO_DIRECCION=${deployment.address} ` +
-        "(y HARDHAT_RPC_URL / HARDHAT_RELAYER_PRIVATE_KEY) para que la web use este despliegue."
+      `\nEn la plataforma donde se aloja la web (Easypanel u otra), define CONTRATO_DIRECCION=${deployment.address} ` +
+        "junto con HARDHAT_RPC_URL y HARDHAT_RELAYER_PRIVATE_KEY, y comprueba el contrato con verificar:sepolia " +
+        "(ver docs/despliegue-produccion.md)."
     );
   }
 }

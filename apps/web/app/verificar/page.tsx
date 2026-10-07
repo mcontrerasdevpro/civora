@@ -21,6 +21,7 @@ type Resultado =
   | { estado: "buscando" }
   | { estado: "no_encontrado" }
   | { estado: "encontrado"; opcion: OpcionVoto; timestamp: number | null }
+  | { estado: "abierta" }
   | { estado: "error" };
 
 function FormularioVerificacion() {
@@ -39,6 +40,11 @@ function FormularioVerificacion() {
           `?propuestaId=${encodeURIComponent(propuestaId.trim())}`,
         { cache: "no-store" }
       );
+      // 423: la votación sigue abierta y los recibos aún no se pueden consultar.
+      if (respuesta.status === 423) {
+        setResultado({ estado: "abierta" });
+        return;
+      }
       const cuerpo = await respuesta.json();
       if (!respuesta.ok) {
         setResultado({ estado: "error" });
@@ -82,24 +88,32 @@ function FormularioVerificacion() {
         {resultado.estado === "buscando" ? "Buscando…" : "Comprobar"}
       </button>
 
-      {resultado.estado === "encontrado" && (
-        <div className="alert alert-ok" style={{ marginTop: 20, marginBottom: 0 }}>
-          Tu voto está contado: <strong>{ETIQUETAS_OPCION[resultado.opcion]}</strong>
-          {resultado.timestamp !== null
-            ? `, registrado el ${new Date(resultado.timestamp).toLocaleString("es-ES")}.`
-            : "."}
-        </div>
-      )}
-      {resultado.estado === "no_encontrado" && (
-        <div className="alert alert-error" style={{ marginTop: 20, marginBottom: 0 }}>
-          No se ha encontrado ningún voto con ese recibo.
-        </div>
-      )}
-      {resultado.estado === "error" && (
-        <div className="alert alert-error" style={{ marginTop: 20, marginBottom: 0 }}>
-          No se ha podido comprobar el recibo. Inténtalo de nuevo.
-        </div>
-      )}
+      <div aria-live="polite">
+        {resultado.estado === "encontrado" && (
+          <div className="alert alert-ok" style={{ marginTop: 20, marginBottom: 0 }}>
+            Tu voto está contado: <strong>{ETIQUETAS_OPCION[resultado.opcion]}</strong>
+            {resultado.timestamp !== null
+              ? `, registrado el ${new Date(resultado.timestamp).toLocaleString("es-ES")}.`
+              : "."}
+          </div>
+        )}
+        {resultado.estado === "no_encontrado" && (
+          <div className="alert alert-error" style={{ marginTop: 20, marginBottom: 0 }}>
+            No se ha encontrado ningún voto con ese recibo.
+          </div>
+        )}
+        {resultado.estado === "abierta" && (
+          <div className="alert alert-info" style={{ marginTop: 20, marginBottom: 0 }}>
+            La votación sigue abierta. Podrás comprobar tu voto con este recibo
+            cuando cierre; guárdalo hasta entonces.
+          </div>
+        )}
+        {resultado.estado === "error" && (
+          <div className="alert alert-error" style={{ marginTop: 20, marginBottom: 0 }}>
+            No se ha podido comprobar el recibo. Inténtalo de nuevo.
+          </div>
+        )}
+      </div>
     </form>
   );
 }

@@ -33,10 +33,8 @@ import type { Eligibility } from "@civora/shared-types";
 
 const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport.id";
 
-// demo.zkpassport.id solo acepta pruebas de prueba (mock). Al desplegar con
-// un dominio propio real, fijar NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false. Debe
-// coincidir con el `devModeZk` del contrato desplegado (ver deploy.js).
-const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE !== "false";
+// El modo demo solo se activa con opt-in explícito y debe coincidir con el contrato.
+const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true";
 
 /** Debe coincidir exactamente con el ambito que reconstruye VotacionAnonima.votarConPruebaZk. */
 function scopeDePropuesta(propuestaId: string): string {

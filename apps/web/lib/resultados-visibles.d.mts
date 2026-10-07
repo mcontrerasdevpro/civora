@@ -1,0 +1,1 @@
+export function resultadosVisibles(fechaCierre: string, ahora?: number): boolean;

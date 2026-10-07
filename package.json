@@ -9,5 +9,22 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@<8.5.23": "8.5.29",
+      "source-map-js@<1.2.2": "^1.2.2",
+      "ws@>=8.0.0 <8.21.0": "^8.21.0",
+      "@fastify/busboy@<3.2.2": "^3.2.2",
+      "adm-zip@<0.6.1": "^0.6.1",
+      "bn.js@>=4.0.0 <4.12.3": "^4.12.3",
+      "cookie@<0.7.0": "^0.7.0",
+      "diff@>=7.0.0 <8.0.3": "^8.0.3",
+      "lodash@<4.18.0": "^4.18.0",
+      "serialize-javascript@<7.0.5": "^7.0.5",
+      "tmp@<0.2.6": "^0.2.6",
+      "undici@>=5.0.0 <6.28.1": "^6.28.1",
+      "uuid@<11.1.1": "^11.1.1"
+    }
   }
 }

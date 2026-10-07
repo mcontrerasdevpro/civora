@@ -52,6 +52,11 @@
   },
   {
     "inputs": [],
+    "name": "OpcionNoVinculada",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "PruebaCaducada",
     "type": "error"
   },
@@ -173,6 +178,30 @@
     "name": "crearPropuesta",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "propuestaIdTexto",
+        "type": "string"
+      },
+      {
+        "internalType": "enum VotacionAnonima.Opcion",
+        "name": "opcion",
+        "type": "uint8"
+      }
+    ],
+    "name": "datosVinculados",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {

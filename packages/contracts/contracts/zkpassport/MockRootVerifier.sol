@@ -16,6 +16,7 @@ contract MockRootVerifier is IRootVerifier, IVerifierHelper {
     bool public siguienteAmbitoOk = true;
     uint8 public edadSimulada = 18;
     string public nacionalidadSimulada = "ESP";
+    string public datosVinculadosSimulados;
 
     function fijarResultado(
         bool valida,
@@ -33,6 +34,12 @@ contract MockRootVerifier is IRootVerifier, IVerifierHelper {
         nacionalidadSimulada = nacionalidad;
     }
 
+    /// @notice Fija el `custom_data` que devuelve getBoundData, como si la
+    ///         prueba lo llevara vinculado.
+    function fijarDatosVinculados(string calldata datos) external {
+        datosVinculadosSimulados = datos;
+    }
+
     function verify(ProofVerificationParams calldata)
         external
         view
@@ -42,8 +49,8 @@ contract MockRootVerifier is IRootVerifier, IVerifierHelper {
         return (siguienteValida, siguienteIdentificador, IVerifierHelper(address(this)));
     }
 
-    function getBoundData(bytes calldata) external pure override returns (BoundData memory) {
-        return BoundData({senderAddress: address(0), chainId: 0, customData: ""});
+    function getBoundData(bytes calldata) external view override returns (BoundData memory) {
+        return BoundData({senderAddress: address(0), chainId: 0, customData: datosVinculadosSimulados});
     }
 
     function isAgeAboveOrEqual(uint8 minAge, bytes calldata) external view override returns (bool) {

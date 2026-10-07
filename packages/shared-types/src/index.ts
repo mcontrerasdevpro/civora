@@ -22,6 +22,15 @@ export type Eligibility = z.infer<typeof EligibilitySchema>;
 export const OpcionVotoSchema = z.enum(["a_favor", "en_contra", "abstencion"]);
 export type OpcionVoto = z.infer<typeof OpcionVotoSchema>;
 
+/**
+ * Dato que la prueba ZKPassport lleva vinculado (`custom_data`) para votar
+ * `opcion` en la propuesta (R-01). Debe coincidir exactamente con
+ * VotacionAnonima.datosVinculados, que lo comprueba al votar.
+ */
+export function datosVinculadosDeVoto(propuestaId: string, opcion: OpcionVoto): string {
+  return `civora-voto:${propuestaId}:${opcion}`;
+}
+
 export const PropuestaSchema = z.object({
   schema: z.literal("propuesta/v1"),
   id: z.string().uuid(),

@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { OpcionVoto, Propuesta } from "@civora/shared-types";
 import { MetodoSelector, type MetodoIdentificacion } from "./MetodoSelector";
-import { IdentificacionDnie } from "./IdentificacionDnie";
+import { IdentificacionDnie, PruebaZk } from "./IdentificacionDnie";
 import { IdentificacionCertificado, type DatosCertificado } from "./IdentificacionCertificado";
 import type { Identificacion } from "./identificacion";
 import { useModoSencillo } from "./ModoSencillo";
+import type { SolidityVerifierParameters } from "@civora/zk-identity";
 import { AudioConfirmacion, BotonEscuchar } from "./Escuchar";
 import { ErrorAutofirma, firmarReto } from "./autofirma";
 import { esRetoCaducado, mensajeParaVotante } from "../../lib/modo-sencillo.mjs";
@@ -15,15 +16,16 @@ import { esRetoCaducado, mensajeParaVotante } from "../../lib/modo-sencillo.mjs"
 /**
  * Flujo de voto, en 4 pasos, para una propuesta concreta:
  *  1. Identificación -> el votante elige DNIe/pasaporte (ZKPassport, prueba
- *     verificada dentro del contrato al votar), certificado digital
+ *     verificada dentro del contrato al votar) o certificado digital
  *     (Autofirma, firma verificada en el servidor).
  *  2. Elección de la opción.
- *  3. Confirmación explícita antes de enviar. En la vía de certificado, al
- *     pulsar «Sí» se pide un reto que incluye la opción y Autofirma lo firma
- *     (R-04): la firma no sirve para otra opción. Al enviar, el voto va con el
- *     nullifier (o, en la vía ZK, con la prueba que el contrato verifica y
- *     convierte en nullifier; en la vía de certificado, con la firma que el
- *     servidor verifica y convierte en nullifier), nunca con la identidad.
+ *  3. Confirmación explícita antes de enviar. Al pulsar «Sí» se genera la
+ *     prueba de identidad con la opción incluida, para que no sirva para otra:
+ *     en la vía ZK, un QR para la app ZKPassport, que vincula la opción a la
+ *     prueba (R-01); en la vía de certificado, un reto con la opción que
+ *     Autofirma firma (R-04). El contrato (ZK) o el servidor (certificado)
+ *     verifican la prueba y la convierten en nullifier; el voto nunca viaja
+ *     con la identidad.
  *  4. Recibo, para verificar el voto más tarde en /verificar.
  *
  * En modo sencillo cambian los textos (sin jerga técnica) y aparece el botón
@@ -61,6 +63,8 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const [error, setError] = useState<string | null>(null);
   const [retoCaducado, setRetoCaducado] = useState(false);
   const [enviando, setEnviando] = useState<false | "firmando" | "enviando">(false);
+  // Vía ZK: el QR de ZKPassport se muestra en la confirmación tras pulsar «Sí».
+  const [pruebaZkEnCurso, setPruebaZkEnCurso] = useState(false);
   const encabezado = useRef<HTMLHeadingElement>(null);
   const primerRender = useRef(true);
 
@@ -136,22 +140,33 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
     });
   }
 
-  async function votar() {
+  function votarConPruebaZk(opcionElegida: OpcionVoto, parametrosVerificacion: SolidityVerifierParameters) {
+    setEnviando("enviando");
+    return fetch("/api/propuesta/votos/zk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ propuestaId: propuesta.id, opcion: opcionElegida, parametrosVerificacion }),
+    });
+  }
+
+  function confirmar() {
+    if (!opcion || !identificacion) return;
+    setError(null);
+    if (identificacion.tipo === "zk") {
+      setPruebaZkEnCurso(true);
+      return;
+    }
+    void votar();
+  }
+
+  async function votar(parametrosVerificacion?: SolidityVerifierParameters) {
     if (!opcion || !identificacion) return;
     setError(null);
     try {
       let respuesta: Response | null;
       if (identificacion.tipo === "zk") {
-        setEnviando("enviando");
-        respuesta = await fetch("/api/propuesta/votos/zk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            propuestaId: propuesta.id,
-            opcion,
-            parametrosVerificacion: identificacion.parametrosVerificacion,
-          }),
-        });
+        if (!parametrosVerificacion) return;
+        respuesta = await votarConPruebaZk(opcion, parametrosVerificacion);
       } else {
         respuesta = await votarConCertificado(opcion);
         if (!respuesta) return;
@@ -178,6 +193,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
       );
     } finally {
       setEnviando(false);
+      setPruebaZkEnCurso(false);
     }
   }
 
@@ -245,7 +261,6 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
 
       {paso === "identificacion" && metodo === "dnie" && (
         <IdentificacionDnie
-          propuesta={propuesta}
           onVerificado={identificacionCompletada}
           onCambiarMetodo={() => setMetodo(null)}
         />
@@ -300,6 +315,13 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
                 : "Al pulsar «Sí» se abrirá Autofirma para que firmes tu voto con tu certificado digital."}
             </p>
           )}
+          {identificacion?.tipo === "zk" && (
+            <p className="aviso-autofirma" id="aviso-zk">
+              {sencillo
+                ? "Al pulsar «Sí» aparecerá un código. Léalo con la app ZKPassport de su móvil para confirmar su voto con su DNI o pasaporte."
+                : "Al pulsar «Sí» aparecerá un código QR. Escanéalo con la app ZKPassport para votar con tu DNIe o pasaporte."}
+            </p>
+          )}
           <AudioConfirmacion opcion={opcion} conAvisoAutofirma={identificacion?.tipo === "certificado"} />
           {retoCaducado && (
             <div className="alert alert-info" role="alert">
@@ -308,34 +330,45 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
                 : "La firma ha caducado: el servidor solo la acepta durante unos minutos. Tu elección se conserva; pulsa «Firmar de nuevo» para continuar."}
             </div>
           )}
-          <div className="confirmacion-botones" role="group" aria-labelledby="texto-confirmacion">
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={votar}
-              disabled={Boolean(enviando)}
-              aria-describedby={identificacion?.tipo === "certificado" ? "aviso-autofirma" : undefined}
-            >
-              {enviando === "firmando"
-                ? "Esperando a Autofirma…"
-                : enviando === "enviando"
-                  ? "Enviando…"
-                  : retoCaducado
-                    ? "Firmar de nuevo"
-                    : "Sí"}
-            </button>
-            <button
-              className="btn-secundario"
-              type="button"
-              onClick={() => {
-                setRetoCaducado(false);
-                setPaso("voto");
-              }}
-              disabled={Boolean(enviando)}
-            >
-              Volver
-            </button>
-          </div>
+          {pruebaZkEnCurso ? (
+            <PruebaZk
+              propuesta={propuesta}
+              opcion={opcion}
+              onPrueba={(parametrosVerificacion) => void votar(parametrosVerificacion)}
+              onCancelar={() => setPruebaZkEnCurso(false)}
+            />
+          ) : (
+            <div className="confirmacion-botones" role="group" aria-labelledby="texto-confirmacion">
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={confirmar}
+                disabled={Boolean(enviando)}
+                aria-describedby={
+                  identificacion?.tipo === "certificado" ? "aviso-autofirma" : identificacion?.tipo === "zk" ? "aviso-zk" : undefined
+                }
+              >
+                {enviando === "firmando"
+                  ? "Esperando a Autofirma…"
+                  : enviando === "enviando"
+                    ? "Enviando…"
+                    : retoCaducado
+                      ? "Firmar de nuevo"
+                      : "Sí"}
+              </button>
+              <button
+                className="btn-secundario"
+                type="button"
+                onClick={() => {
+                  setRetoCaducado(false);
+                  setPaso("voto");
+                }}
+                disabled={Boolean(enviando)}
+              >
+                Volver
+              </button>
+            </div>
+          )}
           <div aria-live="polite">
             {enviando === "firmando" && (
               <div className="alert alert-info" style={{ marginTop: 20, marginBottom: 0 }}>

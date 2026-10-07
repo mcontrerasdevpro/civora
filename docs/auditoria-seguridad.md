@@ -113,6 +113,8 @@ Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfi
 
 Verificación: 20 tests de contratos, 51 de web, typecheck, build y 70 E2E.
 
+**Prueba real en producción (2026-10-07, `c3706ea` en `civora.nexuraia.com`):** voto con Autofirma y un certificado real, con C-03 activo: recibo correcto. Un segundo voto con el mismo certificado en la misma propuesta se rechaza («Este documento ya ha votado en esta propuesta»). El recibo muestra la fecha de cierre y `/verificar` responde con el aviso de votación abierta. En la misma revisión: `pnpm audit --prod` sin vulnerabilidades, `verificar:sepolia` correcto (relayer, dominio `civora.nexuraia.com`, `devMode` desactivado) y las 8 páginas sin errores de consola ni banner de demostración. Queda repetir la firma en Firefox, que abre Autofirma con un iframe en vez de por navegación.
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.

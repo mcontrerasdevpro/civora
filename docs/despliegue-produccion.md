@@ -114,7 +114,7 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `HARDHAT_RPC_URL` | sí | `https://eth-sepolia.g.alchemy.com/v2/<clave>` | ejecución | sin cambios |
 | `HARDHAT_RELAYER_PRIVATE_KEY` | sí | clave cuya dirección es `0x9bC3679F634Ea86bA0353e4c70BBf7FEdA025be6` | ejecución | sin cambios, salvo que se rote (exige otro contrato) |
 | `DATABASE_URL` | sí | `postgresql://postgres:<contraseña>@nexuraia_civora-db:5432/civora?sslmode=disable` ([despliegue-vps.md](despliegue-vps.md#base-de-datos-civora-db)) | ejecución | **modificada**: Postgres en el VPS en lugar de Neon ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) |
-| `ADMIN_SECRET` | sí, para crear propuestas | cadena aleatoria larga | ejecución | **nueva** (Fase 0) |
+| `ADMIN_SECRET` | no | sin definir | — | **retirada**: la creación de propuestas es abierta en la demo ([auditoría, M-04](auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)); bórrala de Easypanel |
 | `RETO_CERTIFICADO_SECRET` | sí, para la vía de certificado | cadena aleatoria larga | ejecución | sin cambios; ahora el reto incluye la opción (R-04) |
 | `NULLIFIER_CERTIFICADO_SECRET` | sí; sin ella el contenedor no arranca con RPC no local | 32 caracteres o más (p. ej. `openssl rand -hex 32`) | ejecución | **nueva** (R-02) |
 | `FALLO_ABIERTO_REVOCACION` | no | `false` o sin definir | ejecución | **modificada**: `true` ya no se permite fuera de local; el contenedor no arranca |
@@ -149,7 +149,7 @@ queda en el contrato y la base de datos de la demo.
 | # | Comprobación | Resultado esperado |
 |---|---|---|
 | 1 | `curl.exe -fsS https://civora.nexuraia.com/api/salud` | `{"estado":"ok"}`; el contenedor figura como `healthy` |
-| 2 | Crear propuesta en `/propuestas/nueva` con `ADMIN_SECRET`, cierre en unos 15 minutos | Se crea y aparece en `/propuestas`. Con una clave incorrecta, error; tras 5 intentos, bloqueo temporal |
+| 2 | Crear propuesta en `/propuestas/nueva` (sin clave), cierre en unos 15 minutos | Se crea y aparece en `/propuestas`. Tras 5 creaciones desde la misma IP en 15 minutos, bloqueo temporal |
 | 3 | Votar con certificado digital (Autofirma + certificado FNMT o DNIe) | La confirmación avisa de que se abrirá Autofirma; la firma se pide al pulsar «Sí»; recibo. Un segundo voto con el mismo certificado se rechaza |
 | 4 | Flujo ZK con la app ZKPassport y un DNIe o pasaporte real (NFC) | El QR aparece, la prueba real se acepta y se obtiene recibo |
 | 5 | Sin banner | **MODO DEMOSTRACIÓN** no aparece (`devMode` desactivado) |

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { adminSecretMatches, checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
+import { checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
 import { registrarError } from "../../../lib/registro.mjs";
 import { crearPropuesta, listarPropuestas } from "../../../lib/propuestas-store";
 
@@ -28,15 +28,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: "La creación de propuestas no está configurada." }, { status: 503 });
-  }
-  const autorizacion = request.headers.get("authorization");
-  const clave = autorizacion?.startsWith("Bearer ") ? autorizacion.slice(7) : null;
-  if (!adminSecretMatches(clave, process.env.ADMIN_SECRET)) {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
+  // Creación abierta en la demo (riesgo aceptado M-04): solo la limita el tope por IP.
   const cuerpo = await request.json().catch(() => null);
   const parseo = CuerpoCreacionSchema.safeParse(cuerpo);
 

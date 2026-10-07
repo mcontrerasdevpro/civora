@@ -12,7 +12,7 @@
 | A-01 | Parcial | Se elimina el respaldo emisor+serie y se rechaza un certificado sin NIF. El servidor todavía recibe certificado y opción en el mismo flujo. |
 | M-01 | Mitigado en la aplicación | UI, API de resultados y respuestas de voto ocultan recuentos hasta el cierre. La cadena pública sigue exponiendo eventos y almacenamiento. |
 | M-03 | Parcial | Se autoalojan fuentes y se añade CSP con nonce. El SDK ZKPassport y el script de Autofirma siguen requiriendo control de cadena de suministro. |
-| M-04 | Resuelto en la aplicación | `POST /api/propuestas` exige `ADMIN_SECRET`, usa comparación de tiempo constante y rate limit por IP; el contrato limita la creación al relayer. El rate limit es en memoria por instancia. |
+| M-04 | Riesgo aceptado en la demo (2026-10-07) | `POST /api/propuestas` ya no exige `ADMIN_SECRET`: cualquiera puede crear propuestas, limitado a 5 por IP cada 15 minutos (en memoria, por instancia). El contrato sigue limitando la creación al relayer, que paga el gas. Volver a exigir autorización antes de producción real. |
 
 La arquitectura de identidad, el censo verificable y el secreto criptográfico de papeleta quedan fuera de Fase 0 y no se consideran resueltos.
 
@@ -162,9 +162,11 @@ No se encontraron etiquetas de analítica ni píxeles. Fase 0 sustituye Google F
 
 **Arreglo propuesto:** autoalojar fuentes, aplicar CSP estricta y política de conexión limitada; fijar y revisar versiones/lockfile y cadena de suministro del SDK; revisar el origen y proceso de actualización del JavaScript de Autofirma y mantenerlo versionado/auditado localmente. Confirmar en despliegue real el tráfico y la política de logs de terceros.
 
-### M-04 · Medio — Creación de propuestas sin autorización (resuelto en la aplicación)
+### M-04 · Medio — Creación de propuestas sin autorización (riesgo aceptado en la demo)
 
-La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 0 exige `ADMIN_SECRET`, compara con `timingSafeEqual`, aplica rate limit por IP y el contrato permite crear propuestas únicamente al relayer inmutable. El rate limit en memoria no se comparte entre instancias.
+La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 0 exigió `ADMIN_SECRET`, comparado con `timingSafeEqual`. **El 2026-10-07 se retira la clave** (rama `feat/creacion-abierta`) para que cualquiera pueda probar la demo, tras filtrarse la clave en una sesión de trabajo. Queda el rate limit por IP (5 cada 15 minutos, en memoria por instancia) y el contrato sigue permitiendo crear propuestas únicamente al relayer inmutable.
+
+**Riesgos aceptados:** gasto del relayer en Sepolia (si se queda sin saldo, la demo deja de registrar votos) y contenido sin moderar en el listado público; el hash de cada propuesta queda en el contrato aunque se borre de la base de datos.
 
 **Arreglo propuesto:** restaurar autenticación y autorización en servidor, limitar tasa y validar que la propuesta se aprueba antes de enviar la transacción. No exponer secretos al cliente.
 
@@ -209,14 +211,14 @@ El constructor aceptaba la dirección cero como verificador o relayer, lo que de
 - No hay funciones de administrador, `owner`, pausa o setters para modificar votos, fechas, opciones o contenido después de crear una propuesta. `crearPropuesta` solo la puede invocar el relayer inmutable; apertura/cierre quedan fijadas al crearla.
 - Los votos registrados no tienen función de edición o borrado. La opción se conserva en el mapping y el total se incrementa al registrar ([VotacionAnonima.sol](../packages/contracts/contracts/VotacionAnonima.sol#L151), [VotacionAnonima.sol](../packages/contracts/contracts/VotacionAnonima.sol#L154)). Esto protege contra modificación posterior por un administrador, pero no soluciona la admisión de votos no elegibles (C-01).
 - Las opciones son un enum fijo (`A favor`, `En contra`, `Abstención`) ([VotacionAnonima.sol](../packages/contracts/contracts/VotacionAnonima.sol#L22)).
-- La API y el contrato protegen la creación (M-04). La ausencia de administrador on-chain no equivale a un proceso de aprobación pública o deliberativa.
+- La API limita la creación por IP y el contrato la restringe al relayer (M-04, sin clave en la demo). La ausencia de administrador on-chain no equivale a un proceso de aprobación pública o deliberativa.
 
 ## Respuestas directas
 
 1. **Nullifier:** la vía manual de UI/API se eliminó en Fase 0. Certificado = HMAC con secreto del servidor sobre la propuesta y el DNI normalizado (R-02, R-03); si no hay DNI válido, se rechaza. ZK = identificador del verificador bajo `civora-voto-<propuesta>`. Los espacios entre certificado y ZK siguen sin vincularse. No se puede confirmar desde este repositorio la equivalencia DNI/pasaporte interna del SDK.
 2. **Separación identidad-voto:** ZK evita revelar directamente identidad al contrato, pero no usa registro de compromiso en árbol Merkle. Certificado sí permite al backend enlazar identidad y voto. La vía manual no demuestra identidad.
 3. **Gas y vinculación:** paga el relayer del servidor; el votante no aporta wallet. La dirección relayer es pública. IP puede correlacionarse en infraestructura web; no se verificó la retención del hosting.
-4. **Administrador:** no hay funciones para pausar o alterar una elección/votos ya creada. La API exige `ADMIN_SECRET` y el contrato limita la creación al relayer inmutable.
+4. **Administrador:** no hay funciones para pausar o alterar una elección/votos ya creada. La API ya no exige `ADMIN_SECRET` en la demo (M-04) y el contrato limita la creación al relayer inmutable.
 5. **Resultados y cifrado:** la aplicación no devuelve recuentos antes del cierre. Los votos no están cifrados; opción y nullifier se publican en cadena y se pueden consultar directamente.
 6. **Censo:** no existe raíz Merkle congelada ni prueba de pertenencia a censo.
 7. **Terceros:** sin analítica/píxeles detectados; las fuentes se sirven con `next/font` y hay CSP con nonce. El SDK/servicio ZKPassport y JavaScript same-origin de Autofirma aún requieren control de suministro/privacidad.

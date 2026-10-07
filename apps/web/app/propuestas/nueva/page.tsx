@@ -14,7 +14,6 @@ export default function NuevaPropuestaPage() {
   const [titulo, setTitulo] = useState("");
   const [pregunta, setPregunta] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [adminSecret, setAdminSecret] = useState("");
   const [fechaApertura, setFechaApertura] = useState(fechaLocalPorDefecto());
   const [duracionDias, setDuracionDias] = useState(30);
   const [error, setError] = useState<string | null>(null);
@@ -33,10 +32,7 @@ export default function NuevaPropuestaPage() {
     try {
       const respuesta = await fetch("/api/propuestas", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminSecret}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           titulo: titulo.trim(),
           pregunta: pregunta.trim(),
@@ -50,7 +46,6 @@ export default function NuevaPropuestaPage() {
         setError(cuerpo.error ?? "No se ha podido crear la propuesta.");
         return;
       }
-      setAdminSecret("");
       router.push(`/propuestas`);
     } catch {
       setError("No se ha podido contactar con el servidor.");
@@ -70,17 +65,6 @@ export default function NuevaPropuestaPage() {
       </div>
 
       <form className="panel" onSubmit={enviar}>
-        <div className="form-field">
-          <label htmlFor="admin-secret">Clave de administrador</label>
-          <input
-            id="admin-secret"
-            type="password"
-            value={adminSecret}
-            onChange={(evento) => setAdminSecret(evento.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
         <div className="form-field">
           <label htmlFor="titulo">Título</label>
           <input

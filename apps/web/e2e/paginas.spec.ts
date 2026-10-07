@@ -82,6 +82,24 @@ test.describe("las páginas cliente arrancan", () => {
     await expect(page.getByRole("heading", { name: "Carril bici en la avenida principal" })).toBeVisible();
   });
 
+  test("/propuestas/nueva crea una propuesta sin clave de administrador", async ({ page }) => {
+    const envios: { autorizacion: string | null; cuerpo: unknown }[] = [];
+    await page.route("**/api/propuestas", (ruta) => {
+      if (ruta.request().method() !== "POST") return ruta.fulfill({ json: { propuestas: [] } });
+      envios.push({ autorizacion: ruta.request().headers()["authorization"] ?? null, cuerpo: ruta.request().postDataJSON() });
+      return ruta.fulfill({ status: 201, json: { propuesta: { id: PROPUESTA_ID } } });
+    });
+    await page.goto("/propuestas/nueva");
+    await expect(page.getByLabel("Clave de administrador")).toHaveCount(0);
+    await page.getByLabel("Título").fill("Prueba");
+    await page.getByLabel("¿Qué se quiere votar?").fill("¿Sí o no?");
+    await page.getByRole("button", { name: "Crear propuesta" }).click();
+    await expect(page).toHaveURL(/\/propuestas$/);
+    expect(envios).toHaveLength(1);
+    expect(envios[0].autorizacion).toBeNull();
+    expect(envios[0].cuerpo).toMatchObject({ titulo: "Prueba", pregunta: "¿Sí o no?" });
+  });
+
   test("/verificar comprueba un recibo", async ({ page }) => {
     await page.route(/\/api\/propuesta\/votos\/0x/, (ruta) =>
       ruta.fulfill({ json: { encontrado: true, opcion: "a_favor", timestamp: null } })

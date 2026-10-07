@@ -55,6 +55,16 @@ export function IdentificacionDnie({
         </p>
       )}
 
+      {/* En Sepolia el registro de ZKPassport solo tiene los certificados de
+          los pasaportes simulados: los documentos reales no pasan (ADR 0010). */}
+      {process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true" && (
+        <div className="alert alert-info" role="note">
+          {sencillo
+            ? "En esta demostración solo funcionan los pasaportes de ejemplo de la app ZKPassport, no su DNI real. Para usarlos, en la primera pantalla de la app mantenga pulsada la parte de abajo y acepte."
+            : "En esta demostración solo funcionan los pasaportes simulados de la app ZKPassport, no tu DNIe o pasaporte real. Para cargarlos, en la pantalla inicial de la app mantén pulsada la parte inferior y confirma el modo desarrollador."}
+        </div>
+      )}
+
       <button className="btn-primary" type="button" onClick={() => onVerificado({ tipo: "zk" })}>
         Continuar
       </button>

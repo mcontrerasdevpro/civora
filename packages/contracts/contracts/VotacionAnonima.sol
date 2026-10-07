@@ -151,10 +151,15 @@ contract VotacionAnonima {
             revert NoCumpleEdadMinima();
         }
 
-        string[] memory nacionalidadesValidas = new string[](1);
-        nacionalidadesValidas[0] = "ESP";
-        if (!helper.isNationalityIn(nacionalidadesValidas, params.committedInputs)) {
-            revert NacionalidadNoValida();
+        // Los pasaportes simulados de ZKPassport (solo en el registro de
+        // Sepolia) no son españoles: el contrato de demostración (devModeZk,
+        // inmutable y solo en Sepolia, ADR 0010) no exige la nacionalidad.
+        if (!devModeZk) {
+            string[] memory nacionalidadesValidas = new string[](1);
+            nacionalidadesValidas[0] = "ESP";
+            if (!helper.isNationalityIn(nacionalidadesValidas, params.committedInputs)) {
+                revert NacionalidadNoValida();
+            }
         }
 
         string memory vinculados = helper.getBoundData(params.committedInputs).customData;

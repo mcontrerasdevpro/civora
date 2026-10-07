@@ -39,9 +39,21 @@ Desplegado y verificado con `verificar:sepolia` el 2026-10-07 desde la rama
 | Red | Sepolia (chainId 11155111) |
 | `CONTRATO_DIRECCION` | `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` |
 | Contrato anterior (sin R-01, retirado) | `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` |
+| **Contrato de demostración** (en uso; `devModeZk=true`, `CIVORA_DEMO_TESTNET=true`, [ADR 0010](decisiones/0010-demo-publica-testnet.md)) | `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6` |
 | Dominio ZK (`dominioZk`) | `civora.nexuraia.com` |
 | `devModeZk` | `false` (solo pruebas ZKPassport reales) |
 | Relayer inmutable | `0x9bC3679F634Ea86bA0353e4c70BBf7FEdA025be6` |
+
+**Por qué la demo usa el contrato de demostración:** el registro de
+certificados de ZKPassport en Sepolia solo contiene los de los pasaportes
+simulados; la raíz de mainnet (la de los documentos reales) no es válida en
+Sepolia, y en Base sí. Con `devModeZk=false` en Sepolia, la vía ZK no
+funciona con ningún documento. Para la demo, el servicio usa el contrato de
+demostración con `CONTRATO_DIRECCION=0xe5B8…1Ed6`,
+`NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true` (build) y `CIVORA_DEMO_TESTNET=true`;
+la web muestra el banner «MODO DEMOSTRACIÓN» y avisa en la vía DNIe. Las
+pruebas simuladas tienen todas el identificador `1`: un solo voto simulado
+por propuesta.
 
 El relayer es la dirección pública de `HARDHAT_RELAYER_PRIVATE_KEY`: la clave
 que se configure en el servicio debe corresponder a esa dirección. Para

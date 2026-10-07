@@ -275,14 +275,25 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba de otra nacionalidad", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ devModeZk: false });
       const bloque = await ethers.provider.getBlock("latest");
       await (await mock.fijarResultado(true, ethers.id("x"), bloque.timestamp, true, 18, "FRA")).wait();
 
-      await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).to.be.revertedWithCustomError(
+      await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsProduccion())).to.be.revertedWithCustomError(
         contrato,
         "NacionalidadNoValida"
       );
+    });
+
+    it("el contrato de demostración (devModeZk) acepta pasaportes simulados de otra nacionalidad", async function () {
+      const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar({ devModeZk: true });
+      const bloque = await ethers.provider.getBlock("latest");
+      const identificador = await prepararMockValido(mock, bloque.timestamp);
+      await (await mock.fijarResultado(true, identificador, bloque.timestamp, true, 18, "ZKR")).wait();
+
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      const [registrado] = await contrato.votoDe(propuestaId, identificador);
+      expect(registrado).to.equal(true);
     });
 
     it("rechaza una prueba en modo desarrollo si el contrato no lo permite", async function () {

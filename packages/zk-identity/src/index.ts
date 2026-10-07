@@ -95,7 +95,9 @@ export async function crearSolicitudVerificacion(params: {
   if (elegibilidad.edadMinima > 0) {
     query = query.gte("age", elegibilidad.edadMinima);
   }
-  if (elegibilidad.requiereDniEspanol) {
+  // En modo demostración no se pide la nacionalidad: los pasaportes
+  // simulados no son españoles y el contrato de demostración no la exige.
+  if (elegibilidad.requiereDniEspanol && !DEV_MODE) {
     // .in() (no .eq()) es la que empareja con el helper on-chain
     // isNationalityIn que usa VotacionAnonima.votarConPruebaZk.
     query = query.in("nationality", ["ESP"]);

@@ -7,11 +7,23 @@
  * @returns {string}
  */
 export function segmentoFinal(request) {
+  return segmentoDesdeElFinal(request, 1);
+}
+
+/**
+ * Segmento `posicion` contando desde el final (1 = el último), decodificado.
+ * Para rutas anidadas como /api/propuestas/[id]/verificacion (posición 2).
+ *
+ * @param {Request} request
+ * @param {number} posicion
+ * @returns {string}
+ */
+export function segmentoDesdeElFinal(request, posicion) {
   const segmentos = new URL(request.url).pathname.split("/").filter(Boolean);
-  const ultimo = segmentos.at(-1) ?? "";
+  const segmento = segmentos.at(-posicion) ?? "";
   try {
-    return decodeURIComponent(ultimo);
+    return decodeURIComponent(segmento);
   } catch {
-    return ultimo;
+    return segmento;
   }
 }

@@ -3,12 +3,17 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Propuesta, ResultadoPropuesta } from "@civora/shared-types";
-import { AnimatedNumber } from "../../components/AnimatedNumber";
+import { calcularReparto } from "../../../lib/porcentajes-resultados.mjs";
+import { mismoRecuento } from "../../../lib/recuento-eventos.mjs";
+import type { VerificacionResultados } from "../../../lib/verificacion-resultados";
+import { useModoSencillo } from "../../votar/ModoSencillo";
+import { GraficoResultados } from "./GraficoResultados";
+import { VerificaResultado } from "./VerificaResultado";
 
 /**
- * Panel público de resultados de una propuesta concreta: nº de registrados,
- * votos a favor, en contra y abstenciones, leídos directamente del
- * contrato VotacionAnonima.
+ * Resultados de una propuesta, leídos del contrato VotacionAnonima. Antes
+ * del cierre la API no los devuelve (M-01) y aquí solo se avisa de cuándo
+ * se publicarán; después se muestran gráfica, tabla y cómo verificarlos.
  */
 const INTERVALO_REFRESCO_MS = 4000;
 
@@ -20,13 +25,98 @@ type Estado =
   | { fase: "no_disponibles"; propuesta: Propuesta }
   | { fase: "lista"; propuesta: Propuesta; resultados: ResultadoPropuesta };
 
+type EstadoVerificacion =
+  | { fase: "cargando" }
+  | { fase: "error" }
+  | { fase: "lista"; verificacion: VerificacionResultados };
+
+function TablaResultados({ resultados }: { resultados: ResultadoPropuesta }) {
+  const reparto = calcularReparto(resultados);
+  return (
+    <>
+      <table className="tabla-resultados">
+        <caption>Resultados en tabla</caption>
+        <thead>
+          <tr>
+            <th scope="col">Opción</th>
+            <th scope="col">Votos</th>
+            <th scope="col">Porcentaje de los votos emitidos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reparto.filas.map((fila) => (
+            <tr key={fila.opcion}>
+              <th scope="row">{fila.etiqueta}</th>
+              <td>{fila.votos.toLocaleString("es-ES")}</td>
+              <td>{fila.porcentaje ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total de votos emitidos</th>
+            <td>{reparto.total.toLocaleString("es-ES")}</td>
+            <td>{reparto.sumaTexto ?? "—"}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {reparto.notaRedondeo && <p className="form-hint nota-redondeo">{reparto.notaRedondeo}</p>}
+    </>
+  );
+}
+
+function DesglosePorVia({ estado }: { estado: EstadoVerificacion }) {
+  if (estado.fase === "cargando") return <p className="form-hint">Calculando los votos por vía…</p>;
+  const recuento = estado.fase === "lista" ? estado.verificacion.recuento : null;
+  if (!recuento?.disponible || !recuento.porVia) {
+    return (
+      <p className="form-hint">
+        Los votos por vía de identificación no están disponibles ahora desde este servidor. Se pueden contar con los
+        pasos de la sección de comprobación, al final de la página.
+      </p>
+    );
+  }
+  const { certificado, zk, otra } = recuento.porVia;
+  return (
+    <table className="tabla-resultados tabla-vias">
+      <caption className="sr-only">Votos por vía de identificación</caption>
+      <thead>
+        <tr>
+          <th scope="col">Vía</th>
+          <th scope="col">Votos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Certificado digital</th>
+          <td>{certificado.toLocaleString("es-ES")}</td>
+        </tr>
+        <tr>
+          <th scope="row">DNIe o pasaporte (ZKPassport)</th>
+          <td>{zk.toLocaleString("es-ES")}</td>
+        </tr>
+        {otra > 0 && (
+          <tr>
+            <th scope="row">Otra</th>
+            <td>{otra.toLocaleString("es-ES")}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  );
+}
+
 export default function ResultadosPropuestaPage() {
   // useParams funciona igual en Next 14 y 15 (en 15 la prop `params` es una promesa).
   const { id } = useParams<{ id: string }>();
+  const { sencillo } = useModoSencillo();
   const [estado, setEstado] = useState<Estado>({ fase: "cargando" });
+  const [verificacion, setVerificacion] = useState<EstadoVerificacion>({ fase: "cargando" });
+  const listos = estado.fase === "lista";
 
   useEffect(() => {
     let cancelado = false;
+    let intervalo: ReturnType<typeof setInterval> | undefined;
 
     async function cargar() {
       try {
@@ -35,17 +125,21 @@ export default function ResultadosPropuestaPage() {
         if (respuesta.status === 410) {
           const cuerpo = await respuesta.json();
           if (!cancelado) setEstado({ fase: "archivada", mensaje: cuerpo.error });
+          clearInterval(intervalo);
           return;
         }
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        if (!cancelado) {
+        if (cancelado) return;
+        if (cuerpo.resultados) {
+          // Tras el cierre el contrato no admite más votos: no hace falta refrescar.
+          clearInterval(intervalo);
+          setEstado({ fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados });
+        } else {
           setEstado(
-            cuerpo.resultados
-              ? { fase: "lista", propuesta: cuerpo.propuesta, resultados: cuerpo.resultados }
-              : cuerpo.resultadosNoDisponibles
-                ? { fase: "no_disponibles", propuesta: cuerpo.propuesta }
-                : { fase: "ocultos", propuesta: cuerpo.propuesta }
+            cuerpo.resultadosNoDisponibles
+              ? { fase: "no_disponibles", propuesta: cuerpo.propuesta }
+              : { fase: "ocultos", propuesta: cuerpo.propuesta }
           );
         }
       } catch {
@@ -54,15 +148,37 @@ export default function ResultadosPropuestaPage() {
     }
 
     cargar();
-    const intervalo = setInterval(cargar, INTERVALO_REFRESCO_MS);
+    intervalo = setInterval(cargar, INTERVALO_REFRESCO_MS);
     return () => {
       cancelado = true;
       clearInterval(intervalo);
     };
   }, [id]);
 
+  // Los datos para verificar solo se piden con los resultados ya publicados.
+  useEffect(() => {
+    if (!listos) return;
+    let cancelado = false;
+    fetch(`/api/propuestas/${id}/verificacion`, { cache: "no-store" })
+      .then((respuesta) => (respuesta.ok ? respuesta.json() : Promise.reject(new Error())))
+      .then((cuerpo: { verificacion: VerificacionResultados }) => {
+        if (!cancelado) setVerificacion({ fase: "lista", verificacion: cuerpo.verificacion });
+      })
+      .catch(() => {
+        if (!cancelado) setVerificacion({ fase: "error" });
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [id, listos]);
+
+  const coincide =
+    estado.fase === "lista" && verificacion.fase === "lista" && verificacion.verificacion.recuento.disponible
+      ? mismoRecuento(verificacion.verificacion.recuento, estado.resultados)
+      : null;
+
   return (
-    <main className="wrap page-shell">
+    <main className="wrap page-shell resultados">
       <div className="page-head">
         <h1>Resultados</h1>
         {"propuesta" in estado ? (
@@ -102,31 +218,42 @@ export default function ResultadosPropuestaPage() {
       )}
 
       {estado.fase === "lista" && (
-        <div className="ledger-frame">
-          <div className="ledger-top">
-            <span className="ledger-top-label">{estado.propuesta.pregunta}</span>
-            <span className="ledger-top-badge">en directo</span>
-          </div>
-          <div className="ledger-grid">
-            <div className="ledger-cell">
-              <AnimatedNumber value={estado.resultados.registrados} />
-              <div className="ledger-cell-label">Registrados</div>
-            </div>
-            <div className="ledger-cell favor">
-              <AnimatedNumber value={estado.resultados.aFavor} />
-              <div className="ledger-cell-label">A favor</div>
-            </div>
-            <div className="ledger-cell contra">
-              <AnimatedNumber value={estado.resultados.enContra} />
-              <div className="ledger-cell-label">En contra</div>
-            </div>
-            <div className="ledger-cell">
-              <AnimatedNumber value={estado.resultados.abstenciones} />
-              <div className="ledger-cell-label">Abstenciones</div>
-            </div>
-          </div>
-          <div className="ledger-foot">Datos leídos directamente del contrato público.</div>
-        </div>
+        <>
+          <section className="panel-resultados" aria-labelledby="titulo-resultado">
+            <h2 id="titulo-resultado" className="pregunta-resultado">
+              {estado.propuesta.pregunta}
+            </h2>
+            <p className="estado-resultado">
+              <span className="sello-final">Resultado final</span> Votación cerrada el{" "}
+              {new Date(estado.propuesta.fechaCierre).toLocaleString("es-ES")}.
+            </p>
+
+            {calcularReparto(estado.resultados).total === 0 ? (
+              <p className="alert alert-info">No se emitió ningún voto en esta votación.</p>
+            ) : (
+              <GraficoResultados reparto={calcularReparto(estado.resultados)} />
+            )}
+
+            <TablaResultados resultados={estado.resultados} />
+
+            <h3>Participación</h3>
+            <p className="participacion">
+              Aún no se puede calcular qué parte de las personas con derecho a voto ha votado: hace falta un censo
+              cerrado, previsto en la Fase 1. Por eso solo se muestran votos emitidos.
+            </p>
+
+            <h3>Votos por vía de identificación</h3>
+            <DesglosePorVia estado={verificacion} />
+
+            <p className="fuente-resultado">
+              {sencillo
+                ? "Datos leídos del registro público de votos."
+                : "Datos leídos directamente del contrato público."}
+            </p>
+          </section>
+
+          <VerificaResultado estado={verificacion} coincideConContrato={coincide} sencillo={sencillo} />
+        </>
       )}
     </main>
   );

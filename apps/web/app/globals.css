@@ -1500,3 +1500,282 @@ footer.site-footer {
     padding-top: 32px;
   }
 }
+
+/* ---------- Resultados: gráfica, tabla y verificación ---------- */
+
+.resultados {
+  --opcion-a_favor: #00735c;
+  --opcion-en_contra: #a8302b;
+  --opcion-abstencion: #4b615d;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.panel-resultados,
+.verifica-resultado {
+  border: 1px solid var(--linea);
+  background: var(--blanco);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.panel-resultados h3,
+.verifica-resultado h3 {
+  font-size: 17px;
+  color: var(--tinta);
+  margin: 28px 0 8px;
+}
+
+.pregunta-resultado {
+  font-size: clamp(19px, 2.4vw, 22px);
+  color: var(--tinta);
+  margin: 0 0 8px;
+}
+
+.estado-resultado {
+  margin: 0 0 24px;
+  color: var(--texto-secundario);
+}
+
+.sello-final {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tinta);
+  border: 1px solid var(--tinta-suave);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-right: 6px;
+}
+
+.grafico-resultados {
+  margin: 0 0 24px;
+}
+
+.grafico-titulo {
+  font-weight: 700;
+  color: var(--tinta);
+  margin-bottom: 12px;
+}
+
+.tramas-resultados {
+  position: absolute;
+  overflow: hidden;
+}
+
+.trama-a_favor {
+  fill: var(--opcion-a_favor);
+}
+.trama-en_contra {
+  fill: var(--opcion-en_contra);
+}
+.trama-abstencion {
+  fill: var(--opcion-abstencion);
+}
+.trama-claro {
+  fill: var(--blanco);
+  fill-opacity: 0.55;
+}
+
+.barras {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.barra-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 6px;
+}
+
+.barra-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--tinta);
+}
+
+.barra-valor {
+  font-family: var(--mono);
+  color: var(--tinta);
+}
+
+.barra-valor strong {
+  font-size: 1.15em;
+}
+
+.barra-svg {
+  display: block;
+  height: 28px;
+  overflow: visible;
+}
+
+.barra-fondo {
+  fill: var(--papel-raised);
+}
+
+.barra-borde {
+  stroke: var(--tinta);
+  stroke-width: 1;
+}
+
+.tabla-resultados {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 4px;
+  font-size: 15px;
+  color: var(--tinta);
+}
+
+.tabla-resultados caption {
+  text-align: left;
+  font-weight: 700;
+  padding-bottom: 8px;
+}
+
+.tabla-resultados th,
+.tabla-resultados td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--linea);
+}
+
+.tabla-resultados td {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla-resultados thead th {
+  font-size: 13px;
+  color: var(--texto-secundario);
+  border-bottom: 2px solid var(--linea-fuerte);
+}
+
+.tabla-resultados tfoot th,
+.tabla-resultados tfoot td {
+  font-weight: 700;
+  border-bottom: none;
+  border-top: 2px solid var(--linea-fuerte);
+}
+
+.tabla-vias {
+  max-width: 480px;
+}
+
+.nota-redondeo,
+.participacion,
+.fuente-resultado {
+  color: var(--texto-secundario);
+}
+
+.fuente-resultado {
+  font-size: 13px;
+  margin: 24px 0 0;
+}
+
+.verifica-resultado summary {
+  cursor: pointer;
+}
+
+.verifica-resultado summary h2 {
+  display: inline;
+  font-size: 19px;
+  color: var(--tinta);
+}
+
+.datos-verificacion dt {
+  font-weight: 700;
+  color: var(--tinta);
+  margin-top: 12px;
+}
+
+.datos-verificacion dd {
+  margin: 4px 0 0;
+}
+
+.hash {
+  font-family: var(--mono);
+  font-size: 13px;
+  word-break: break-all;
+}
+
+a.hash {
+  color: var(--texto-enlace);
+}
+
+.lista-transacciones {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.lista-transacciones li {
+  margin: 4px 0;
+}
+
+.pasos-recuento li {
+  margin: 6px 0;
+}
+
+.comando {
+  background: var(--oscuro);
+  color: var(--claro);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.modo-sencillo .barra-etiqueta,
+.modo-sencillo .barra-valor,
+.modo-sencillo .tabla-resultados,
+.modo-sencillo .grafico-titulo {
+  font-size: 22px;
+}
+
+.modo-sencillo .barra-svg {
+  height: 40px;
+}
+
+.modo-sencillo .tabla-resultados thead th {
+  font-size: 18px;
+  color: var(--tinta);
+}
+
+.modo-sencillo .fuente-resultado {
+  font-size: 18px;
+}
+
+.modo-sencillo :is(.panel-resultados, .verifica-resultado) h3 {
+  font-size: 24px;
+}
+
+@media (max-width: 600px) {
+  .panel-resultados,
+  .verifica-resultado {
+    padding: 16px;
+  }
+  .tabla-resultados th,
+  .tabla-resultados td {
+    padding: 8px 6px;
+  }
+}

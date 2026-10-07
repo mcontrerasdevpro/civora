@@ -133,6 +133,9 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `NULLIFIER_CERTIFICADO_SECRET` | sí; sin ella el contenedor no arranca con RPC no local | 32 caracteres o más (p. ej. `openssl rand -hex 32`) | ejecución | **nueva** (R-02) |
 | `FALLO_ABIERTO_REVOCACION` | no | `false` o sin definir | ejecución | **modificada**: `true` ya no se permite fuera de local; el contenedor no arranca |
 | `CIVORA_DEMO_TESTNET` | no | sin definir | ejecución | solo para la demo con pruebas simuladas, que no se usa |
+| `EXPLORADOR_URL` | no | explorador de bloques de la red del contrato, solo `https` (en Sepolia, el de Etherscan para Sepolia) | ejecución | **nueva**: sin ella, `/resultados/<id>` muestra las transacciones sin enlace |
+| `RPC_MAX_BLOQUES_LOGS` | no | `10` (límite de `eth_getLogs` del plan gratuito de Alchemy) | ejecución | **nueva**: bloques por consulta al rehacer el recuento desde los eventos |
+| `RPC_MAX_CONSULTAS_LOGS` | no | `500` | ejecución | **nueva**: consultas máximas por propuesta; por encima, la web remite a los pasos para rehacerlo por cuenta propia |
 
 `NODE_ENV`, `PORT` y `HOSTNAME` los fija la imagen; no los definas. **Ningún
 secreto debe declararse como `ARG` en el Dockerfile**: Easypanel pasa todas

@@ -342,19 +342,34 @@ export async function verificarFirmaCertificado(params: {
     retoEsperado.byteOffset + retoEsperado.byteLength
   );
 
-  let firmaValida: unknown;
+  // pkijs busca el certificado firmante solo dentro del CMS (por emisor y
+  // número de serie o por identificador de clave), nunca en `certB64`. La
+  // cadena y el DNI se validan sobre `certB64`, así que hay que exigir que
+  // sean el mismo certificado: si no, cualquiera podría firmar con su clave
+  // y enviar el certificado público de otra persona.
+  let firmaValida = false;
+  let certificadoFirmanteDer: Buffer | null = null;
   try {
-    firmaValida = await signedData.verify({
+    const resultado = await signedData.verify({
       signer: 0,
       data: retoEsperadoArrayBuffer,
-      trustedCerts: [certificadoLeaf, ...certificadosDeLaFirma],
       checkChain: false,
+      extendedMode: true,
     });
+    firmaValida = resultado.signatureVerified === true;
+    if (resultado.signerCertificate) {
+      certificadoFirmanteDer = Buffer.from(resultado.signerCertificate.toSchema().toBER(false));
+    }
   } catch {
     firmaValida = false;
   }
-  if (firmaValida !== true) {
+  if (!firmaValida) {
     return { valido: false, identificador: null, error: "La firma no ha superado la verificación criptográfica." };
+  }
+  // Ambos se serializan igual para no depender de cómo los codificó el cliente.
+  const certificadoEnviadoDer = Buffer.from(certificadoLeaf.toSchema().toBER(false));
+  if (!certificadoFirmanteDer || !certificadoFirmanteDer.equals(certificadoEnviadoDer)) {
+    return { valido: false, identificador: null, error: "La firma no se ha hecho con el certificado enviado." };
   }
 
   // Si el CMS es "enveloping" (eContent presente) comprobamos ademas que

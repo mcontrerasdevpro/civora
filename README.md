@@ -100,7 +100,7 @@ y los límites del asistente de IA, en el
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
-| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); Neon u otro en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
+| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); cualquier Postgres en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
@@ -117,24 +117,27 @@ despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
 siguiente seccion).
 
-## Base de datos (Neon, en local)
-
-En la demo pública, Postgres corre en el VPS
-([despliegue-vps.md](docs/despliegue-vps.md#base-de-datos-civora-db)). Para
-desarrollo local:
+## Base de datos
 
 El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
 cierre) se guarda en Postgres; el contrato solo ancla el hash de ese
-contenido para poder verificar su integridad. Cualquier Postgres vale, pero
-esta pensado para [Neon](https://neon.tech) (capa gratuita, sin necesidad
-de gestionar un servidor):
+contenido para poder verificar su integridad.
 
-1. Crea una cuenta y un proyecto en Neon.
-2. Copia la cadena de conexion "pooled" (la que trae `-pooler` en el host,
-   pensada para entornos con muchas conexiones cortas).
-3. En `apps/web/.env.local` (no se versiona):
+En la demo pública, Postgres corre en el propio VPS como servicio
+`civora-db`, sin puerto externo
+([despliegue-vps.md](docs/despliegue-vps.md#base-de-datos-civora-db),
+[ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md)).
 
-   DATABASE_URL=postgresql://usuario:contraseña@host-pooler.neon.tech/neondb?sslmode=require
+En local vale cualquier Postgres. Por ejemplo, con Docker:
+
+    docker run -d --name civora-db -e POSTGRES_PASSWORD=<contraseña> -e POSTGRES_DB=civora -p 5432:5432 postgres:16
+
+Y en `apps/web/.env.local` (no se versiona):
+
+    DATABASE_URL=postgresql://postgres:<contraseña>@localhost:5432/civora?sslmode=disable
+
+`?sslmode=disable` es necesario si tu Postgres no tiene TLS, como el del
+ejemplo; con un Postgres remoto usa `?sslmode=require`.
 
 La tabla `propuestas` se crea sola la primera vez que la web la necesita
 (no hace falta ejecutar ninguna migracion a mano).
@@ -143,8 +146,8 @@ Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
 ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta
 en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
 Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
-cambia con cada nodo nuevo; las propuestas guardadas en Neon quedan
-huerfanas hasta que las recrees).
+cambia con cada nodo nuevo; las propuestas guardadas en la base de datos
+quedan huerfanas hasta que las recrees).
 
 ## Desplegar en Sepolia + VPS
 

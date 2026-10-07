@@ -35,7 +35,7 @@ partir de `main` en `civora.nexuraia.com`.
 **Fuera de alcance:**
 
 - Fallos de terceros (ZKPassport, Autofirma, FNMT, proveedores RPC,
-  Easypanel, Neon): repórtalos a sus responsables.
+  Easypanel): repórtalos a sus responsables.
 - Problemas ya documentados como abiertos en
   [docs/auditoria-seguridad.md](docs/auditoria-seguridad.md) y
   [docs/modelo-amenazas.md](docs/modelo-amenazas.md), salvo que aportes una

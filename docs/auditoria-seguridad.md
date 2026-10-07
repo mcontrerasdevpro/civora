@@ -87,6 +87,8 @@ consola. La imagen Docker la verifica el job «Imagen Docker» del CI.
 - **500 con propuestas del contrato anterior (corregido):** `GET /api/propuestas/[id]` leía los resultados sin proteger la llamada y Next registraba el error completo de ethers. Ahora registra solo el código con `lib/registro.mjs` y responde `resultados: null` con `resultadosNoDisponibles: true`; la página muestra «Los resultados de esta propuesta no están disponibles».
 - **Cabeceras:** sin `X-Powered-By` (`poweredByHeader: false`) y con `Referrer-Policy: no-referrer`, porque `/verificar?nullifier=…` lleva el recibo en la URL y podría filtrarse en el `Referer` a sitios externos. Las comprueba el E2E nuevo.
 
+- **Base de datos en el VPS ([ADR 0013](decisiones/0013-postgres-en-el-vps.md), rama `docs/postgres-vps`):** servicio `civora-db` sin puerto externo y `sslmode=disable` solo en la red interna de Docker. Comprobado que en `pg` 8.23 el `sslmode=disable` de la URL prevalece sobre `ssl: { rejectUnauthorized: false }` de `lib/db.ts` (`ssl` queda en `false`). Sin copias de seguridad mientras sea demo; solo guarda el contenido de las propuestas, ningún dato de votantes.
+
 Verificación: 20 tests de contratos, 46 de web, typecheck, build (todas las
 páginas dinámicas, `ƒ`) y 60 E2E.
 

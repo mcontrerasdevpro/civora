@@ -73,7 +73,7 @@ y los límites del asistente de IA, en el
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
-| Base de datos | Postgres (Neon) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
+| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); Neon u otro en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
 | Documentacion | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
@@ -90,7 +90,11 @@ despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
 siguiente seccion).
 
-## Base de datos (Neon)
+## Base de datos (Neon, en local)
+
+En la demo pública, Postgres corre en el VPS
+([despliegue-vps.md](docs/despliegue-vps.md#base-de-datos-civora-db)). Para
+desarrollo local:
 
 El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
 cierre) se guarda en Postgres; el contrato solo ancla el hash de ese

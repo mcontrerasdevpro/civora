@@ -90,6 +90,21 @@ Si la configuración no es válida (por ejemplo, falta
 `false` explícito o el dominio es el de demo), el contenedor termina al
 arrancar con `[civora] configuración no válida: …` en sus registros.
 
+### Base de datos (`civora-db`)
+
+Postgres corre en el mismo proyecto como servicio `civora-db`
+([ADR 0013](decisiones/0013-postgres-en-el-vps.md)):
+
+1. **+ Service → Postgres**, nombre `civora-db`, base de datos `civora`,
+   contraseña generada por Easypanel. **Sin puerto externo.**
+2. Copia la *Internal Connection URL* (host `nexuraia_civora-db`, puerto
+   `5432`), añade `?sslmode=disable` y ponla en `DATABASE_URL` del servicio
+   `civora`. Sin ese parámetro, la web intenta TLS y la conexión falla.
+3. Redespliega `civora`. La tabla `propuestas` se crea en la primera
+   petición; `/propuestas` debe salir vacía.
+
+No hay copias de seguridad mientras sea una demo.
+
 ### Construir y probar la imagen a mano en el VPS
 
 Útil para diagnosticar un build fallido. Desde un clon del repositorio en

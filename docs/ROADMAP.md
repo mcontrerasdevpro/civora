@@ -114,6 +114,8 @@ A-04).
 | Tarea | Estado |
 |---|---|
 | Definir la autoridad y el proceso de formación del censo (padrón e INE requieren convenio oficial) | pendiente |
+| Conexiones obligatorias con organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md#conexiones-obligatorias-con-organismos-públicos)): DGP (SVDI: DNI, nacionalidad y fecha de nacimiento), pasaporte español (a confirmar con la DGP), INE (residencia con fecha de última variación padronal e histórico), padrón municipal si convoca un ayuntamiento | pendiente: requiere administración convocante y alta en la PID |
+| Rechazar el registro si la fecha de nacimiento declarada no coincide con la de la DGP o si falta cualquiera de las cuatro condiciones | pendiente |
 | Registro de elegibles: alta de un compromiso de identidad Semaphore tras acreditar elegibilidad | pendiente |
 | Asignación de canal (digital, punto asistido o papel) al registrarse, antes de congelar | pendiente |
 | Grupo y raíz Merkle congelados y publicados antes de abrir la votación | pendiente |

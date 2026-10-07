@@ -45,7 +45,7 @@ verifican actualmente.
 |---|---|---|
 | Edad mínima (18 años) | Parcial | ZKPassport genera una prueba comprobada on-chain. En la vía de certificado la edad se declara en el navegador y no se contrasta con una fuente oficial. |
 | Nacionalidad española | Parcial | La prueba ZK exige `ESP` on-chain. La vía de certificado valida una cadena FNMT/DNIe y un NIF, pero no presenta una prueba ZK de nacionalidad. |
-| Empadronamiento en España | Pendiente | Ninguna vía consulta el padrón ni una atestación equivalente. |
+| Empadronamiento en España | Pendiente | Ninguna vía consulta el padrón ni una atestación equivalente. Conexiones necesarias con DGP e INE: [ADR 0015](docs/decisiones/0015-condiciones-voto-organismos-publicos.md). |
 | Residencia continuada de 5 años | Pendiente | Ninguna vía acredita duración de residencia. |
 | Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |

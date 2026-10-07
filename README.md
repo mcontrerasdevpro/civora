@@ -77,7 +77,7 @@ banner **MODO DEMOSTRACIÓN**:
 | Integridad de la opción | Hecho | La prueba de identidad incluye la opción y no sirve para otra: el certificado firma un reto con la opción (R-04) y la prueba ZKPassport lleva la opción vinculada, comprobada en el contrato (R-01, [ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)). |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
 | Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
-| Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy. Previstas: asignación de canal (Fase 1) y prevalencia del voto presencial sobre el digital (Fase 2, MACI). |
+| Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy, y el recibo actual permite demostrar el voto tras el cierre ([modelo de amenazas](docs/modelo-amenazas.md#recibos-justificantes-y-coacción)). El justificante de participación opcional no revela la opción ni la hora. Previstas: asignación de canal (Fase 1), prevalencia del voto presencial sobre el digital y ticket de inclusión sin la opción (Fase 2, MACI). |
 | Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
 | Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. |
 

@@ -250,7 +250,43 @@ contienen IPs de votantes; dos instancias comparten el límite de intentos
 | Integrar MACI: votos cifrados y recuento verificable | pendiente |
 | Prevalencia del voto presencial sobre el digital | pendiente |
 | Estudiar el revoto hasta el cierre sin revelar cuál es el definitivo | pendiente |
+| Limitar el recibo actual, que permite demostrar el voto ([modelo de amenazas](modelo-amenazas.md#recibos-justificantes-y-coacción)): `/verificar` y su API sin la opción; recibo opcional con aviso | pendiente de decidir; la opción seguirá en la cadena hasta MACI |
+| **Ticket de inclusión (etapa 2 del justificante)**, ver abajo | pendiente (diseño) |
 | Auditoría externa de contratos y circuitos | pendiente |
+
+**Ticket de inclusión (etapa 2 del justificante; diseño, sin implementar).**
+La etapa 1, el justificante de participación sin datos del voto, ya está
+hecha (rama `feat/justificante-voto`).
+
+- **Qué demuestra:**
+  - Que el mensaje de voto cifrado de la persona está incluido en el
+    conjunto que entra en el recuento de MACI (su índice en el árbol de
+    mensajes, cuya raíz publica el contrato).
+  - **No revela la opción**, ni con los datos de la cadena: el mensaje va
+    cifrado.
+  - Gracias al cambio de clave de MACI, tampoco demuestra cuál fue el voto
+    definitivo, así que no sirve para comprar votos ni para coaccionar.
+- **Formato:** papel o PDF con un código corto legible por teléfono (por
+  ejemplo, 16 caracteres en base 32 en grupos de 4, con dígito de control)
+  y un QR con el mismo código y el identificador de la propuesta. Sin
+  datos del votante y sin hora.
+- **Opcional siempre:** se ofrece con un botón discreto y solo se genera si
+  la persona lo pide. En el quiosco del punto asistido se imprime solo si
+  el votante lo solicita.
+- **Verificación:**
+  - En la web: escaneando el QR o tecleando el código. Tras el cierre, la
+    respuesta es solo «incluido» o «no incluido», con la prueba de
+    inclusión.
+  - Por teléfono: el personal teclea el código que le dicta la persona y
+    responde lo mismo; el protocolo prohíbe preguntar o registrar el voto.
+  - En persona: en un punto asistido.
+  - Ningún canal muestra la opción.
+- **Criterios de aceptación:**
+  - Un test demuestra que, con el ticket y todos los datos públicos de la
+    cadena, no se puede distinguir la opción (las tres opciones dan
+    tickets indistinguibles).
+  - El quiosco no imprime nada si no se pide.
+  - Los tres canales de verificación responden lo mismo, sin la opción.
 
 **Dependencias:** Fase 1 y paso a producción.
 

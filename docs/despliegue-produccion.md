@@ -127,7 +127,7 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `CONTRATO_DIRECCION` | sí | `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` | ejecución | **modificada**: contrato nuevo |
 | `HARDHAT_RPC_URL` | sí | `https://eth-sepolia.g.alchemy.com/v2/<clave>` | ejecución | sin cambios |
 | `HARDHAT_RELAYER_PRIVATE_KEY` | sí | clave cuya dirección es `0x9bC3679F634Ea86bA0353e4c70BBf7FEdA025be6` | ejecución | sin cambios, salvo que se rote (exige otro contrato) |
-| `DATABASE_URL` | sí | `postgresql://postgres:<contraseña>@nexuraia_civora-db:5432/civora?sslmode=disable` ([despliegue-vps.md](despliegue-vps.md#base-de-datos-civora-db)) | ejecución | **modificada**: Postgres en el VPS en lugar de Neon ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) |
+| `DATABASE_URL` | sí | `postgresql://postgres:<contraseña>@nexuraia_civora-db:5432/civora?sslmode=disable` ([despliegue-vps.md](despliegue-vps.md#base-de-datos-civora-db)) | ejecución | **modificada**: Postgres en el VPS ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) |
 | `ADMIN_SECRET` | no | sin definir | — | **retirada**: la creación de propuestas es abierta en la demo ([auditoría, M-04](auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)); bórrala de Easypanel |
 | `RETO_CERTIFICADO_SECRET` | sí, para la vía de certificado | cadena aleatoria larga | ejecución | sin cambios; ahora el reto incluye la opción (R-04) |
 | `NULLIFIER_CERTIFICADO_SECRET` | sí; sin ella el contenedor no arranca con RPC no local | 32 caracteres o más (p. ej. `openssl rand -hex 32`) | ejecución | **nueva** (R-02) |
@@ -150,7 +150,7 @@ Consecuencias de datos: las propuestas guardadas en la base de datos que
 apuntan al contrato antiguo no existen en el nuevo y quedan huérfanas. Siguen
 apareciendo en el listado; sus resultados se muestran como «no disponibles»
 y el contrato rechaza cualquier voto sobre ellas. Por eso la demo empieza con
-una base de datos vacía en el VPS; la de Neon conserva las antiguas.
+una base de datos vacía en el VPS.
 
 ## 3. Comprobar el servicio antes de fusionar
 
@@ -195,8 +195,6 @@ Solo con confirmación explícita del responsable.
 2. **Restaurar variables** a los valores anotados en el paso 4.1.
    - No borres `NULLIFIER_CERTIFICADO_SECRET`: el contrato la necesita
      mientras siga en uso.
-   - Para volver a Neon basta con restaurar su `DATABASE_URL`; no borres esa
-     base hasta validar la del VPS.
 3. **Revertir el merge en `main`:** en la PR fusionada, *Revert* → crea una
    PR de reversión → fusiónala. O en local, en una rama:
    `git revert -m 1 <commit-de-merge>` y PR.

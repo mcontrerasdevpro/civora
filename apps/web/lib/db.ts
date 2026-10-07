@@ -2,8 +2,8 @@ import { Pool, type QueryResultRow } from "pg";
 
 /**
  * Conexion a Postgres. En la demo es el servicio civora-db del VPS, con
- * ?sslmode=disable en la URL (red interna; ver ADR 0013); en local, Neon u
- * otro Postgres con TLS. El sslmode de la URL prevalece sobre `ssl`.
+ * ?sslmode=disable en la URL (red interna; ver ADR 0013); en local, cualquier
+ * Postgres. El sslmode de la URL prevalece sobre `ssl`.
  *
  * DATABASE_URL no se versiona (ver README): en local se define en
  * apps/web/.env.local y en el VPS en las variables del servicio.
@@ -15,7 +15,7 @@ function obtenerPool(): Pool {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
       throw new Error(
-        "Falta DATABASE_URL: define la cadena de conexion de tu base de datos Neon (ver README)."
+        "Falta DATABASE_URL: define la cadena de conexion de tu base de datos Postgres (ver README)."
       );
     }
     pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
@@ -36,7 +36,7 @@ let esquemaListo: Promise<void> | null = null;
 /**
  * Crea la tabla de propuestas si no existe todavia. Se llama antes de cada
  * operacion de lectura/escritura sobre ella: no requiere una migracion
- * manual para levantar una base de datos Neon nueva.
+ * manual para levantar una base de datos nueva.
  */
 export function asegurarEsquema(): Promise<void> {
   if (!esquemaListo) {

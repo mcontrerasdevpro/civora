@@ -30,13 +30,15 @@ Orden: [1](#1-desplegar-el-contrato-nuevo-en-sepolia) →
 
 ## Contrato desplegado
 
-Desplegado y verificado con `verificar:sepolia` el 2026-10-06 desde la rama
-`actualizar-dependencias`:
+Desplegado y verificado con `verificar:sepolia` el 2026-10-07 desde la rama
+`feat/r01-opcion-en-prueba-zk` (R-01: la opción va vinculada a la prueba ZK,
+[ADR 0014](decisiones/0014-opcion-vinculada-prueba-zk.md)):
 
 | Dato | Valor |
 |---|---|
 | Red | Sepolia (chainId 11155111) |
-| `CONTRATO_DIRECCION` | `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` |
+| `CONTRATO_DIRECCION` | `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` |
+| Contrato anterior (sin R-01, retirado) | `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` |
 | Dominio ZK (`dominioZk`) | `civora.nexuraia.com` |
 | `devModeZk` | `false` (solo pruebas ZKPassport reales) |
 | Relayer inmutable | `0x9bC3679F634Ea86bA0353e4c70BBf7FEdA025be6` |

@@ -197,7 +197,7 @@ con contenido manipulado sin efecto.
 | Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
 | Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; CI en verde en GitHub |
 | Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | pendiente |
-| Contrato en Sepolia `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia` | hecho |
+| Contrato en Sepolia `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` (con R-01; sustituye a `0xDCfe…FC3C`) (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia` | hecho |
 | Desactivar los access logs del proxy (o excluir la IP) y rotar los registros de Docker | pendiente |
 | Creación de propuestas abierta en la demo, sin `ADMIN_SECRET` (M-04 como riesgo aceptado) | hecho |
 | Volver a exigir autorización (cuentas individuales) y un tope de gasto del relayer antes de producción real | pendiente |

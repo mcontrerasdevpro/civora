@@ -77,6 +77,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const ahora = Date.now();
   const noAbierta = ahora < Date.parse(propuesta.fechaApertura);
   const cerrada = ahora >= Date.parse(propuesta.fechaCierre);
+  const fechaCierreLegible = new Date(propuesta.fechaCierre).toLocaleString("es-ES");
 
   function identificacionCompletada(valor: Identificacion) {
     setError(null);
@@ -211,7 +212,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
       : `${propuesta.pregunta}. Primero tiene que identificarse. Elija cómo hacerlo: con su DNI o pasaporte y el móvil, o con su certificado digital.`,
     voto: `${propuesta.pregunta}. Elija una opción: ${opciones}. Después pulse Continuar.`,
     confirmacion: "",
-    recibo: "Su voto se ha guardado. Puede guardar el código de recibo para comprobarlo más tarde.",
+    recibo: "Su voto se ha guardado. Guarde el código de recibo: podrá comprobar su voto cuando termine la votación.",
   };
 
   return (
@@ -365,11 +366,17 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
               : "Guarda este recibo para verificar tu voto más tarde:"}
           </p>
           <div className="recibo">{nullifier}</div>
+          {/* La API solo responde a los recibos tras el cierre (423 antes). */}
+          <p className="form-hint">
+            {sencillo
+              ? `Podrá comprobarlo cuando termine la votación, el ${fechaCierreLegible}.`
+              : `Podrás verificarlo cuando cierre la votación, el ${fechaCierreLegible}.`}
+          </p>
           <Link
             className="link-quiet"
             href={`/verificar?propuestaId=${propuesta.id}&nullifier=${nullifier}`}
           >
-            {sencillo ? "Comprobar mi voto ahora" : "Verificar mi voto ahora"}
+            {sencillo ? "Enlace para comprobar mi voto" : "Enlace para verificar mi voto"}
           </Link>
         </div>
       )}

@@ -66,6 +66,9 @@ test.describe("flujo de voto: accesibilidad WCAG 2.1 AA", () => {
     await page.getByRole("button", { name: "Sí", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(page.locator(".recibo")).toBeVisible();
+    // Los recibos solo se consultan tras el cierre: no se ofrece verificar ya.
+    await expect(page.getByText(/Podrás verificarlo cuando cierre la votación, el /)).toBeVisible();
+    await expect(page.getByRole("link", { name: /ahora/ })).toHaveCount(0);
   });
 });
 

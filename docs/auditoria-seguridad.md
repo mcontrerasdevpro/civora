@@ -92,6 +92,16 @@ consola. La imagen Docker la verifica el job «Imagen Docker» del CI.
 Verificación: 20 tests de contratos, 46 de web, typecheck, build (todas las
 páginas dinámicas, `ƒ`) y 60 E2E.
 
+## CSP y Autofirma (2026-10-07, rama `fix/csp-autofirma`)
+
+- **La CSP impedía abrir Autofirma (crítico, corregido; viene de la Fase 0):** `autoscript.js` 1.10.1 abre Autofirma con el esquema `afirma://` y después se conecta a ella en `127.0.0.1`. `connect-src` solo permitía `http://127.0.0.1:*` y `http://localhost:*`, así que el WebSocket `wss://127.0.0.1:<puerto>` de Chrome y Edge quedaba bloqueado. Además, `frame-src` no estaba definido y heredaba `default-src 'self'`, lo que bloqueaba el iframe `afirma://` de Firefox y Safari. La vía de certificado no funcionaba en ningún navegador. Reproducido en `civora.nexuraia.com` con Chromium: `Connecting to 'wss://127.0.0.1:63117/' violates … connect-src` y `Framing '' violates … default-src`.
+- **Corrección:** `connect-src` añade `wss://127.0.0.1:*` y `https://127.0.0.1:*` (la alternativa por socket). La nueva directiva `frame-src 'self' afirma:` admite solo el esquema de Autofirma. Se retiran `http://localhost:*` y `http://127.0.0.1:*`: el navegador no los usa, porque el RPC de Hardhat solo lo usa el servidor (`lib/contrato.ts`).
+- **Por qué no lo detectaban los E2E:** sustituyen Autofirma por un simulacro sin conexiones. El E2E nuevo de `e2e/paginas.spec.ts` abre el iframe `afirma://`, el WebSocket `wss://127.0.0.1` y un `fetch` `https://127.0.0.1` con la CSP de `next start`, y falla si hay violaciones. Comprobado que falla con la CSP anterior (`connect-src wss://127.0.0.1:63117/` y `frame-src`). El test unitario `admin-auth.test.mjs` fija las directivas.
+- **Favicon:** `app/icon.svg`; antes `/favicon.ico` daba 404 en cada página.
+- **Pendiente:** firma real con Autofirma instalada y un certificado en Chrome, Edge y Firefox tras desplegar. No se puede automatizar en el CI.
+
+Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
+
 ## Resumen ejecutivo
 
 **El proyecto no debe utilizarse para una votación real o vinculante en su estado actual.** La Fase 0 ha mitigado la vía manual de aplicación, el modo demo inseguro por defecto, la creación pública de propuestas y la exposición de resultados por web. Siguen abiertos el vínculo identidad-voto de certificado, la publicación individual en cadena, la ausencia de censo Merkle y la falta de deduplicación común entre vías.

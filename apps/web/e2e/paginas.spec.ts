@@ -66,6 +66,28 @@ test.describe("CSP en todas las páginas", () => {
     });
   }
 
+  // Los demás E2E simulan Autofirma; aquí se prueban las conexiones reales
+  // de autoscript.js contra la CSP, aunque no haya nada escuchando.
+  test("la CSP deja abrir Autofirma y conectar con ella en 127.0.0.1", async ({ page }) => {
+    const consola = await vigilarCsp(page);
+    await simularApi(page);
+    await page.goto(`/votar/${PROPUESTA_ID}`);
+
+    await page.evaluate(async () => {
+      const marco = document.createElement("iframe");
+      marco.style.display = "none";
+      marco.src = "afirma://websocket?ports=63117&v=4";
+      document.body.appendChild(marco);
+      new WebSocket("wss://127.0.0.1:63117");
+      await fetch("https://127.0.0.1:63117/").catch(() => undefined);
+      await new Promise((resolver) => setTimeout(resolver, 500));
+    });
+
+    const violaciones = await page.evaluate(() => (window as unknown as { __violaciones: string[] }).__violaciones);
+    expect(violaciones).toEqual([]);
+    expect(consola).toEqual([]);
+  });
+
   test("cabeceras: sin X-Powered-By y con Referrer-Policy no-referrer", async ({ request }) => {
     for (const ruta of ["/", "/verificar"]) {
       const cabeceras = (await request.get(ruta)).headers();

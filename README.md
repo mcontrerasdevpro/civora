@@ -31,24 +31,50 @@ tabla de garantías antes de interpretar los resultados de esta PoC.
 
 ## Requisitos objetivo
 
-- Estar empadronado en cualquier municipio de Espana.
-- Ser titular de un DNI espanol.
-- Residencia continuada en Espana de al menos 5 anios.
-- Tener 18 anios cumplidos.
+- Tener la nacionalidad española.
+- Estar empadronado en cualquier municipio de España.
+- Ser mayor de 18 años.
+- Tener un documento español: DNI o pasaporte.
+- Residencia continuada en España de al menos 5 años (se mantiene en la
+  demo de pruebas).
 
-La lista expresa el objetivo del producto; no todos estos requisitos se
-verifican actualmente.
+Las cuatro primeras son obligatorias y deben contrastarse con la DGP y el
+INE: si alguna no se cumple o no puede comprobarse, el voto no se emite
+([ADR 0015](docs/decisiones/0015-condiciones-voto-organismos-publicos.md)).
+Esas conexiones requieren una administración pública convocante y están
+pendientes de aprobación, así que hoy no todos los requisitos se verifican.
+
+## Estado de la demo pública
+
+`https://civora.nexuraia.com` es una demo de pruebas en Sepolia, con el
+banner **MODO DEMOSTRACIÓN**:
+
+- **Certificado digital (Autofirma):** funciona con certificados reales
+  (probado en Edge y Brave). La edad se declara y no se contrasta.
+- **DNIe o pasaporte (ZKPassport):** solo funciona con los **pasaportes
+  simulados** de la app ZKPassport. El registro de certificados de
+  ZKPassport en Sepolia solo contiene los de esos documentos; los reales
+  solo se verifican en una red principal (Base o Ethereum), pendiente de la
+  aprobación de los organismos. Contrato de demostración:
+  `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6`
+  ([despliegue-produccion.md](docs/despliegue-produccion.md#contrato-desplegado)).
+- Las propuestas creadas con contratos anteriores se archivan solas: no se
+  listan ni admiten votos.
+- Al pulsar «Escuchar» se avisa, por escrito y por voz, de que otras
+  personas podrían oír el voto, y no se lee nada hasta confirmar que se
+  llevan auriculares.
 
 ## Garantías por requisito
 
 | Requisito | Estado | Qué se garantiza hoy |
 |---|---|---|
-| Edad mínima (18 años) | Parcial | ZKPassport genera una prueba comprobada on-chain. En la vía de certificado la edad se declara en el navegador y no se contrasta con una fuente oficial. |
-| Nacionalidad española | Parcial | La prueba ZK exige `ESP` on-chain. La vía de certificado valida una cadena FNMT/DNIe y un NIF, pero no presenta una prueba ZK de nacionalidad. |
+| Edad mínima (18 años) | Parcial | ZKPassport genera una prueba comprobada on-chain. En la vía de certificado la edad se declara en el navegador y no se contrasta con una fuente oficial (requiere la DGP, [ADR 0015](docs/decisiones/0015-condiciones-voto-organismos-publicos.md)). |
+| Nacionalidad española | Parcial | La prueba ZK exige `ESP` on-chain; el contrato de demostración no la exige, porque los pasaportes simulados no son españoles. La vía de certificado solo acepta certificados con DNI, que solo se expide a españoles. |
+| Documento español (DNI o pasaporte) | Parcial | Certificado: NIF de DNI con cadena hasta FNMT o DGP. ZKPassport: DNI o pasaporte leído del chip; en la demo, solo pasaportes simulados. |
 | Empadronamiento en España | Pendiente | Ninguna vía consulta el padrón ni una atestación equivalente. Conexiones necesarias con DGP e INE: [ADR 0015](docs/decisiones/0015-condiciones-voto-organismos-publicos.md). |
 | Residencia continuada de 5 años | Pendiente | Ninguna vía acredita duración de residencia. |
 | Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
-| Integridad de la opción | Hecho (ZK pendiente de desplegar) | La prueba de identidad incluye la opción y no sirve para otra: el certificado firma un reto con la opción (R-04) y la prueba ZKPassport lleva la opción vinculada, comprobada en el contrato (R-01, [ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)). |
+| Integridad de la opción | Hecho | La prueba de identidad incluye la opción y no sirve para otra: el certificado firma un reto con la opción (R-04) y la prueba ZKPassport lleva la opción vinculada, comprobada en el contrato (R-01, [ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)). |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
 | Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
 | Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy. Previstas: asignación de canal (Fase 1) y prevalencia del voto presencial sobre el digital (Fase 2, MACI). |
@@ -70,7 +96,7 @@ y los límites del asistente de IA, en el
 
 | Componente | Ubicacion | Estado |
 |---|---|---|
-| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo contra el contrato en un nodo Hardhat local |
+| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
@@ -143,7 +169,15 @@ llamando al **RootVerifier oficial de ZKPassport**
 Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
 genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
 Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
-prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)). En redes locales de Hardhat se despliega en su
+prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)).
+
+La prueba se genera al confirmar el voto y lleva la opción vinculada
+(`custom_data = civora-voto:<propuesta>:<opción>`): el contrato rechaza
+cualquier otra opción ([ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)).
+La web toma la prueba en cuanto llega del móvil (`onProofGenerated`) y no
+deja que el SDK la verifique por su cuenta (no registra `onResult`): esa
+verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy
+o a la API de ZKPassport. Tampoco se suben pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes publicas.
 

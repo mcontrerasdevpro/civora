@@ -222,7 +222,8 @@ con contenido manipulado sin efecto.
 | Revisar los 4 avisos de desarrollo sin parche (`braces`, `node-forge` en tests, `sprintf-js`, `elliptic`) al migrar a Hardhat 3 | pendiente |
 | Next 16 como tarea propia (versión mayor) | pendiente |
 | `@zkpassport/sdk` 0.18.2 o posterior como tarea propia: compatibilidad con el verificador del contrato y prueba con un documento real (la 0.18.0 se publicó rota, PR #12) | revertido (2026-10-07): con la 0.18.2 desplegada, la app ZKPassport falla al generar la prueba con un pasaporte simulado («Something went wrong»); se vuelve a la 0.16.2, que funciona. Investigar la compatibilidad de la 0.18 con la app antes de reintentarlo |
-| TypeScript 7 y `@types/node` acorde al Node de ejecución, como tareas propias (Dependabot ignora sus versiones mayores) | pendiente |
+| TypeScript 7 y `@types/node` acorde al Node de ejecución, como tareas propias (Dependabot ignora sus versiones mayores) | TypeScript 7 bloqueado: su paquete ya no expone la API de JavaScript que usan `next build` y `next typegen`; esperar a que Next lo soporte (con Next 16) |
+| **Hardhat 3 (siguiente tarea, 1–2 h):** `packages/contracts` a ESM con `defineConfig`, `@nomicfoundation/hardhat-toolbox-mocha-ethers`, redes `type: "http"`, `network.create()` en tests y `network.connect()` en los scripts (`deploy`, `verificar-despliegue`, `deployment-config` a ESM); comprobar que el bytecode no cambia (salvo metadatos) para no redesplegar, que `node` y `deploy:localhost` siguen generando `apps/web/lib/generated/despliegue-localhost.json` y que desaparecen los 4 avisos de desarrollo. Ojo: el toolbox 4 pide `mocha` 12 | pendiente (2026-10-08) |
 | Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (checks obligatorios «Tests, typecheck, build y E2E» e «Imagen Docker») | hecho |

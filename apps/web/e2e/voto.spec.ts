@@ -24,7 +24,7 @@ test.describe("flujo de voto: accesibilidad WCAG 2.1 AA", () => {
       await comprobarAccesibilidad(page, "elección de método");
 
       await page.locator(".metodo-card").first().click();
-      await expect(page.locator(".alert-error, .estado-zk").first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "Continuar" })).toBeVisible();
       await comprobarAccesibilidad(page, "identificación con DNIe");
       if (sencillo) await comprobarSinJerga(page, "identificación con DNIe");
       await page.locator(".metodo-volver").click();
@@ -224,6 +224,42 @@ test.describe("botón Escuchar", () => {
     await expect(page.getByText("La lectura en voz alta no está disponible en este navegador.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Escuchar" })).toHaveCount(0);
   });
+});
+
+test.describe("voto con DNIe o pasaporte (R-01)", () => {
+  for (const sencillo of [false, true]) {
+    test(`el QR de ZKPassport aparece al confirmar, ya elegida la opción ${sencillo ? "(modo sencillo)" : "(modo normal)"}`, async ({ page }) => {
+      const peticionesZk: string[] = [];
+      page.on("request", (peticion) => {
+        if (/zkpassport\.id/.test(peticion.url())) peticionesZk.push(peticion.url());
+      });
+      await simularApi(page);
+      await abrirVotacion(page);
+      if (sencillo) await activarModoSencillo(page);
+
+      await page.locator(".metodo-card").first().click();
+      await page.getByRole("button", { name: "Continuar" }).click();
+      // Sin opción elegida todavía no se contacta con ZKPassport.
+      await page.getByLabel("A favor").check();
+      expect(peticionesZk).toEqual([]);
+      await page.getByRole("button", { name: "Continuar" }).click();
+
+      const aviso = page.locator("#aviso-zk");
+      await expect(aviso).toContainText("ZKPassport");
+      await expect(page.getByRole("button", { name: "Sí", exact: true })).toHaveAttribute("aria-describedby", "aviso-zk");
+      await expect(page.locator(".prueba-zk")).toHaveCount(0);
+
+      await page.getByRole("button", { name: "Sí", exact: true }).click();
+      // La conexión con ZKPassport está cortada en los tests: se ve el estado o el error.
+      await expect(page.locator(".prueba-zk .estado-zk, .prueba-zk .alert-error").first()).toBeVisible();
+      await comprobarAccesibilidad(page, "QR de ZKPassport en la confirmación");
+      if (sencillo) await comprobarSinJerga(page, "QR de ZKPassport en la confirmación");
+
+      await page.locator(".prueba-zk .btn-secundario").click();
+      await expect(page.locator(".prueba-zk")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Sí", exact: true })).toBeEnabled();
+    });
+  }
 });
 
 test.describe("firma del voto con certificado (R-04)", () => {

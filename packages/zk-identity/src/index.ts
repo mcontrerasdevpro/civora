@@ -1,5 +1,5 @@
 import { ZKPassport, type ProofResult, type QueryBuilderResult, type SolidityVerifierParameters } from "@zkpassport/sdk";
-import type { Eligibility } from "@civora/shared-types";
+import { datosVinculadosDeVoto, type Eligibility, type OpcionVoto } from "@civora/shared-types";
 
 /**
  * Capa de abstraccion sobre el proveedor de identidad ZK.
@@ -24,6 +24,11 @@ import type { Eligibility } from "@civora/shared-types";
  * solo prepara los parametros que el contrato espera, sin verificar nada
  * ella misma.
  *
+ * La opción del voto va dentro de la prueba como dato vinculado
+ * (`custom_data`): el contrato rechaza la prueba si se presenta con otra
+ * opción (R-01). Por eso la prueba se genera al confirmar el voto, ya
+ * elegida la opción.
+ *
  * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
  * movil de ZKPassport que debe permanecer viva mientras se espera la
  * respuesta: solo puede llamarse desde el navegador (componente cliente),
@@ -47,8 +52,9 @@ export type { SolidityVerifierParameters };
 export async function crearSolicitudVerificacion(params: {
   elegibilidad: Eligibility;
   propuestaId: string;
+  opcion: OpcionVoto;
 }): Promise<SolicitudVerificacionZk> {
-  const { elegibilidad, propuestaId } = params;
+  const { elegibilidad, propuestaId, opcion } = params;
   const zkPassport = new ZKPassport(APP_DOMAIN);
 
   const queryBuilder = await zkPassport.request({
@@ -65,7 +71,8 @@ export async function crearSolicitudVerificacion(params: {
     mode: "compressed-evm",
   });
 
-  let query = queryBuilder;
+  // Ata la opción a la prueba: ver VotacionAnonima.datosVinculados.
+  let query = queryBuilder.bind("custom_data", datosVinculadosDeVoto(propuestaId, opcion));
 
   if (elegibilidad.edadMinima > 0) {
     query = query.gte("age", elegibilidad.edadMinima);

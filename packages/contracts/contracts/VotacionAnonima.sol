@@ -70,6 +70,7 @@ contract VotacionAnonima {
     error ModoDesarrolloNoPermitido();
     error NoCumpleEdadMinima();
     error NacionalidadNoValida();
+    error OpcionNoVinculada();
 
     error SoloRelayer();
     error DireccionCero();
@@ -124,6 +125,9 @@ contract VotacionAnonima {
     ///        se genero la prueba y comprobar que coincide.
     /// @param params Parametros de verificacion que entrega el SDK de ZKPassport
     ///        (`getSolidityVerifierParameters`), generados en modo `compressed-evm`.
+    /// @dev La opcion va dentro de la prueba como dato vinculado (`custom_data`,
+    ///      ver datosVinculados): quien vea la transaccion no puede reenviar la
+    ///      prueba con otra opcion (R-01).
     function votarConPruebaZk(
         string calldata propuestaIdTexto,
         Opcion opcion,
@@ -153,7 +157,24 @@ contract VotacionAnonima {
             revert NacionalidadNoValida();
         }
 
+        string memory vinculados = helper.getBoundData(params.committedInputs).customData;
+        if (keccak256(bytes(vinculados)) != keccak256(bytes(datosVinculados(propuestaIdTexto, opcion)))) {
+            revert OpcionNoVinculada();
+        }
+
         _registrarVoto(keccak256(bytes(propuestaIdTexto)), identificadorUnico, opcion);
+    }
+
+    /// @notice Dato que la prueba ZK debe llevar vinculado (`custom_data`) para
+    ///         votar `opcion` en la propuesta: `civora-voto:<uuid>:<opcion>`.
+    ///         Debe coincidir con datosVinculadosDeVoto de packages/zk-identity.
+    function datosVinculados(string calldata propuestaIdTexto, Opcion opcion) public pure returns (string memory) {
+        string memory nombre = opcion == Opcion.AFavor
+            ? "a_favor"
+            : opcion == Opcion.EnContra
+                ? "en_contra"
+                : "abstencion";
+        return string.concat("civora-voto:", propuestaIdTexto, ":", nombre);
     }
 
     function _registrarVoto(bytes32 propuestaId, bytes32 nullifier, Opcion opcion) internal {

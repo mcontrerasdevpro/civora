@@ -205,13 +205,16 @@ describe("VotacionAnonima", function () {
   });
 
   describe("votarConPruebaZk", function () {
-    async function prepararMockValido(mock, marcaTiempo) {
+    async function prepararMockValido(mock, marcaTiempo, datosVinculados = "civora-voto:propuesta-demo:a_favor") {
       const identificador = ethers.id("identificador-unico-1");
       await (
         await mock.fijarResultado(true, identificador, marcaTiempo, true, 18, "ESP")
       ).wait();
+      await (await mock.fijarDatosVinculados(datosVinculados)).wait();
       return identificador;
     }
+
+    const paramsProduccion = () => paramsVacios({ serviceConfig: { ...paramsVacios().serviceConfig, devMode: false } });
 
     it("acepta una prueba valida y usa el identificador unico como nullifier", async function () {
       const { contrato, mock, propuestaIdTexto } = await desplegar();
@@ -297,13 +300,52 @@ describe("VotacionAnonima", function () {
       const { contrato, mock, propuestaIdTexto } = await desplegar();
       const bloque = await ethers.provider.getBlock("latest");
       await prepararMockValido(mock, bloque.timestamp);
-      const params = paramsVacios({ serviceConfig: { ...paramsVacios().serviceConfig, devMode: false } });
+      const params = paramsProduccion();
 
       await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, params)).wait();
 
+      // Segunda prueba del mismo documento, vinculada a otra opción.
+      await (await mock.fijarDatosVinculados("civora-voto:propuesta-demo:en_contra")).wait();
       await expect(contrato.votarConPruebaZk(propuestaIdTexto, 1, params)).to.be.revertedWith(
         "Este documento ya ha votado en esta propuesta"
       );
+    });
+
+    describe("R-01: la opción va vinculada a la prueba", function () {
+      it("datosVinculados sigue el formato civora-voto:<propuesta>:<opción>", async function () {
+        const { contrato } = await desplegar();
+        expect(await contrato.datosVinculados("p-1", 0)).to.equal("civora-voto:p-1:a_favor");
+        expect(await contrato.datosVinculados("p-1", 1)).to.equal("civora-voto:p-1:en_contra");
+        expect(await contrato.datosVinculados("p-1", 2)).to.equal("civora-voto:p-1:abstencion");
+      });
+
+      it("rechaza la misma prueba reenviada con otra opción (front-running)", async function () {
+        const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar();
+        const bloque = await ethers.provider.getBlock("latest");
+        const identificador = await prepararMockValido(mock, bloque.timestamp, "civora-voto:propuesta-demo:a_favor");
+
+        for (const otraOpcion of [1, 2]) {
+          await expect(
+            contrato.votarConPruebaZk(propuestaIdTexto, otraOpcion, paramsProduccion())
+          ).to.be.revertedWithCustomError(contrato, "OpcionNoVinculada");
+        }
+        // El nullifier sigue libre: el voto legítimo entra después.
+        await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsProduccion())).wait();
+        const [registrado, opcion] = await contrato.votoDe(propuestaId, identificador);
+        expect(registrado).to.equal(true);
+        expect(opcion).to.equal(0n);
+      });
+
+      it("rechaza una prueba sin datos vinculados o vinculada a otra propuesta", async function () {
+        const { contrato, mock, propuestaIdTexto } = await desplegar();
+        const bloque = await ethers.provider.getBlock("latest");
+        for (const datos of ["", "civora-voto:otra-propuesta:a_favor", "civora-voto:propuesta-demo:a_favor:extra"]) {
+          await prepararMockValido(mock, bloque.timestamp, datos);
+          await expect(
+            contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsProduccion())
+          ).to.be.revertedWithCustomError(contrato, "OpcionNoVinculada");
+        }
+      });
     });
   });
 });

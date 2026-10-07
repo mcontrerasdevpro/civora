@@ -89,7 +89,9 @@ los datos de cada respuesta se confirman con la SGAD al tramitar el alta.
   condiciones:** el empadronamiento no se comprueba en ninguna. La demo
   pública sigue sin ser apta para votaciones reales ni vinculantes.
 - En la vía de certificado, la edad declarada no puede contrastarse hasta
-  tener la conexión 1. Queda pendiente de decidir qué hace la demo con esa
-  vía mientras tanto.
+  tener la conexión 1. Decidido (2026-10-07): en la demo de pruebas la vía
+  de certificado se mantiene con la edad declarada, y la elegibilidad sigue
+  incluyendo la residencia de 5 años, hasta que los organismos aprueben las
+  conexiones.
 - La Fase 1 depende de que una administración pública actúe como autoridad
   convocante y tramite las conexiones.

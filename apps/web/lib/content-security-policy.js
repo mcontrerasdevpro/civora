@@ -24,7 +24,12 @@ function crearCsp(
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "media-src 'self'",
-    `connect-src 'self' https://${hostZk} wss://${hostZk} https://*.zkpassport.id wss://*.zkpassport.id http://localhost:* http://127.0.0.1:*`,
+    // Autofirma (public/js/autoscript.js) escucha en 127.0.0.1: WebSocket
+    // (wss) en navegadores actuales y https como alternativa. Se abre con el
+    // esquema afirma://, por navegación en Chrome y Edge o por un iframe en
+    // Firefox y Safari.
+    `connect-src 'self' https://${hostZk} wss://${hostZk} https://*.zkpassport.id wss://*.zkpassport.id wss://127.0.0.1:* https://127.0.0.1:*`,
+    "frame-src 'self' afirma:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

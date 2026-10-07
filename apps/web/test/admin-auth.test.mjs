@@ -83,6 +83,16 @@ test("genera CSP con nonce, strict-dynamic y sin ejecución inline insegura", ()
   assert.match(csp, /media-src 'self'(;|$)/);
 });
 
+test("la CSP permite abrir Autofirma y conectar con ella solo en 127.0.0.1", () => {
+  const csp = crearCsp("n", "votos.ejemplo.es", "production");
+  const connectSrc = csp.split("; ").find((directiva) => directiva.startsWith("connect-src ")) ?? "";
+
+  assert.match(connectSrc, / wss:\/\/127\.0\.0\.1:\*( |$)/);
+  assert.match(connectSrc, / https:\/\/127\.0\.0\.1:\*( |$)/);
+  assert.doesNotMatch(connectSrc, /http:\/\/|localhost/);
+  assert.match(csp, /frame-src 'self' afirma:(;|$)/);
+});
+
 test("la CSP de producción nunca permite 'unsafe-eval'; solo la de desarrollo", () => {
   const produccion = crearCsp("n", "votos.ejemplo.es", "production");
   assert.doesNotMatch(produccion, /unsafe-eval/);

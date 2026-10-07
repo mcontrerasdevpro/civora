@@ -14,7 +14,8 @@ ZKPassport, `autoscript.js` de Autofirma).
 - `middleware.ts` genera un nonce por petición y
   `lib/content-security-policy.js` construye la política:
   `script-src 'self' 'nonce-…' 'strict-dynamic'`, sin `unsafe-inline` para
-  scripts, `media-src 'self'`, `connect-src` limitado a ZKPassport y local,
+  scripts, `media-src 'self'`, `connect-src` limitado a ZKPassport y a Autofirma en `127.0.0.1` (`wss`
+  y `https`), `frame-src 'self' afirma:` para abrir Autofirma,
   `object-src 'none'` y `frame-ancestors 'none'`.
 - Fuentes autoalojadas con `next/font` y ningún script inline.
 - Solo con `NODE_ENV=development` se añade `'unsafe-eval'`, que `next dev`

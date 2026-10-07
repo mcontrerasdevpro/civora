@@ -111,6 +111,12 @@ Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
 Verificación: 51 tests de web, typecheck, build y 72 E2E.
 
+## Dependabot (2026-10-07, rama `fix/dependabot`)
+
+- **PR #12 (menores y parches) fallaba en el build:** `@zkpassport/sdk` 0.18.0 exige `@zkpassport/utils` 0.39.0-beta.2 exacta, que no exporta `getChainFromQuery`, y el SDK la importa. Es un fallo de la publicación (lo corrige la 0.18.2). Comprobado que el resto del grupo (React 19.3.0, pg 8.23.1, pkijs 3.4.1 y tipos de React) pasa con el SDK en 0.16.2: 20 tests de contratos, 51 de web, typecheck, build, 70 E2E y `pnpm audit --prod` limpio.
+- **Configuración:** el SDK de identidad (`@zkpassport/*`) sale del grupo semanal y llega en su propia PR, porque en 0.x una versión menor puede cambiar la API o el formato de la prueba que verifica el contrato. Dependabot ignora las versiones mayores de TypeScript, `@types/node`, Hardhat y `hardhat-toolbox`, que se harán como tareas propias.
+- PR #11 (`pbkdf2`, seguridad) y #10 (acciones del CI) en verde: se pueden fusionar. #14, #15 y #16 (versiones mayores) se cierran.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

@@ -27,6 +27,17 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/react-dom"
         update-types: ["version-update:semver-major"]
+      # También como tarea propia: TypeScript 7 (compilador nuevo), Hardhat 3
+      # (hardhat-toolbox 6+) y @types/node, que sigue al Node de ejecución
+      # (22/24), no a la última versión publicada.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "hardhat"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@nomicfoundation/hardhat-toolbox"
+        update-types: ["version-update:semver-major"]
     groups:
       # Todas las actualizaciones de seguridad en una sola PR.
       seguridad:
@@ -36,7 +47,14 @@ updates:
       menores-y-parches:
         applies-to: version-updates
         patterns: ["*"]
+        # El SDK de identidad va aparte: en 0.x una versión menor puede
+        # cambiar la API o el formato de la prueba que verifica el contrato,
+        # y hay que probarlo con un documento real.
+        exclude-patterns: ["@zkpassport/*"]
         update-types: ["minor", "patch"]
+      zkpassport:
+        applies-to: version-updates
+        patterns: ["@zkpassport/*"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

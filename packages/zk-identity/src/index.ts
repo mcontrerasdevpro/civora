@@ -29,12 +29,13 @@ import { datosVinculadosDeVoto, type Eligibility, type OpcionVoto } from "@civor
  * opción (R-01). Por eso la prueba se genera al confirmar el voto, ya
  * elegida la opción.
  *
- * La prueba se toma en cuanto llega (onProofGenerated), sin esperar a que el
- * SDK la verifique en el navegador (onResult): esa verificación carga
- * WebAssembly y descarga parámetros de Aztec, y consulta un nodo de Alchemy
- * con la prueba y la IP del votante. La CSP lo bloquea a propósito; la
- * verificación válida es la del contrato. Por lo mismo, las pruebas no se
- * suben al panel de ZKPassport (disableProofStorage).
+ * La prueba se toma en cuanto llega (onProofGenerated) y la verifica el
+ * contrato. El SDK solo la verifica por su cuenta si se registra onResult:
+ * en el navegador (WebAssembly, parámetros de Aztec y un nodo de Alchemy con
+ * la prueba y la IP del votante, bloqueado por la CSP) o en la API de
+ * ZKPassport. Por eso la web usa onSuccess, que entrega las pruebas sin
+ * verificarlas, y nunca onResult. Desde el SDK 0.18, las pruebas solo se
+ * suben al panel de ZKPassport con una política que lo active; no se usa.
  *
  * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
  * movil de ZKPassport que debe permanecer viva mientras se espera la
@@ -49,7 +50,7 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport
 const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true";
 
 function clienteZkPassport(): ZKPassport {
-  return new ZKPassport(APP_DOMAIN, { disableProofStorage: true });
+  return new ZKPassport(APP_DOMAIN);
 }
 
 /** Indica si la prueba es la que verifica el contrato (modo compressed-evm). */

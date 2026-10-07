@@ -102,6 +102,16 @@ páginas dinámicas, `ƒ`) y 60 E2E.
 
 Verificación: 20 tests de contratos, 50 de web, typecheck, build y 64 E2E.
 
+## SDK de ZKPassport 0.18.2 (2026-10-07, rama `feat/zkpassport-sdk-0.18`)
+
+- Dependencias: `@zkpassport/utils` 0.39.0 y `@zkpassport/registry` 0.15.3 (la 0.18.0 exigía una beta de `utils` rota). `pnpm audit --prod` limpio.
+- Sin cambios en lo que verifica el contrato: el verificador es la misma dirección (`0x1D00…c0D8`), la validez por defecto sigue en 7 días y `bind("custom_data", …)` y `getSolidityVerifierParameters` mantienen su firma.
+- El constructor ya no acepta `disableProofStorage`: desde la 0.18 el SDK solo sube pruebas al panel de ZKPassport con una política del panel que lo active, y no se usa ninguna.
+- El SDK solo verifica la prueba por su cuenta si se registra `onResult`, en el navegador (bloqueado por la CSP) o en su API (`verifierMode`), que recibiría la prueba con la IP del votante. La web usa `onSuccess`, que entrega las pruebas sin verificarlas, y nunca `onResult`; un test lo comprueba en el código.
+- Comprobado en local que el QR se genera con el puente real de ZKPassport y sin violaciones de CSP. Pendiente: voto con pasaporte simulado en producción.
+
+Verificación: 24 tests de contratos, 56 de web, typecheck, build y 76 E2E.
+
 ## Aviso de escuchas ajenas (2026-10-07, rama `feat/aviso-escuchar`)
 
 - Al pulsar «Escuchar» (instrucciones de cada paso y confirmación de la opción) aparece un aviso con `role="alert"` y suena el mismo aviso por voz: «Baje el volumen o use auriculares: otras personas cerca de usted podrían oír su voto.» El aviso no contiene la opción.

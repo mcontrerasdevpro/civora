@@ -3,7 +3,8 @@ import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { OPCIONES, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
-import { registrarError } from "../../../../../lib/registro.mjs";
+import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
+import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
 
 /**
  * Voto con prueba ZKPassport verificada dentro del propio contrato (ver
@@ -88,6 +89,20 @@ export async function POST(request: Request) {
     }
     if (razon.includes("Propuesta inexistente") || razon.includes("Votacion cerrada") || razon.includes("todavia no ha comenzado")) {
       return NextResponse.json({ error: razon }, { status: 400 });
+    }
+    if (esRechazoDelContrato(error)) {
+      // Rechazo del contrato o del verificador de ZKPassport que no tiene
+      // mensaje propio: se registra solo su selector (sin datos del votante).
+      registrarAviso("voto zk rechazado por el contrato", selectorDeRevert(error) ?? "sin selector");
+      return NextResponse.json(
+        {
+          error:
+            process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true"
+              ? "El contrato ha rechazado la prueba. En esta demostración solo valen los pasaportes simulados de la app ZKPassport."
+              : "El contrato ha rechazado la prueba de identidad.",
+        },
+        { status: 400 }
+      );
     }
     // No se relanza: Next registraría el error entero, con la transacción.
     registrarError("voto zk no registrado", error);

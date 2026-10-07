@@ -72,6 +72,11 @@ function obtenerConexion(): Conexion {
   return conexion;
 }
 
+/** Dirección del contrato que usa este servidor (CONTRATO_DIRECCION o el despliegue local). */
+export function direccionContrato(): string {
+  return obtenerConexion().direccion;
+}
+
 export function propuestaIdBytes32(propuestaId: string): string {
   return ethersId(propuestaId);
 }

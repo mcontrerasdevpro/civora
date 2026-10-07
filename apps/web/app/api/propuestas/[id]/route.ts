@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { obtenerPropuesta } from "../../../../lib/propuestas-store";
+import { buscarPropuesta } from "../../../../lib/propuestas-store";
+import { MENSAJE_PROPUESTA_ARCHIVADA } from "../../../../lib/errores-contrato.mjs";
 import { leerResultados } from "../../../../lib/contrato";
 import { resultadosVisibles } from "../../../../lib/resultados-visibles.mjs";
 import { segmentoFinal } from "../../../../lib/parametros-ruta.mjs";
@@ -11,10 +12,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const id = segmentoFinal(request);
-  const propuesta = await obtenerPropuesta(id);
-  if (!propuesta) {
+  const encontrada = await buscarPropuesta(id);
+  if (!encontrada) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
+  if (encontrada.archivada) {
+    return NextResponse.json({ error: MENSAJE_PROPUESTA_ARCHIVADA, archivada: true }, { status: 410 });
+  }
+  const { propuesta } = encontrada;
 
   if (!resultadosVisibles(propuesta.fechaCierre)) {
     return NextResponse.json({ propuesta, resultados: null });

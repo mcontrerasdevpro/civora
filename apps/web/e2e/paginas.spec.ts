@@ -56,7 +56,7 @@ test.describe("CSP en todas las páginas", () => {
       const respuesta = await page.goto(ruta);
       expect(respuesta?.status()).toBe(200);
       const html = await respuesta!.text();
-      const sinNonce = (html.match(/<script\b[^>]*>/g) ?? []).filter((etiqueta) => !/\snonce="[^"]+"/.test(etiqueta));
+      const sinNonce = (html.match(/<script\b[^>]*>/gi) ?? []).filter((etiqueta) => !/\snonce="[^"]+"/i.test(etiqueta));
       expect(sinNonce, `scripts sin nonce en ${ruta}`).toEqual([]);
 
       await page.waitForLoadState("networkidle");

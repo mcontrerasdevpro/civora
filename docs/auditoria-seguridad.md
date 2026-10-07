@@ -153,7 +153,14 @@ Verificación: 51 tests de web, typecheck, build y 72 E2E.
   - Envío por lotes para evitar la correlación por hora y techo por censo en cadena.
   - La IA solo avisa, sobre datos públicos agregados. Modelo de amenazas actualizado.
 
-Verificación: 24 tests de contratos, 73 de web (13 nuevos: porcentajes, redondeo, recuento desde eventos, búsqueda de bloques y rutas anidadas), typecheck, build y 94 E2E (7 nuevos de resultados, en los dos anchos).
+- **Índice incremental de eventos ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)):**
+  - Sustituye la lectura directa de la cadena en cada consulta, inviable con el límite de 10 bloques del plan gratuito de Alchemy en votaciones de hasta 90 días.
+  - Solo indexa bloques finales. Cada rango se guarda en una transacción junto con su avance (que no retrocede).
+  - El recuento del índice se compara siempre, en el servidor, con `resultados()` del contrato; una discrepancia (o un nullifier repetido) se devuelve con las dos cifras y la web la muestra también fuera de la sección plegada.
+  - `civora-db` guarda ahora nullifier y opción de cada voto: los mismos datos públicos de la cadena, ninguno identificativo. Los registros siguen sin nullifiers.
+  - Probado de extremo a extremo en local: nodo Hardhat, Postgres de prueba y tres votos. El recuento coincide; al borrar un evento de la caché se muestra la discrepancia, y tras `TRUNCATE` el índice se reconstruye solo y vuelve a coincidir.
+
+Verificación: 24 tests de contratos, 75 de web (15 nuevos: porcentajes, redondeo, recuento desde eventos, búsqueda de bloques, rangos del indexador y rutas anidadas), typecheck, build y E2E de resultados (índice completo, en curso y con discrepancia, también en modo sencillo) en los dos anchos.
 
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 

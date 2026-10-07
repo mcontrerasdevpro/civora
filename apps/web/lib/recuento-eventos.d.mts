@@ -39,3 +39,14 @@ export function primerBloqueDesde(
   objetivo: number
 ): Promise<number>;
 export function rangosDeBloques(desde: number, hasta: number, tamano: number): [number, number][];
+export function primerBloqueQueCumple(
+  cumple: (numero: number) => Promise<boolean>,
+  bajo: number,
+  alto: number
+): Promise<number>;
+export function rangosDelCiclo(
+  ultimoProcesado: number,
+  objetivo: number,
+  tamano: number,
+  maximo: number
+): [number, number][];

@@ -42,6 +42,9 @@ const RECUENTO_COMPLETO = {
   duplicados: 0,
   transacciones: TX,
   totalTransacciones: 3,
+  contrato: { aFavor: 1, enContra: 1, abstenciones: 1 },
+  coincide: true,
+  indiceHastaBloque: 9_000_400,
 };
 
 /** Simula las API de resultados y anota si se pidió la verificación. */
@@ -133,16 +136,31 @@ test.describe("resultados tras el cierre", () => {
     await comprobarAccesibilidad(page, "verificación de resultados");
   });
 
-  test("avisa si el recuento de los eventos no coincide con el del contrato", async ({ page }) => {
-    await simular(page, { cerrada: true, recuento: { ...RECUENTO_COMPLETO, aFavor: 2, abstenciones: 0 } });
+  test("una discrepancia entre los eventos y el contrato se muestra con las dos cifras", async ({ page }) => {
+    await simular(page, {
+      cerrada: true,
+      recuento: { ...RECUENTO_COMPLETO, aFavor: 2, abstenciones: 0, coincide: false },
+    });
     await page.goto(`/resultados/${PROPUESTA_ID}`);
-    await expect(page.getByRole("alert").filter({ hasText: "No coincide" })).toBeVisible();
+    await expect(page.getByRole("alert").filter({ hasText: "no coincide con el del contrato" })).toBeVisible();
+    const detalle = page.locator(".discrepancia");
+    await expect(detalle).toContainText("Desde los eventos: A favor 2, En contra 1, Abstención 0.");
+    await expect(detalle).toContainText("En el contrato: A favor 1, En contra 1, Abstención 1.");
+    await comprobarAccesibilidad(page, "discrepancia");
   });
 
-  test("si el servidor no puede leer los eventos, lo explica y remite a los pasos", async ({ page }) => {
-    await simular(page, { cerrada: true, recuento: { disponible: false, motivo: "rango" } });
+  test("en modo sencillo la discrepancia también se ve, fuera de la sección plegada", async ({ page }) => {
+    await simular(page, { cerrada: true, recuento: { ...RECUENTO_COMPLETO, aFavor: 2, abstenciones: 0, coincide: false } });
     await page.goto(`/resultados/${PROPUESTA_ID}`);
-    await expect(page.getByText(/no recorre los eventos de una votación tan larga/)).toBeVisible();
+    await page.getByRole("switch", { name: "Modo sencillo" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "hay una diferencia entre dos copias del recuento" })).toBeVisible();
+    await comprobarSinJerga(page, "discrepancia en modo sencillo");
+  });
+
+  test("mientras el índice se completa, lo explica y remite a los pasos", async ({ page }) => {
+    await simular(page, { cerrada: true, recuento: { disponible: false, motivo: "indexando", indiceHastaBloque: 9_000_100 } });
+    await page.goto(`/resultados/${PROPUESTA_ID}`);
+    await expect(page.getByText(/todavía está copiando los eventos de la red para esta votación \(va por el bloque 9\.000\.100\)/)).toBeVisible();
     await expect(page.getByText(/votos por vía de identificación no están disponibles/i)).toBeVisible();
     await comprobarAccesibilidad(page, "verificación no disponible");
   });

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Propuesta, ResultadoPropuesta } from "@civora/shared-types";
 import { calcularReparto } from "../../../lib/porcentajes-resultados.mjs";
-import { mismoRecuento } from "../../../lib/recuento-eventos.mjs";
 import type { VerificacionResultados } from "../../../lib/verificacion-resultados";
 import { useModoSencillo } from "../../votar/ModoSencillo";
 import { GraficoResultados } from "./GraficoResultados";
@@ -172,10 +171,12 @@ export default function ResultadosPropuestaPage() {
     };
   }, [id, listos]);
 
-  const coincide =
-    estado.fase === "lista" && verificacion.fase === "lista" && verificacion.verificacion.recuento.disponible
-      ? mismoRecuento(verificacion.verificacion.recuento, estado.resultados)
-      : null;
+  // Una discrepancia entre el índice de eventos y el contrato nunca se
+  // oculta: también se avisa fuera de la sección plegable.
+  const discrepancia =
+    verificacion.fase === "lista" &&
+    verificacion.verificacion.recuento.disponible &&
+    !verificacion.verificacion.recuento.coincide;
 
   return (
     <main className="wrap page-shell resultados">
@@ -252,7 +253,15 @@ export default function ResultadosPropuestaPage() {
             </p>
           </section>
 
-          <VerificaResultado estado={verificacion} coincideConContrato={coincide} sencillo={sencillo} />
+          {discrepancia && (
+            <p className="alert alert-error" role="alert">
+              {sencillo
+                ? "Atención: hay una diferencia entre dos copias del recuento de esta votación."
+                : "Atención: el recuento rehecho desde los eventos públicos no coincide con el del contrato. Detalle en «Verifica este resultado»."}
+            </p>
+          )}
+
+          <VerificaResultado estado={verificacion} sencillo={sencillo} />
         </>
       )}
     </main>

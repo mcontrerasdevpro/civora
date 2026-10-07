@@ -245,6 +245,17 @@ decide ni anula votos.
     mitigación: solo datos públicos y agregados; reglas deterministas
     primero; la IA solo avisa a personas, con los datos reproducibles, y no
     tiene herramientas para actuar sobre votos.
+- **Manipulación del índice de eventos en `civora-db`**
+  ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)): quien acceda
+  a la base de datos podría borrar o alterar la copia de los eventos de voto.
+  - Mitigación: la copia nunca sustituye a la cadena. Las cifras de la
+    página salen del contrato, y el recuento de la copia se compara siempre
+    con él.
+  - Una diferencia se muestra como discrepancia, también en modo sencillo,
+    nunca se oculta.
+  - El desglose por vía y la lista de transacciones se pueden contrastar
+    en el explorador.
+  - La copia se reconstruye desde cero con un `TRUNCATE`.
 - **Reconocimiento de voz**: la Web Speech API de Chrome envía el audio a
   servidores externos; no se usa para elegir la opción
   ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)).

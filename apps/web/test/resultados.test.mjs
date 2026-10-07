@@ -8,7 +8,9 @@ import {
 import {
   mismoRecuento,
   primerBloqueDesde,
+  primerBloqueQueCumple,
   rangosDeBloques,
+  rangosDelCiclo,
   recontarEventos,
   viaDeSelector,
 } from "../lib/recuento-eventos.mjs";
@@ -152,4 +154,24 @@ test("segmentoDesdeElFinal lee el id de rutas anidadas", () => {
   const peticion = new Request("http://x/api/propuestas/6f1c2b3a-4d5e/verificacion");
   assert.equal(segmentoDesdeElFinal(peticion, 2), "6f1c2b3a-4d5e");
   assert.equal(segmentoDesdeElFinal(peticion, 1), "verificacion");
+});
+
+test("primer bloque que cumple: bloque de despliegue del contrato", async () => {
+  const conCodigo = async (n) => n >= 4_321_000;
+  assert.equal(await primerBloqueQueCumple(conCodigo, 0, 9_000_000), 4_321_000);
+  assert.equal(await primerBloqueQueCumple(async () => false, 0, 50), 50);
+});
+
+test("rangos de un ciclo del indexador: continúa donde lo dejó y respeta el máximo", () => {
+  assert.deepEqual(rangosDelCiclo(99, 125, 10, 100), [
+    [100, 109],
+    [110, 119],
+    [120, 125],
+  ]);
+  assert.deepEqual(rangosDelCiclo(99, 1_000, 10, 2), [
+    [100, 109],
+    [110, 119],
+  ]);
+  assert.deepEqual(rangosDelCiclo(125, 125, 10, 100), []);
+  assert.deepEqual(rangosDelCiclo(130, 125, 10, 100), []);
 });

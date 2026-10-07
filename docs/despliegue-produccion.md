@@ -134,8 +134,12 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `FALLO_ABIERTO_REVOCACION` | no | `false` o sin definir | ejecución | **modificada**: `true` ya no se permite fuera de local; el contenedor no arranca |
 | `CIVORA_DEMO_TESTNET` | no | sin definir | ejecución | solo para la demo con pruebas simuladas, que no se usa |
 | `EXPLORADOR_URL` | no | explorador de bloques de la red del contrato, solo `https` (en Sepolia, el de Etherscan para Sepolia) | ejecución | **nueva**: sin ella, `/resultados/<id>` muestra las transacciones sin enlace |
-| `RPC_MAX_BLOQUES_LOGS` | no | `10` (límite de `eth_getLogs` del plan gratuito de Alchemy) | ejecución | **nueva**: bloques por consulta al rehacer el recuento desde los eventos |
-| `RPC_MAX_CONSULTAS_LOGS` | no | `500` | ejecución | **nueva**: consultas máximas por propuesta; por encima, la web remite a los pasos para rehacerlo por cuenta propia |
+| `RPC_MAX_BLOQUES_LOGS` | no | `10` (límite de `eth_getLogs` del plan gratuito de Alchemy) | ejecución | **nueva**: bloques por consulta del indexador de eventos ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)) |
+| `CONTRATO_BLOQUE_DESPLIEGUE` | recomendada | bloque en que se desplegó `CONTRATO_DIRECCION` (lo muestra el explorador) | ejecución | **nueva**: desde dónde empieza el indexador; sin ella lo busca en la cadena, con más consultas |
+| `INDEXADOR_EVENTOS` | no | sin definir (activo si hay `DATABASE_URL`); `false` lo desactiva | ejecución | **nueva** |
+| `INDEXADOR_INTERVALO_S` | no | `30` | ejecución | **nueva**: segundos entre ciclos cuando el índice está al día |
+| `INDEXADOR_CONSULTAS_POR_CICLO` | no | `100` | ejecución | **nueva**: consultas `eth_getLogs` por ciclo |
+| `INDEXADOR_PAUSA_MS` | no | `200` | ejecución | **nueva**: pausa entre consultas, para no superar el ritmo del proveedor |
 
 `NODE_ENV`, `PORT` y `HOSTNAME` los fija la imagen; no los definas. **Ningún
 secreto debe declararse como `ARG` en el Dockerfile**: Easypanel pasa todas

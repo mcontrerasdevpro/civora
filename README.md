@@ -140,7 +140,10 @@ Y en `apps/web/.env.local` (no se versiona):
 ejemplo; con un Postgres remoto usa `?sslmode=require`.
 
 La tabla `propuestas` se crea sola la primera vez que la web la necesita
-(no hace falta ejecutar ninguna migracion a mano).
+(no hace falta ejecutar ninguna migracion a mano). La web guarda además una
+copia de los eventos públicos de voto para verificar los resultados; es
+solo una caché de la cadena y se puede borrar y reconstruir
+([ADR 0020](docs/decisiones/0020-indice-incremental-eventos.md)).
 
 Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
 ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta

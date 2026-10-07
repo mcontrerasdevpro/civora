@@ -4,7 +4,6 @@ const TRANSACCIONES_VISIBLES = 10;
 
 type Props = {
   estado: { fase: "cargando" } | { fase: "error" } | { fase: "lista"; verificacion: VerificacionResultados };
-  coincideConContrato: boolean | null;
   sencillo: boolean;
 };
 
@@ -19,32 +18,49 @@ function Enlace({ base, ruta, texto }: { base: string | null; ruta: string; text
   );
 }
 
-function EstadoRecuento({ verificacion, coincide }: { verificacion: VerificacionResultados; coincide: boolean | null }) {
+function cifras(r: { aFavor: number; enContra: number; abstenciones: number }) {
+  return `A favor ${r.aFavor}, En contra ${r.enContra}, Abstención ${r.abstenciones}`;
+}
+
+function EstadoRecuento({ verificacion }: { verificacion: VerificacionResultados }) {
   const { recuento } = verificacion;
   if (!recuento.disponible) {
-    return (
-      <p className="alert alert-info">
-        {recuento.motivo === "rango"
-          ? "Este servidor no recorre los eventos de una votación tan larga con su proveedor de la red: rehaz el recuento con los pasos de abajo."
-          : "Ahora no se han podido leer los eventos desde este servidor: rehaz el recuento con los pasos de abajo o inténtalo más tarde."}
-      </p>
-    );
+    const texto =
+      recuento.motivo === "indexando"
+        ? `Este servidor todavía está copiando los eventos de la red para esta votación${
+            recuento.indiceHastaBloque !== null
+              ? ` (va por el bloque ${recuento.indiceHastaBloque.toLocaleString("es-ES")})`
+              : ""
+          }. Vuelve en un rato o rehaz el recuento con los pasos de abajo.`
+        : recuento.motivo === "sin_indice"
+          ? "Este servidor no tiene activo el índice de eventos: rehaz el recuento con los pasos de abajo."
+          : "Ahora no se han podido leer los eventos desde este servidor: rehaz el recuento con los pasos de abajo o inténtalo más tarde.";
+    return <p className="alert alert-info">{texto}</p>;
   }
-  return coincide ? (
+  return recuento.coincide ? (
     <p className="alert alert-ok" role="status">
       <strong>Comprobado:</strong> el recuento rehecho desde los {recuento.total.toLocaleString("es-ES")} eventos
       públicos coincide con el que guarda el contrato.
     </p>
   ) : (
-    <p className="alert alert-error" role="alert">
-      <strong>No coincide:</strong> el recuento rehecho desde los eventos no es igual al del contrato. Revisa los
-      pasos de abajo con tu propio nodo y avisa al equipo de Civora como indica su política de seguridad
-      (SECURITY.md del repositorio).
-    </p>
+    <div className="alert alert-error discrepancia">
+      <p>
+        <strong>Discrepancia:</strong> el recuento rehecho desde los eventos no es igual al del contrato.
+      </p>
+      <ul>
+        <li>Desde los eventos: {cifras(recuento)}.</li>
+        <li>En el contrato: {cifras(recuento.contrato)}.</li>
+        {recuento.duplicados > 0 && <li>Identificadores de voto repetidos en los eventos: {recuento.duplicados}.</li>}
+      </ul>
+      <p>
+        Rehaz el recuento con tu propio nodo siguiendo los pasos de abajo y avisa al equipo de Civora como indica
+        su política de seguridad (SECURITY.md del repositorio).
+      </p>
+    </div>
   );
 }
 
-export function VerificaResultado({ estado, coincideConContrato, sencillo }: Props) {
+export function VerificaResultado({ estado, sencillo }: Props) {
   return (
     <section className="verifica-resultado" aria-labelledby="titulo-verifica">
       <details open={!sencillo}>
@@ -59,7 +75,7 @@ export function VerificaResultado({ estado, coincideConContrato, sencillo }: Pro
 
         {estado.fase === "lista" && (
           <>
-            <EstadoRecuento verificacion={estado.verificacion} coincide={coincideConContrato} />
+            <EstadoRecuento verificacion={estado.verificacion} />
 
             <h3>Dónde están los datos</h3>
             <dl className="datos-verificacion">

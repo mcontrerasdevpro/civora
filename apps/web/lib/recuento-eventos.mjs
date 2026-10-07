@@ -79,14 +79,45 @@ export function mismoRecuento(a, b) {
  * @param {number} objetivo
  */
 export async function primerBloqueDesde(timestampDe, bajo, alto, objetivo) {
+  return primerBloqueQueCumple(async (numero) => (await timestampDe(numero)) >= objetivo, bajo, alto);
+}
+
+/**
+ * Primer bloque entre `bajo` y `alto` que cumple `cumple`, que debe ser
+ * monótono (falso y luego siempre verdadero). Si ninguno lo cumple,
+ * devuelve `alto`. Sirve también para hallar el bloque de despliegue del
+ * contrato (el primero con código en su dirección).
+ *
+ * @param {(numero: number) => Promise<boolean>} cumple
+ * @param {number} bajo
+ * @param {number} alto
+ */
+export async function primerBloqueQueCumple(cumple, bajo, alto) {
   let lo = bajo;
   let hi = alto;
   while (lo < hi) {
     const medio = Math.floor((lo + hi) / 2);
-    if ((await timestampDe(medio)) >= objetivo) hi = medio;
+    if (await cumple(medio)) hi = medio;
     else lo = medio + 1;
   }
   return lo;
+}
+
+/**
+ * Rangos que procesa un ciclo del indexador: desde el bloque siguiente al
+ * último procesado hasta `objetivo` (el último bloque final), troceados en
+ * `tamano` bloques y como mucho `maximo` rangos por ciclo.
+ *
+ * @param {number} ultimoProcesado
+ * @param {number} objetivo
+ * @param {number} tamano
+ * @param {number} maximo
+ * @returns {[number, number][]}
+ */
+export function rangosDelCiclo(ultimoProcesado, objetivo, tamano, maximo) {
+  if (objetivo <= ultimoProcesado) return [];
+  const hasta = Math.min(objetivo, ultimoProcesado + tamano * maximo);
+  return rangosDeBloques(ultimoProcesado + 1, hasta, tamano);
 }
 
 /**

@@ -155,7 +155,8 @@ operador.
 |---|---|
 | Página «Intenta hacer trampa» con ataques guiados (doble voto, voto fuera de plazo, prueba falsa) y el resultado esperado | pendiente |
 | Script de auditoría reproducible que recalcula el recuento desde la cadena y lo compara con la aplicación | pendiente |
-| Resultados tras el cierre en `/resultados/[id]`: gráfica SVG y tabla con votos y porcentajes (redondeo explicado), votos por vía, aviso de que la participación requiere el censo y sección «Verifica este resultado» con enlaces al explorador y pasos para rehacer el recuento desde los eventos; el servidor lo rehace si su proveedor RPC lo permite (rama `resultados-graficos`) | hecho; pendiente de comprobar en la demo con el proveedor RPC real |
+| Resultados tras el cierre en `/resultados/[id]`: gráfica SVG y tabla con votos y porcentajes (redondeo explicado), votos por vía, aviso de que la participación requiere el censo y sección «Verifica este resultado» con enlaces al explorador y pasos para rehacer el recuento desde los eventos (rama `resultados-graficos`) | hecho; pendiente de comprobar en la demo con el proveedor RPC real |
+| Índice incremental de eventos en `civora-db` respetando el límite de 10 bloques de Alchemy, comparado siempre con el recuento del contrato y reconstruible desde cero ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)) | hecho; probado de extremo a extremo en local; pendiente: definir `CONTRATO_BLOQUE_DESPLIEGUE` en Easypanel y comprobar la carga inicial en la demo |
 
 **Dependencias:** Fase 1, para que los ataques muestren el modelo final.
 

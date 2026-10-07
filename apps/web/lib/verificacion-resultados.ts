@@ -1,32 +1,32 @@
-import { id as ethersId, type EventLog, type Provider } from "ethers";
+import { id as ethersId, type Provider } from "ethers";
 import type { Propuesta } from "@civora/shared-types";
-import { contratoLectura, direccionContrato, propuestaIdBytes32 } from "./contrato";
+import { contratoLectura, direccionContrato, leerResultados, propuestaIdBytes32 } from "./contrato";
+import { asegurarEsquemaEventos, query } from "./db";
+import { indexadorHabilitado, leerEstadoIndice } from "./indexador-eventos";
 import {
   FIRMA_VOTO_EMITIDO,
+  mismoRecuento,
   primerBloqueDesde,
-  rangosDeBloques,
   recontarEventos,
-  type EventoVoto,
   type VotosPorVia,
 } from "./recuento-eventos.mjs";
 import { registrarError } from "./registro.mjs";
 
 /**
  * Datos públicos para que cualquiera compruebe el resultado de una propuesta
- * cerrada: el contrato, el evento que hay que contar, el rango de bloques y,
- * si el proveedor RPC lo permite, el recuento rehecho desde los eventos con
- * su desglose por vía y las transacciones de cada voto.
+ * cerrada: el contrato, el evento que hay que contar, el rango de bloques y
+ * el recuento rehecho desde los eventos.
  *
- * Solo se calcula tras el cierre: a partir de ahí el contrato no admite más
- * votos, así que el resultado se guarda en memoria y no se vuelve a leer.
+ * Los eventos salen del índice de civora-db (ADR 0020), que es solo una
+ * copia de la cadena. Por eso el recuento rehecho se compara **siempre** con
+ * el que guarda el contrato, aquí, en el servidor: si no coincide, se
+ * devuelve como discrepancia, nunca se oculta.
  *
- * Configuración (variables de entorno, ninguna obligatoria):
- *   EXPLORADOR_URL          explorador de bloques de la red, p. ej. el de
- *                           Sepolia; sin ella no se enlazan transacciones
- *   RPC_MAX_BLOQUES_LOGS    bloques por consulta eth_getLogs (por defecto 10,
- *                           el límite del plan gratuito de Alchemy)
- *   RPC_MAX_CONSULTAS_LOGS  consultas máximas por propuesta (por defecto 500)
+ * EXPLORADOR_URL: explorador de bloques de la red (solo https); sin ella no
+ * se enlazan transacciones.
  */
+
+type Recuento = { aFavor: number; enContra: number; abstenciones: number };
 
 export type RecuentoVerificado =
   | {
@@ -39,8 +39,12 @@ export type RecuentoVerificado =
       duplicados: number;
       transacciones: string[];
       totalTransacciones: number;
+      contrato: Recuento;
+      coincide: boolean;
+      indiceHastaBloque: number;
     }
-  | { disponible: false; motivo: "rango" | "error" };
+  | { disponible: false; motivo: "indexando"; indiceHastaBloque: number | null }
+  | { disponible: false; motivo: "sin_indice" | "error" };
 
 export interface VerificacionResultados {
   contrato: string;
@@ -53,12 +57,6 @@ export interface VerificacionResultados {
 }
 
 const MAX_TRANSACCIONES_RESPUESTA = 200;
-const REINTENTO_TRAS_FALLO_MS = 60_000;
-
-function entero(valor: string | undefined, porDefecto: number): number {
-  const n = Number(valor);
-  return Number.isInteger(n) && n > 0 ? n : porDefecto;
-}
 
 /** Explorador configurado, solo https y sin barra final. */
 export function urlExplorador(valor = process.env.EXPLORADOR_URL): string | null {
@@ -71,38 +69,14 @@ export function urlExplorador(valor = process.env.EXPLORADOR_URL): string | null
   }
 }
 
-const cache = new Map<string, { valor: Promise<VerificacionResultados>; caduca: number }>();
+// Bloques de cada votación: tras el cierre no cambian.
+const bloquesPorPropuesta = new Map<string, { desde: number; hasta: number }>();
 
-export function verificacionResultados(propuesta: Propuesta): Promise<VerificacionResultados> {
-  const guardada = cache.get(propuesta.id);
-  if (guardada && guardada.caduca > Date.now()) return guardada.valor;
-
-  const valor = calcular(propuesta).then((resultado) => {
-    // Un recuento completo es definitivo; si falló, se reintenta más tarde.
-    cache.set(propuesta.id, {
-      valor: Promise.resolve(resultado),
-      caduca: resultado.recuento.disponible ? Number.POSITIVE_INFINITY : Date.now() + REINTENTO_TRAS_FALLO_MS,
-    });
-    return resultado;
-  });
-  cache.set(propuesta.id, { valor, caduca: Date.now() + REINTENTO_TRAS_FALLO_MS });
-  return valor;
-}
-
-async function calcular(propuesta: Propuesta): Promise<VerificacionResultados> {
-  const contrato = contratoLectura();
-  const idBytes32 = propuestaIdBytes32(propuesta.id);
-  const base: Omit<VerificacionResultados, "bloques" | "recuento"> = {
-    contrato: direccionContrato(),
-    explorador: urlExplorador(),
-    propuestaIdBytes32: idBytes32,
-    firmaEvento: FIRMA_VOTO_EMITIDO,
-    topicEvento: ethersId(FIRMA_VOTO_EMITIDO),
-  };
-
-  let bloques: { desde: number; hasta: number } | null = null;
+async function bloquesDeLaVotacion(propuesta: Propuesta): Promise<{ desde: number; hasta: number } | null> {
+  const guardados = bloquesPorPropuesta.get(propuesta.id);
+  if (guardados) return guardados;
   try {
-    const proveedor = contrato.runner as Provider;
+    const proveedor = contratoLectura().runner as Provider;
     const timestamps = new Map<number, number>();
     const timestampDe = async (numero: number) => {
       const conocido = timestamps.get(numero);
@@ -112,72 +86,78 @@ async function calcular(propuesta: Propuesta): Promise<VerificacionResultados> {
       timestamps.set(numero, bloque.timestamp);
       return bloque.timestamp;
     };
-
     const ultimo = await proveedor.getBlockNumber();
     const apertura = Math.floor(Date.parse(propuesta.fechaApertura) / 1000);
     const cierre = Math.floor(Date.parse(propuesta.fechaCierre) / 1000);
     const desde = await primerBloqueDesde(timestampDe, 0, ultimo, apertura);
     // El contrato solo admite votos con timestamp < cierre.
     const hasta = Math.max(desde, (await primerBloqueDesde(timestampDe, desde, ultimo, cierre)) - 1);
-    bloques = { desde, hasta };
-
-    const rangos = rangosDeBloques(desde, hasta, entero(process.env.RPC_MAX_BLOQUES_LOGS, 10));
-    const maxConsultas = entero(process.env.RPC_MAX_CONSULTAS_LOGS, 500);
-    if (rangos.length > maxConsultas) {
-      return { ...base, bloques, recuento: { disponible: false, motivo: "rango" } };
-    }
-
-    const filtro = contrato.filters.VotoEmitido(idBytes32);
-    const registros: EventLog[] = [];
-    for (const [inicio, fin] of rangos) {
-      const lote = await contrato.queryFilter(filtro, inicio, fin);
-      registros.push(...lote.filter((r): r is EventLog => "args" in r));
-    }
-
-    // La vía se deduce de la función de la transacción que emitió cada voto.
-    const hashes = [...new Set(registros.map((r) => r.transactionHash))];
-    const selectores = new Map<string, string | null>();
-    let leerVia = hashes.length <= maxConsultas;
-    if (leerVia) {
-      for (const hash of hashes) {
-        const tx = await proveedor.getTransaction(hash);
-        if (!tx) {
-          leerVia = false;
-          break;
-        }
-        const alContrato = tx.to?.toLowerCase() === base.contrato.toLowerCase();
-        selectores.set(hash, alContrato ? tx.data.slice(0, 10) : null);
-      }
-    }
-
-    const eventos: EventoVoto[] = registros.map((r) => ({
-      opcion: Number(r.args.opcion),
-      nullifier: String(r.args.nullifier),
-      selector: selectores.get(r.transactionHash) ?? null,
-    }));
-    const recuento = recontarEventos(
-      eventos,
-      leerVia
-        ? {
-            certificado: contrato.interface.getFunction("votarManual")!.selector,
-            zk: contrato.interface.getFunction("votarConPruebaZk")!.selector,
-          }
-        : null
-    );
-
-    return {
-      ...base,
-      bloques,
-      recuento: {
-        disponible: true,
-        ...recuento,
-        transacciones: hashes.slice(0, MAX_TRANSACCIONES_RESPUESTA),
-        totalTransacciones: hashes.length,
-      },
-    };
+    const bloques = { desde, hasta };
+    bloquesPorPropuesta.set(propuesta.id, bloques);
+    return bloques;
   } catch (error) {
-    // Nunca el objeto: el error de ethers incluye la consulta RPC.
-    registrarError("recuento por eventos no disponible", error);
-    return { ...base, bloques, recuento: { disponible: false, motivo: "error" } };
+    registrarError("bloques de la votación no disponibles", error);
+    return null;
   }
+}
+
+async function recuentoDesdeIndice(propuesta: Propuesta, contrato: string, idBytes32: string): Promise<RecuentoVerificado> {
+  if (!indexadorHabilitado()) return { disponible: false, motivo: "sin_indice" };
+
+  const estado = await leerEstadoIndice(contrato);
+  const cierre = Math.floor(Date.parse(propuesta.fechaCierre) / 1000);
+  // Completo solo si el índice ha pasado ya del cierre: después no hay votos.
+  if (!estado || estado.ultimoTimestamp < cierre) {
+    return { disponible: false, motivo: "indexando", indiceHastaBloque: estado?.ultimoBloque ?? null };
+  }
+
+  await asegurarEsquemaEventos();
+  const filas = await query<{ tx_hash: string; nullifier: string; opcion: number; selector: string | null }>(
+    `SELECT tx_hash, nullifier, opcion, selector FROM eventos_voto
+     WHERE contrato = $1 AND propuesta_id = $2
+     ORDER BY bloque, indice_log`,
+    [contrato.toLowerCase(), idBytes32.toLowerCase()]
+  );
+  const instancia = contratoLectura();
+  const recuento = recontarEventos(
+    filas.map((f) => ({ opcion: Number(f.opcion), nullifier: f.nullifier, selector: f.selector })),
+    {
+      certificado: instancia.interface.getFunction("votarManual")!.selector,
+      zk: instancia.interface.getFunction("votarConPruebaZk")!.selector,
+    }
+  );
+  const delContrato = await leerResultados(propuesta.id);
+  const hashes = [...new Set(filas.map((f) => f.tx_hash))];
+
+  return {
+    disponible: true,
+    ...recuento,
+    transacciones: hashes.slice(0, MAX_TRANSACCIONES_RESPUESTA),
+    totalTransacciones: hashes.length,
+    contrato: { aFavor: delContrato.aFavor, enContra: delContrato.enContra, abstenciones: delContrato.abstenciones },
+    coincide: mismoRecuento(recuento, delContrato) && recuento.duplicados === 0,
+    indiceHastaBloque: estado.ultimoBloque,
+  };
+}
+
+export async function verificacionResultados(propuesta: Propuesta): Promise<VerificacionResultados> {
+  const contrato = direccionContrato();
+  const idBytes32 = propuestaIdBytes32(propuesta.id);
+  const base = {
+    contrato,
+    explorador: urlExplorador(),
+    propuestaIdBytes32: idBytes32,
+    firmaEvento: FIRMA_VOTO_EMITIDO,
+    topicEvento: ethersId(FIRMA_VOTO_EMITIDO),
+  };
+
+  let recuento: RecuentoVerificado;
+  try {
+    recuento = await recuentoDesdeIndice(propuesta, contrato, idBytes32);
+  } catch (error) {
+    // Nunca el objeto: el error de ethers o de pg incluye la consulta.
+    registrarError("verificación por eventos no disponible", error);
+    recuento = { disponible: false, motivo: "error" };
+  }
+  return { ...base, bloques: await bloquesDeLaVotacion(propuesta), recuento };
 }

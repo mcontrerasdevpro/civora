@@ -30,3 +30,21 @@ test("la solicitud a ZKPassport vincula el dato con bind(\"custom_data\")", asyn
   const fuente = await readFile(new URL("../../../packages/zk-identity/src/index.ts", import.meta.url), "utf8");
   assert.match(fuente, /\.bind\("custom_data", datosVinculadosDeVoto\(propuestaId, opcion\)\)/);
 });
+
+// ---------- La prueba va al contrato sin verificación local en el navegador ----------
+
+test("la prueba se envía al llegar (onProofGenerated) y no se sube al panel de ZKPassport", async () => {
+  const identidad = await readFile(new URL("../../../packages/zk-identity/src/index.ts", import.meta.url), "utf8");
+  assert.match(identidad, /new ZKPassport\(APP_DOMAIN, \{ disableProofStorage: true \}\)/);
+  assert.doesNotMatch(identidad, /new ZKPassport\(APP_DOMAIN\)/);
+
+  const flujo = await readFile(new URL("../app/votar/IdentificacionDnie.tsx", import.meta.url), "utf8");
+  assert.match(flujo, /solicitud\.onProofGenerated\(/);
+  assert.match(flujo, /esPruebaVerificableEnContrato\(proof\)/);
+});
+
+test("la CSP no abre WebAssembly ni Alchemy para la verificación local del SDK", async () => {
+  const { crearCsp } = await import("../lib/content-security-policy.js");
+  const csp = crearCsp("n", "civora.nexuraia.com", "production");
+  assert.doesNotMatch(csp, /wasm-unsafe-eval|alchemy\.com|aztec/);
+});

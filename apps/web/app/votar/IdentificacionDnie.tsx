@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import {
   crearSolicitudVerificacion,
+  esPruebaVerificableEnContrato,
   obtenerParametrosVerificacionOnChain,
   type SolidityVerifierParameters,
 } from "@civora/zk-identity";
@@ -105,6 +106,9 @@ export function PruebaZk({
 
   useEffect(() => {
     let cancelado = false;
+    // La prueba se envía al contrato en cuanto llega; lo que el SDK notifique
+    // después (su verificación local, bloqueada por la CSP) ya no cuenta.
+    let enviada = false;
 
     async function iniciar() {
       try {
@@ -130,32 +134,24 @@ export function PruebaZk({
         });
 
         solicitud.onReject(() => {
-          if (cancelado) return;
+          if (cancelado || enviada) return;
           setMensajeError("Has rechazado la solicitud en la app de ZKPassport.");
           setEstado("error");
         });
 
         solicitud.onError((mensaje) => {
-          if (cancelado) return;
+          if (cancelado || enviada) return;
           setMensajeError(mensaje);
           setEstado("error");
         });
 
-        solicitud.onResult(({ verified, proofs }) => {
-          if (cancelado) return;
-
-          if (!verified) {
-            setMensajeError(
-              "No se ha podido generar una prueba válida. Comprueba que cumples los requisitos (mayoría de edad, DNI español)."
-            );
-            setEstado("error");
-            return;
-          }
-
+        solicitud.onProofGenerated((proof) => {
+          if (cancelado || enviada || !esPruebaVerificableEnContrato(proof)) return;
+          enviada = true;
           setEstado("preparando");
           try {
             const parametrosVerificacion = obtenerParametrosVerificacionOnChain({
-              proofs,
+              proofs: [proof],
               propuestaId: propuesta.id,
             });
             // La verificacion real ocurre dentro del contrato al votar
@@ -168,6 +164,15 @@ export function PruebaZk({
             );
             setEstado("error");
           }
+        });
+
+        // Solo cuenta si la app termina sin entregar una prueba para el contrato.
+        solicitud.onResult(() => {
+          if (cancelado || enviada) return;
+          setMensajeError(
+            "La app no ha generado una prueba válida. Comprueba que cumples los requisitos (mayoría de edad, documento español)."
+          );
+          setEstado("error");
         });
       } catch (err) {
         if (!cancelado) {

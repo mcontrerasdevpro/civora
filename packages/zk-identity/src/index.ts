@@ -29,6 +29,13 @@ import { datosVinculadosDeVoto, type Eligibility, type OpcionVoto } from "@civor
  * opción (R-01). Por eso la prueba se genera al confirmar el voto, ya
  * elegida la opción.
  *
+ * La prueba se toma en cuanto llega (onProofGenerated), sin esperar a que el
+ * SDK la verifique en el navegador (onResult): esa verificación carga
+ * WebAssembly y descarga parámetros de Aztec, y consulta un nodo de Alchemy
+ * con la prueba y la IP del votante. La CSP lo bloquea a propósito; la
+ * verificación válida es la del contrato. Por lo mismo, las pruebas no se
+ * suben al panel de ZKPassport (disableProofStorage).
+ *
  * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
  * movil de ZKPassport que debe permanecer viva mientras se espera la
  * respuesta: solo puede llamarse desde el navegador (componente cliente),
@@ -40,6 +47,17 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport
 
 // El modo demo solo se activa con opt-in explícito y debe coincidir con el contrato.
 const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true";
+
+function clienteZkPassport(): ZKPassport {
+  return new ZKPassport(APP_DOMAIN, { disableProofStorage: true });
+}
+
+/** Indica si la prueba es la que verifica el contrato (modo compressed-evm). */
+export function esPruebaVerificableEnContrato(proof: ProofResult): boolean {
+  return Boolean(proof.name?.startsWith("outer_evm"));
+}
+
+export type { ProofResult };
 
 /** Debe coincidir exactamente con el ambito que reconstruye VotacionAnonima.votarConPruebaZk. */
 function scopeDePropuesta(propuestaId: string): string {
@@ -55,7 +73,7 @@ export async function crearSolicitudVerificacion(params: {
   opcion: OpcionVoto;
 }): Promise<SolicitudVerificacionZk> {
   const { elegibilidad, propuestaId, opcion } = params;
-  const zkPassport = new ZKPassport(APP_DOMAIN);
+  const zkPassport = clienteZkPassport();
 
   const queryBuilder = await zkPassport.request({
     name: "CÍVORA",
@@ -97,9 +115,9 @@ export function obtenerParametrosVerificacionOnChain(params: {
   proofs: ProofResult[];
   propuestaId: string;
 }): SolidityVerifierParameters {
-  const zkPassport = new ZKPassport(APP_DOMAIN);
+  const zkPassport = clienteZkPassport();
 
-  const proof = params.proofs.find((p) => p.name?.startsWith("outer_evm"));
+  const proof = params.proofs.find(esPruebaVerificableEnContrato);
   if (!proof) {
     throw new Error(
       "La prueba generada no es verificable en una cadena EVM (falta el proof 'outer_evm')."

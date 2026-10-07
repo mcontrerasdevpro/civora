@@ -90,7 +90,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 
 | Tarea | Estado |
 |---|---|
-| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`); pendiente: contrato en Sepolia y prueba con DNIe o pasaporte real |
+| **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`), contrato en Sepolia; primera prueba real: la CSP bloqueaba la verificación local del SDK, corregido tomando la prueba en `onProofGenerated`; pendiente: repetir la prueba con DNIe o pasaporte real |
 | Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
 | Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |

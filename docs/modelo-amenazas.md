@@ -39,6 +39,12 @@ cualquier otra opción (`OpcionNoVinculada`,
 prueba con la misma opción sigue siendo posible y no altera el voto. Hasta
 que se despliegue el contrato nuevo, el desplegado en Sepolia sigue expuesto.
 
+La prueba no se verifica en el navegador ni sale hacia terceros: el SDK de
+ZKPassport la verificaría consultando un nodo de Alchemy con la prueba (con
+nullifier y opción) y la IP del votante, y la subiría a su panel. La web la
+envía directamente al contrato y crea el SDK con `disableProofStorage`; la
+CSP no permite WebAssembly ni Alchemy.
+
 ### Firma y certificado en la vía de certificado
 
 - El servidor recibe la firma CMS y el certificado del votante para

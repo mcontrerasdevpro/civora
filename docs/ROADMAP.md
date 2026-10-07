@@ -211,7 +211,7 @@ con contenido manipulado sin efecto.
 | Demo de pruebas: la vía de certificado mantiene la edad declarada y se mantiene la residencia de 5 años en la elegibilidad, hasta tener las conexiones con DGP e INE ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) | decidido (2026-10-07) |
 | Postgres de la demo en el VPS (`civora-db`, sin puerto externo) ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) | hecho; pendiente de revisar en producción |
 | Copias de seguridad automáticas y probadas de la base de datos, antes de producción real | pendiente |
-| Retirar la base de Neon cuando se valide la del VPS | pendiente |
+| Retirar Neon del proyecto: la web, la documentación y la vuelta atrás ya solo usan el Postgres del VPS | hecho (2026-10-07); la base sigue creada en Neon, sin uso |
 | Retirar Vercel tras completar la migración | en curso: desconectado de GitHub, ya no despliega |
 | Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente |
 | Entorno de pruebas separado (contrato y dominio propios), con el VPS dedicado | pendiente |

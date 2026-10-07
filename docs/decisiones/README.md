@@ -21,6 +21,8 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0013](0013-postgres-en-el-vps.md) | Postgres de la demo en el VPS | aceptada |
 | [0014](0014-opcion-vinculada-prueba-zk.md) | La opción va vinculada a la prueba ZK | aceptada |
 | [0015](0015-condiciones-voto-organismos-publicos.md) | Condiciones para votar y contraste con organismos públicos | aceptada (conexiones pendientes de convenio) |
+| [0016](0016-propuestas-registro-ideas-multifirma-ipfs.md) | Propuestas con registro de ideas, multifirma e IPFS | propuesta (diseño) |
+| [0017](0017-servicios-por-frontera-de-confianza.md) | Separación en servicios por frontera de confianza, en monorepo | propuesta (diseño) |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

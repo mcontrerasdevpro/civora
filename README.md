@@ -92,34 +92,34 @@ está en el [modelo de amenazas](docs/modelo-amenazas.md#inclusión-y-voto-asist
 y los límites del asistente de IA, en el
 [ADR 0009](docs/decisiones/0009-limites-asistente-ia.md).
 
-## Que hay montado ahora mismo
+## Qué hay montado ahora mismo
 
-| Componente | Ubicacion | Estado |
+| Componente | Ubicación | Estado |
 |---|---|---|
 | Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
-| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); cualquier Postgres en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
-| Documentacion | docs/ | Ver [Documentación](#documentación) |
+| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); cualquier Postgres en local) | Guarda el contenido de cada propuesta (título, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
+| Documentación | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
 
-Este repo esta preparado para abrirse directamente en GitHub Codespaces
+Este repo está preparado para abrirse directamente en GitHub Codespaces
 (.devcontainer ya configurado) o en local con pnpm. Los comandos de
 instalación, nodo local, despliegue y arranque están en
 [AGENTS.md](AGENTS.md#comandos).
 
 El contrato necesita un nodo Ethereum local corriendo antes de arrancar la
-web. El script de despliegue escribe la direccion + ABI en
+web. El script de despliegue escribe la dirección + ABI en
 apps/web/lib/generated/despliegue-localhost.json (se regenera en cada
-despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
+despliegue, no se versiona). Las propuestas ya no se crean aquí: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
-siguiente seccion).
+siguiente sección).
 
 ## Base de datos
 
-El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
+El contenido de cada propuesta (título, pregunta, fechas de apertura y
 cierre) se guarda en Postgres; el contrato solo ancla el hash de ese
 contenido para poder verificar su integridad.
 
@@ -140,14 +140,14 @@ Y en `apps/web/.env.local` (no se versiona):
 ejemplo; con un Postgres remoto usa `?sslmode=require`.
 
 La tabla `propuestas` se crea sola la primera vez que la web la necesita
-(no hace falta ejecutar ninguna migracion a mano).
+(no hace falta ejecutar ninguna migración a mano).
 
 Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
 ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta
 en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
-Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
+Hardhat, vuelve a ejecutar `deploy:localhost` (la dirección del contrato
 cambia con cada nodo nuevo; las propuestas guardadas en la base de datos
-quedan huerfanas hasta que las recrees).
+quedan huérfanas hasta que las recrees).
 
 ## Desplegar en Sepolia + VPS
 
@@ -159,20 +159,20 @@ El contrato, las variables (obligatorias, build arg o ejecución, cambios) y
 las comprobaciones antes de fusionar están en
 [docs/despliegue-produccion.md](docs/despliegue-produccion.md); DNS,
 Easypanel y la imagen, en [docs/despliegue-vps.md](docs/despliegue-vps.md).
-Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
+Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estás en local y
 busca el despliegue de Hardhat.
 
-## Identidad con ZKPassport (verificacion on-chain)
+## Identidad con ZKPassport (verificación on-chain)
 
-La via de DNIe/pasaporte genera una prueba en modo `compressed-evm` y la
-envia, sin verificarla en ningun servidor, a
-`VotacionAnonima.votarConPruebaZk`: el contrato la verifica el mismo,
+La vía de DNIe/pasaporte genera una prueba en modo `compressed-evm` y la
+envía, sin verificarla en ningún servidor, a
+`VotacionAnonima.votarConPruebaZk`: el contrato la verifica él mismo,
 llamando al **RootVerifier oficial de ZKPassport**
 (`0x1D000001000EFD9a6371f4d90bB8920D5431c0D8`, mismo address en Ethereum,
-Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
-genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
-Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
-prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)).
+Sepolia y Base) y comprobando edad mínima, nacionalidad y que la prueba se
+generó para esa propuesta concreta (ver `packages/contracts/contracts/`).
+Ni este servidor ni su operador pueden aceptar un voto por esta vía sin una
+prueba criptográfica válida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)).
 
 La prueba se genera al confirmar el voto y lleva la opción vinculada
 (`custom_data = civora-voto:<propuesta>:<opción>`): el contrato rechaza
@@ -183,7 +183,7 @@ verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy,
 y la CSP la bloquea a propósito. El SDK se crea con `disableProofStorage`
 para que no suba las pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
-verificador real solo existe en redes publicas.
+verificador real solo existe en redes públicas.
 
 `DEV_MODE` está desactivado por defecto tanto en la web como en el contrato.
 En local, actívalo explícitamente solo para una demo con pruebas mock. Las
@@ -191,13 +191,13 @@ variables deben coincidir entre web y despliegue, o el contrato rechazará
 las pruebas:
 
     # apps/web/.env.local
-   NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
-   NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
+    NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
+    NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
 
     # packages/contracts/.env
-   ZKPASSPORT_DOMAIN=tu-dominio.com
-   ZKPASSPORT_DEV_MODE=false
-   RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
+    ZKPASSPORT_DOMAIN=tu-dominio.com
+    ZKPASSPORT_DEV_MODE=false
+    RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
 
 En redes no locales el despliegue falla si no defines un dominio propio,
 `ZKPASSPORT_DEV_MODE=false` explícito y `RELAYER_ADDRESS`. La web aplica la
@@ -212,7 +212,7 @@ para cambiarlos hay que desplegar otro contrato. Para demo local, define
 
 ## Identidad con certificado digital (Autofirma)
 
-La via de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
+La vía de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
 la herramienta oficial del Gobierno de España (hay que tenerla instalada):
 el navegador le pide que firme un código aleatorio con el certificado
 instalado (FNMT, DNIe...) y el servidor comprueba, en
@@ -248,19 +248,19 @@ relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
 
 ## Estructura
 
-civora/
-  apps/web         -> Next.js: landing, propuestas, voto, resultados, verificador
-  packages/contracts    -> Contrato de votacion (Solidity)
-  packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)
-  packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
-  docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoria y especificacion
+    civora/
+      apps/web         -> Next.js: landing, propuestas, voto, resultados, verificador
+      packages/contracts    -> Contrato de votación (Solidity)
+      packages/zk-identity   -> Capa de identidad ZK (agnóstica de proveedor)
+      packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
+      docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoría y especificación
 
-## Por que estas decisiones
+## Por qué estas decisiones
 
 Cada decisión, con su contexto y alternativas, está en
 [docs/decisiones/](docs/decisiones/README.md).
 
 ## Aviso legal
 
-Esta es una prueba de concepto tecnica, no un sistema habilitado para
-elecciones oficiales vinculantes en Espana.
+Esta es una prueba de concepto técnica, no un sistema habilitado para
+elecciones oficiales vinculantes en España.

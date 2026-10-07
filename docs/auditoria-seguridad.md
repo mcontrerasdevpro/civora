@@ -148,10 +148,12 @@ Tarea solo de diseño: [ADR 0016](decisiones/0016-propuestas-registro-ideas-mult
   - `pnpm licenses list --prod`: dependencias compatibles. Queda pendiente `@zkpassport/utils`, que no declara licencia.
 - **Decisiones del responsable (2026-10-07):**
   - Safe 1 de 1 declarado en pruebas, que pasa a 2 de 3 con firmantes externos.
-  - Depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera y tope del relayer de 10 € al día con alerta al 50 %, configurables sin redesplegar.
+  - Depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera y tope del relayer de 10 € al día con 8 € reservados para votos, configurables sin redesplegar.
   - Pinata como principal y Filebase como respaldo.
-  - Espera de 7 días para cambiar el Safe, comprobada mayor que la duración máxima de una votación, y bloqueo de votaciones que cierren después de un cambio pendiente.
+  - Espera de 7 días para cambiar el Safe, con evento y cancelación, para detectar a tiempo un intento de tomar el control del consejo. La condición «espera mayor que la duración máxima» y el bloqueo de votaciones durante un cambio pendiente se retiraron el mismo día: se comprobó que nada del registro ni del Safe puede afectar a una votación ya creada ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#comprobación-nada-en-cadena-afecta-a-una-votación-ya-creada)).
+  - Duración de las votaciones de 1 hora a 90 días, inmutable por despliegue.
   - Identidad en su propio subdominio, configurable, y relayer solo en la red interna.
+- **Dos vías fuera de cadena sobre votaciones abiertas (diseño, mitigadas):** dejar de fijar el contenido y agotar el gas del relayer con ideas o aprobaciones. Ver el [modelo de amenazas](modelo-amenazas.md#vías-fuera-de-cadena-sobre-votaciones-abiertas-adr-0016).
 - **Hallazgo de diseño al aplicar las decisiones:** los propietarios del Safe se cambian dentro del propio Safe, sin pasar por la espera del registro. En pruebas es aceptable; en producción se propone un módulo de retardo ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#2-quién-es-el-safe)).
 - **Entornos:** `civora.nexuraia.com` y el VPS compartido quedan documentados como entorno de pruebas. La producción en un VPS dedicado va unida al paso a Base y al redespliegue con el dominio definitivo.
 - **Verificación del bytecode:** propuesta en el [ROADMAP](ROADMAP.md#verificación-pública-del-bytecode), sin implementar.

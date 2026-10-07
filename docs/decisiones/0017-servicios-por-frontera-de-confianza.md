@@ -92,12 +92,14 @@ con su imagen Docker y solo los secretos que necesita.
   | `identidad` | `VotacionAnonima` | `votarManual` |
 
   - Además: `estimateGas` previo y tope de gas por transacción.
-  - **Tope de gasto diario de 10 € con alerta al 50 %**, y 20 ideas al día
-    sin cartera.
+  - **Tope de gasto diario de 10 €, con 8 € reservados para votos** y un
+    subtope de 2 € para ideas y aprobaciones. Avisa en cuanto un voto
+    empieza a consumir la reserva. 20 ideas al día sin cartera.
     - Los valores se leen de variables de entorno: se cambian sin
       reconstruir la imagen
       ([ADR 0016](0016-propuestas-registro-ideas-multifirma-ipfs.md#4-quién-paga-qué)).
-    - Al llegar al 100 % rechaza transacciones hasta el día siguiente
+    - Al agotar el subtope solo se rechazan ideas y aprobaciones. Los votos
+      solo se rechazan al agotar el tope total, hasta el día siguiente
       (UTC).
   - Una sola instancia gestiona el *nonce*, y el saldo de la cuenta se
     mantiene bajo y se recarga a mano.
@@ -336,8 +338,9 @@ Opciones:
 2. **Identidad:** en su propio subdominio (`identidad.<dominio>`, por
    configuración). El relayer no tiene dominio público en ningún entorno:
    solo red interna.
-3. **Topes del relayer:** 10 € al día con alerta al 50 % y 20 ideas al día
-   sin cartera, configurables sin reconstruir la imagen.
+3. **Topes del relayer:** 10 € al día con 8 € reservados para votos,
+   alerta en cuanto se empieza a consumir la reserva y 20 ideas al día sin
+   cartera, configurables sin reconstruir la imagen.
 4. **Entornos:** `civora.nexuraia.com` y el VPS compartido son el entorno
    de pruebas. La producción irá en un VPS exclusivo con dominio propio
    ([Entornos](#entornos)).

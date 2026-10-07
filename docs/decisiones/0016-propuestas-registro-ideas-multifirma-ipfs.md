@@ -117,14 +117,16 @@ IPFS y su CID queda en cadena.
     (por ejemplo, `<chainId>-<registro>-<id>`), para que no colisione entre
     despliegues ni entre redes. El formato exacto se cierra al implementarlo,
     junto con `packages/zk-identity`.
-  - Exige `apertura >= block.timestamp`, y la duración entre un mínimo y un
-    máximo fijados al desplegar. El máximo debe ser menor que la espera para
-    cambiar el Safe (ver [Inmutabilidad](#encaje-con-la-inmutabilidad)):
-    con 7 días de espera, la duración máxima es de 6 días.
-  - Mientras haya un cambio de Safe pendiente, `resolver` exige que la
-    votación cierre antes de que el cambio pueda ejecutarse.
+  - Exige `apertura >= block.timestamp` y una duración entre
+    `duracionMinima` y `duracionMaxima`. Las dos son inmutables, se fijan
+    al desplegar y son independientes de la espera para cambiar el Safe
+    (ver [Duración de las votaciones](#duración-de-las-votaciones)).
   - Al rechazar retiene `base` y el resto queda reclamable, con pagos *pull*
     como en el original (`claim()`).
+- `retirarContenido(uint256 id, string motivo)`, solo el Safe: emite
+  `ContenidoRetirado(id, motivo)` para dejar constancia pública de que una
+  propuesta aprobada deja de fijarse (ver [Borrado](#3-ipfs)). **No toca la
+  votación**: no hay nada en `VotacionAnonima` que pueda tocar.
 - **`setConfig` limitado** (ver [Inmutabilidad](#encaje-con-la-inmutabilidad)).
 
 ### 2. Quién es el Safe
@@ -210,38 +212,54 @@ anota en el README y en
     proveedores. La página `/consejo` lo comprueba y lo muestra.
 - **Cómo lo verifica la web:**
   - Lee el CID del contrato.
-  - Obtiene los bytes, primero de `civora-db` y, si faltan, de su pinning o
-    de una pasarela.
-  - Recalcula el CID y **rechaza el contenido si no coincide**, venga de
-    donde venga.
+  - **Fuentes:** la copia de `civora-db` y varias pasarelas IPFS (la del
+    proveedor principal, la de respaldo y al menos dos públicas, por
+    ejemplo `ipfs.io` y `dweb.link`). La lista se configura con variables de
+    entorno.
+  - **Todas se verifican contra el CID**, incluida `civora-db`. El servidor
+    las prueba en orden y recalcula el CID de cada respuesta. Si no
+    coincide, ese contenido **no se muestra nunca**, se registra un aviso
+    (código corto, sin el contenido) y se prueba la siguiente fuente.
+  - Es justo lo que no hacen `council-dao` ni `app`, que se fían de la
+    pasarela.
   - El navegador repite la comprobación con `crypto.subtle` sobre los bytes
     que recibe de `/api/contenido/<cid>`, del mismo origen y sin tocar la
     CSP.
   - Un tercero que no confíe en el servidor la reproduce con el script de
     auditoría ([ROADMAP](../ROADMAP.md#intenta-hacer-trampa-y-script-de-auditoría)).
-- **Si nadie lo fija:**
-  - El CID sigue en cadena y la votación sigue funcionando, porque las
-    opciones son un enum fijo. Pero nadie puede leer qué se vota.
-  - La web muestra «Contenido no disponible» y **no ofrece votar** una
-    propuesta cuyo texto no puede verificar.
+- **Si ninguna fuente devuelve contenido válido:**
+  - Puede ser porque nadie responde o porque todas devuelven contenido que
+    no coincide.
+  - La web avisa de que el contenido no está disponible, muestra el CID y
+    **deja votar**. Retirar o falsificar el contenido nunca detiene una
+    votación. La votación sigue funcionando en cadena: las opciones son un
+    enum fijo y el CID ya está fijado en el contrato.
   - Cualquiera que conserve el JSON (la web lo ofrece para descargar al
-    proponer) puede volver a fijarlo; el CID demuestra que es el original.
+    proponer y al votar) puede volver a fijarlo; el CID demuestra que es el
+    original.
   - Es una mejora clara sobre hoy: el hash `keccak256` no dice dónde buscar
     el contenido; el CID sí.
-- **Borrado:** las ideas rechazadas o con contenido ilícito se dejan de
-  fijar en las copias propias. El CID queda en cadena, pero sin nadie que lo
-  sirva no se puede leer. Que el contenido sea permanente obliga a decirlo
-  así en el formulario.
+- **Borrado:**
+  - **Ideas pendientes o rechazadas:** se pueden dejar de fijar en las
+    copias propias, por ejemplo si tienen datos personales o contenido
+    ilícito.
+  - **Propuestas aprobadas:** no se dejan de fijar **salvo por una decisión
+    pública del Safe en cadena con su motivo**, por ejemplo una
+    transacción del Safe que emite un evento `ContenidoRetirado(id, motivo)`
+    en `RegistroIdeas`, **o por orden judicial**, que se anota igualmente.
+  - En cualquier caso, **la votación sigue**. El CID queda en cadena, pero
+    sin nadie que lo sirva no se puede leer.
+  - Que el contenido sea permanente obliga a decirlo así en el formulario.
 
 ### 4. Quién paga qué
 
 | Acción | Quién la envía | Gas | Depósito |
 |---|---|---|---|
 | Proponer con cartera | Proponente | Proponente | Proponente (se le devuelve `deposito - base` si se rechaza) |
-| Proponer sin cartera | Relayer, por la web | Relayer | Relayer, con un presupuesto diario fijo; las devoluciones vuelven al relayer |
+| Proponer sin cartera | Relayer, por la web | Relayer, dentro del subtope de ideas y aprobaciones | Relayer; las devoluciones vuelven al relayer |
 | Firmar (`approveHash` o firma fuera de cadena) | Cada firmante | Firmante (o nada, si firma fuera de cadena) | — |
-| Ejecutar la aprobación o el rechazo (`execTransaction`) | Relayer, cuando hay quórum | Relayer | — |
-| Votar | Relayer | Relayer | — |
+| Ejecutar la aprobación o el rechazo (`execTransaction`) | Relayer, cuando hay quórum | Relayer, dentro del subtope de ideas y aprobaciones | — |
+| Votar | Relayer | Relayer, con la reserva para votos | — |
 
 - Los depósitos aprobados y el `base` de los rechazados van a la tesorería.
   En pruebas, la tesorería es la propia cartera del relayer, para que se
@@ -266,8 +284,9 @@ reconstruir imágenes:
 | Depósito (`deposito`) | 5 € | `RegistroIdeas`, en wei | `setConfig` del Safe, con el tope inmutable `depositoMaximo` (equivalente a 50 € al desplegar) |
 | No reembolsable (`base`) | 2 € | `RegistroIdeas`, en wei | `setConfig` del Safe; cada idea guarda el `base` vigente al proponerla |
 | Ideas sin cartera al día | 20 | Servicio `relayer` (`IDEAS_SIN_CARTERA_POR_DIA`) | Variable de entorno y reinicio del servicio |
-| Gasto del relayer | 10 € al día | Servicio `relayer` (`TOPE_GASTO_DIARIO_EUR`) | Variable de entorno y reinicio del servicio |
-| Alerta de gasto | al 50 % del tope | Servicio `relayer` (`ALERTA_GASTO_PORCENTAJE`) | Variable de entorno y reinicio del servicio |
+| Gasto total del relayer | 10 € al día | Servicio `relayer` (`TOPE_GASTO_DIARIO_EUR`) | Variable de entorno y reinicio del servicio |
+| Reserva para votos | 8 € de los 10 € | Servicio `relayer` (`RESERVA_VOTOS_EUR`) | Variable de entorno y reinicio del servicio |
+| Subtope de ideas y aprobaciones | 2 € (el resto) | Calculado: tope total menos reserva | Al cambiar cualquiera de los dos anteriores |
 
 - **De euros a wei:**
   - El depósito se convierte al precio del día y el Safe lo actualiza
@@ -276,11 +295,18 @@ reconstruir imágenes:
     actualizada a mano. No se usa un oráculo de precios, para no añadir una
     dependencia externa al camino del voto.
   - En Sepolia los importes son nominales.
-- **Alerta:** al alcanzar el 50 % del tope, el relayer registra un aviso
-  con `lib/registro.mjs` (código corto, sin datos). Si `ALERTA_GASTO_URL`
-  está definida, también hace un POST con el gasto acumulado y el tope.
-  Ese destino puede ser, por ejemplo, un flujo de n8n. Al llegar al 100 %
-  rechaza nuevas transacciones hasta el día siguiente (UTC).
+- **Presupuesto del relayer:** las ideas sin cartera y las aprobaciones
+  (`execTransaction`) no pueden dejar sin gas a las votaciones abiertas.
+  - **Ideas y aprobaciones** solo gastan su subtope de 2 € al día. Al
+    agotarlo se rechazan hasta el día siguiente (UTC); los votos siguen.
+  - **Votos:** gastan primero el subtope sin usar y después la reserva de
+    8 €. Solo se rechazan si se agota el tope total.
+- **Alerta:** en cuanto un voto empieza a consumir la reserva, el relayer
+  registra un aviso con `lib/registro.mjs` (código corto, sin datos). Si
+  `ALERTA_GASTO_URL` está definida, también hace un POST con el gasto
+  acumulado, la reserva restante y el tope. Ese destino puede ser, por
+  ejemplo, un flujo de n8n. Se avisa también al agotar el subtope y al
+  agotar el tope total.
 - **Relayer** ([ADR 0017](0017-servicios-por-frontera-de-confianza.md)):
   su lista blanca añade `RegistroIdeas.proponer` y `Safe.execTransaction`
   (solo sobre el Safe configurado) y quita `crearPropuesta`.
@@ -294,7 +320,8 @@ reconstruir imágenes:
   - `/propuestas` lista desde los eventos del contrato: pendientes,
     aprobadas y rechazadas.
   - `/consejo` es una página de solo lectura para los firmantes.
-  - `/votar/<id>` solo se habilita con el CID verificado.
+  - `/votar/<id>` muestra el contenido solo si coincide con el CID. Si
+    ninguna fuente lo devuelve válido, avisa, muestra el CID y deja votar.
 - **Base de datos:** deja de ser la fuente de verdad y pasa a ser **caché**
   de bytes por CID y de eventos. Si se pierde, se reconstruye desde la
   cadena y el pinning. La tabla `propuestas` actual queda para las
@@ -336,7 +363,7 @@ espera, hacer lo siguiente:
 | Poder | Riesgo | Propuesta para `RegistroIdeas` |
 |---|---|---|
 | Cambiar `proposals` (el contrato de destino) | Mandar las aprobaciones futuras a otro contrato | **Inmutable.** `VotacionAnonima` solo acepta este registro; cambiar de destino es desplegar los dos |
-| Cambiar `safe` | Ceder todo el control de golpe | Permitido con **espera de 7 días** y evento: propuesta, ejecución y cancelación. La espera es **siempre mayor que la duración máxima de una votación**: el constructor rechaza `esperaCambioSafe <= duracionMaxima`, y las dos son inmutables. Así, toda votación abierta antes de anunciar el cambio cierra bajo el Safe que la aprobó. Además, mientras haya un cambio pendiente, `resolver` exige que la nueva votación cierre antes de que el cambio pueda ejecutarse. Si se pierden las claves del Safe, no hay recuperación: desplegar de nuevo |
+| Cambiar `safe` | Ceder todo el control de golpe | Permitido con **espera de 7 días** y evento: propuesta, ejecución y cancelación. Sirve para dar tiempo público para detectar un intento de tomar el control del consejo. No protege las votaciones abiertas, que no dependen del Safe (ver abajo). Si se pierden las claves del Safe, no hay recuperación: desplegar de nuevo |
 | Cambiar `fee` | Subirla tanto que nadie pueda proponer (censura) | Con **tope inmutable** `depositoMaximo` |
 | Cambiar `base` | Quedarse con más depósito de los rechazados | Limitado por `deposito` y fijado en cada idea al proponer (no se aplica con efecto retroactivo) |
 | Cambiar `treasury` | Desviar comisiones futuras | Permitido. Lo ya acumulado sigue siendo de la tesorería anterior (`owed`) |
@@ -344,6 +371,57 @@ espera, hacer lo siguiente:
 Con esto, el único poder del Safe sobre lo que se vota es aprobar o rechazar
 cada idea, y ese es justo el que se le quiere dar. Ni el Safe ni el
 operador pueden cambiar una propuesta ya creada.
+
+### Comprobación: nada en cadena afecta a una votación ya creada
+
+| Vía | Por qué no afecta |
+|---|---|
+| Volver a crear la misma propuesta | `crearPropuesta` rechaza un identificador existente, y el identificador sale del registro y del número de idea, que no se repite |
+| Cambiar fechas, CID, recuentos o nullifiers | `VotacionAnonima` no tiene funciones de administrador ni de modificación |
+| Deshacer una aprobación | `Approved` y `Rejected` son estados finales en `RegistroIdeas` |
+| `setConfig` | Solo cambia tesorería, depósito y `base`. El destino es inmutable |
+| Cambiar de Safe | El Safe nuevo solo puede aprobar ideas nuevas |
+| `retirarContenido` | Solo emite un evento |
+| Votar | `votarConPruebaZk` solo exige una prueba válida, y `votarManual` solo el relayer. Ninguno consulta el registro ni el Safe |
+
+Por eso no se añaden reglas que liguen la espera a la duración de las
+votaciones. Fuera de la cadena sí hay dos vías, que este diseño mitiga:
+
+- **Dejar de fijar el contenido:** se mitiga con la regla de
+  [Borrado](#3-ipfs) para propuestas aprobadas, y porque sin contenido
+  verificado la web **sigue dejando votar**.
+- **Agotar el gas del relayer con ideas o aprobaciones:** se mitiga con la
+  reserva para votos ([Quién paga qué](#4-quién-paga-qué)).
+
+Las dos están en el
+[modelo de amenazas](../modelo-amenazas.md#vías-fuera-de-cadena-sobre-votaciones-abiertas-adr-0016).
+
+### Duración de las votaciones
+
+`duracionMinima` y `duracionMaxima` son inmutables, se fijan en cada
+despliegue y son independientes de la espera del Safe.
+
+| Despliegue | Mínimo | Máximo |
+|---|---|---|
+| Entorno de pruebas | 1 hora | 90 días |
+| Producción en VPS dedicado | 1 hora por defecto; **probablemente 24 horas**, porque es lo que exigirá un organismo convocante | 90 días |
+
+- **Mínimo de 1 hora:**
+  - Basta para probar el ciclo completo, incluidos los resultados tras el
+    cierre.
+  - Por debajo, la generación de la prueba ZK en el móvil, la confirmación
+    de la transacción y la latencia del relayer dejan poco margen real para
+    votar.
+  - Un organismo exigirá probablemente al menos 24 horas, para que nadie
+    quede fuera por su horario. Se decide al desplegar en producción.
+- **Máximo de 90 días:**
+  - Cubre consultas largas, como presupuestos participativos.
+  - Los resultados están ocultos hasta el cierre (M-01), y más de 90 días
+    de opacidad es difícil de justificar.
+  - Un contrato vive mientras no cambien el relayer, el dominio ni el
+    verificador de ZKPassport, y todos esos cambios obligan a redesplegar.
+    Una votación más larga corre más riesgo de quedarse huérfana a medias.
+  - El formulario, que hoy admite 365 días, baja a 90.
 
 ## Riesgos
 
@@ -356,16 +434,17 @@ operador pueden cambiar una propuesta ya creada.
 - **Disponibilidad del contenido:** depende de dos sitios de pinning. Es
   mejor que hoy, pero no es un archivo garantizado.
 - **Contenido ilícito o con datos personales:** el Safe lo rechaza y se deja
-  de fijar. El CID queda en cadena (ver [Borrado](#3-ipfs)).
+  de fijar. Si ya estaba aprobado, solo se retira por decisión pública del
+  Safe o por orden judicial, y la votación sigue. El CID queda en cadena
+  (ver [Borrado](#3-ipfs)).
 - **Dependencia del contrato Safe:** se usa la versión oficial desplegada,
   verificada byte a byte ([ROADMAP](../ROADMAP.md#paso-a-producción)).
 - **Experiencia:** la latencia de aprobación puede frustrar la demo. La web
   muestra el estado de cada idea.
 - **Redespliegue:** cambia `VotacionAnonima`, así que las propuestas
   actuales se archivan ([AGENTS.md](../../AGENTS.md#reglas-de-trabajo)).
-- **Votaciones más cortas:** con 7 días de espera, una votación dura como
-  máximo 6 días. Hoy el formulario admite hasta 365. Para votaciones más
-  largas hay que desplegar con una espera mayor.
+- **Duración fija por despliegue:** cambiar el mínimo o el máximo exige
+  redesplegar los dos contratos.
 - **Un solo firmante en pruebas:** con el Safe 1 de 1, la aprobación es
   pública y queda en cadena, pero no es colegiada. Se declara así hasta
   cumplir el [criterio de 2 de 3](#2-quién-es-el-safe).
@@ -397,22 +476,34 @@ operador pueden cambiar una propuesta ya creada.
     contrato ≥ depósitos pendientes + `owed`.
   - El destino es inmutable, `safe` solo cambia tras la espera y el
     depósito no supera `depositoMaximo`.
-  - El constructor rechaza una espera menor o igual que la duración máxima.
-    Con un cambio de Safe pendiente, `resolver` rechaza votaciones que
-    cerrarían después de la fecha en que el cambio puede ejecutarse.
+  - `resolver` rechaza duraciones fuera de `duracionMinima` y
+    `duracionMaxima`.
+  - Un cambio de Safe solo se ejecuta tras 7 días y se puede cancelar,
+    con eventos.
+  - `retirarContenido` solo lo puede llamar el Safe y no modifica nada de
+    `VotacionAnonima`.
+  - Un test recorre las vías de la comprobación anterior y demuestra que
+    ninguna altera una propuesta ni sus votos.
 - **Despliegue:** el script falla si la dirección del registro no coincide
   con la que se fijó en `VotacionAnonima`.
 - **Web** (`node --test` y E2E):
   - `lib/cid.mjs` acepta el CID correcto y rechaza bytes alterados.
-  - `/votar/<id>` no ofrece votar si el contenido no se verifica.
+  - Una fuente que devuelve contenido alterado no se muestra nunca y se
+    prueba la siguiente (test con fuentes simuladas).
+  - Si ninguna fuente devuelve contenido válido, `/votar/<id>` avisa,
+    muestra el CID y **deja votar** (E2E).
   - El listado sale de los eventos.
   - Axe sin infracciones en `/propuestas/nueva` y `/consejo`, a 375 y
     1280 px.
 - **Pinning:** el CID que devuelven Pinata y Filebase coincide con el
   calculado; si no coincide, la subida falla (test con un proveedor
   simulado).
-- **Relayer:** aplica el tope de 20 ideas al día sin cartera, avisa al 50 %
-  del gasto diario y rechaza al llegar al 100 % (tests).
+- **Relayer** (tests):
+  - Aplica el tope de 20 ideas al día sin cartera.
+  - Al agotar el subtope de 2 €, rechaza ideas y aprobaciones, pero sigue
+    aceptando votos.
+  - Avisa en cuanto un voto empieza a consumir la reserva de 8 €.
+  - Solo rechaza votos al agotar el tope total de 10 €.
 - **Operación:**
   - El Safe 1 de 1 de pruebas está desplegado, anotado en
     [despliegue-produccion.md](../despliegue-produccion.md) y declarado en
@@ -430,15 +521,29 @@ operador pueden cambiar una propuesta ya creada.
    cuando haya dos firmantes externos
    ([criterio](#2-quién-es-el-safe)).
 2. **Importes:** depósito de 5 € (2 € no reembolsables), 20 ideas al día
-   sin cartera y tope del relayer de 10 € al día con alerta al 50 %. Todo
-   se puede cambiar sin redesplegar ([tabla](#4-quién-paga-qué)).
+   sin cartera y tope del relayer de 10 € al día, con 8 € reservados para
+   votos y alerta en cuanto se empieza a consumir la reserva. Todo se puede
+   cambiar sin redesplegar ([tabla](#4-quién-paga-qué)).
 3. **Pinning:** Pinata como principal y Filebase como respaldo
    ([justificación](#3-ipfs)). En producción, en el VPS dedicado, se añade
    un nodo Kubo propio como tercera copia.
-4. **Espera para cambiar el Safe:** 7 días, siempre mayor que la duración
-   máxima de una votación (6 días con esta espera).
+4. **Espera para cambiar el Safe:** 7 días, con evento y cancelación, para
+   dar tiempo público para detectar un intento de tomar el control del
+   consejo. Corregido el mismo día: se retiran la condición «espera mayor
+   que la duración máxima» y el bloqueo de votaciones durante un cambio
+   pendiente, porque no protegían nada
+   ([comprobación](#comprobación-nada-en-cadena-afecta-a-una-votación-ya-creada)).
 5. **Entornos:** `civora.nexuraia.com` y el VPS compartido son el entorno
    de pruebas. La producción irá en un VPS exclusivo con dominio propio,
    junto con el paso a Base y el redespliegue de los contratos
    ([ROADMAP](../ROADMAP.md#servicios-propuestas-y-red-principal)). Los
    dominios se leen siempre de la configuración.
+6. **Duración de las votaciones:** de 1 hora a 90 días, inmutable por
+   despliegue. En producción, probablemente un mínimo de 24 horas
+   ([duración](#duración-de-las-votaciones)).
+7. **Vías fuera de cadena:**
+   - Una propuesta aprobada solo deja de fijarse por decisión pública del
+     Safe o por orden judicial, y la votación sigue.
+   - La web verifica cada fuente contra el CID y, si ninguna devuelve
+     contenido válido, deja votar.
+   - El relayer reserva 8 € para votos.

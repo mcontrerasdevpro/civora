@@ -134,8 +134,8 @@ Las tareas van en este orden:
 
 | # | Tarea | Depende de | Estado |
 |---|---|---|---|
-| a | Extraer el relayer a `apps/relayer`: lista blanca de destino y selector, `estimateGas`, tope de gas, tope de gasto de 10 € al día con alerta al 50 %, autenticación por cliente y sin dominio público en ningún entorno ([ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | — | pendiente |
-| b | `RegistroIdeas` + Safe + IPFS: propuestas aprobadas por multifirma (Safe 1 de 1 declarado en pruebas), depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera, espera de 7 días para cambiar el Safe (mayor que la duración máxima de una votación, 6 días), CID verificado en la web, pinning en Pinata y Filebase, y nueva versión de `VotacionAnonima` que solo acepta el registro ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md)) | a; redespliegue del contrato en Sepolia | pendiente |
+| a | Extraer el relayer a `apps/relayer`: lista blanca de destino y selector, `estimateGas`, tope de gas, tope de gasto de 10 € al día con 8 € reservados para votos y alerta al empezar a consumir la reserva, autenticación por cliente y sin dominio público en ningún entorno ([ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | — | pendiente |
+| b | `RegistroIdeas` + Safe + IPFS: propuestas aprobadas por multifirma (Safe 1 de 1 declarado en pruebas), depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera, espera de 7 días para cambiar el Safe, votaciones de 1 hora a 90 días (inmutables por despliegue), CID verificado en la web contra cada fuente, pinning en Pinata y Filebase, y nueva versión de `VotacionAnonima` que solo acepta el registro ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md)) | a; redespliegue del contrato en Sepolia | pendiente |
 | c | Extraer el servicio de identidad a `apps/identidad`, en su propio subdominio (`identidad.<dominio>`, por configuración): certificados, OCSP, `NULLIFIER_CERTIFICADO_SECRET` y `RETO_CERTIFICADO_SECRET` fuera de la web; cupo de propuestas por persona ([ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | a | pendiente |
 | d | Diseño del censo de la [Fase 1](#fase-1-semaphore) usando como referencia el registro y voto de Rarimo/spain-in-parallel | b, c; spike ZKPassport | pendiente |
 | e | **Producción, en un solo paso:** VPS dedicado solo a Civora, dominio definitivo, red principal Base y redespliegue de los contratos con ese dominio, para probar documentos reales con ZKPassport | a, b, c; verificación pública del bytecode; dominio definitivo registrado | pendiente: requiere la aprobación de los organismos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) |
@@ -149,18 +149,26 @@ Las tareas van en este orden:
   - Un test compara los selectores permitidos con el ABI compilado.
   - `HARDHAT_RELAYER_PRIVATE_KEY` no está en `apps/web` ni en su imagen.
   - `civora-relayer` no responde desde fuera del VPS.
-  - Alerta al 50 % del gasto diario y rechazo al 100 % (tests). Los topes
-    se cambian con variables de entorno, sin reconstruir la imagen.
+  - Al agotar el subtope de ideas y aprobaciones (2 €) sigue aceptando
+    votos; avisa en cuanto un voto empieza a consumir la reserva de 8 € y
+    solo rechaza votos al agotar los 10 € (tests). Los topes se cambian con
+    variables de entorno, sin reconstruir la imagen.
   - `test:e2e` en verde; voto ZK y de certificado comprobados en la demo.
 - **b.** Los del [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#criterios-de-aceptación):
   - solo el registro crea propuestas, y solo tras aprobarlas el Safe;
   - pagos *pull* con invariante de solvencia;
   - destino inmutable;
-  - espera de 7 días para cambiar el Safe, comprobada mayor que la duración
-    máxima (6 días), y sin votaciones que cierren después de un cambio
-    pendiente;
+  - espera de 7 días para cambiar el Safe, con evento y cancelación;
+  - duración de 1 hora a 90 días, inmutable por despliegue (en producción,
+    probablemente un mínimo de 24 horas);
+  - test que demuestra que nada del registro ni del Safe altera una
+    propuesta ya creada ni sus votos;
   - Safe 1 de 1 declarado en el README y en `/consejo`;
-  - CID recalculado en la web, que no ofrece votar sin contenido verificado;
+  - cada fuente (pasarelas y `civora-db`) verificada contra el CID; el
+    contenido que no coincide no se muestra nunca, y si ninguna fuente
+    responde con contenido válido, la web avisa, muestra el CID y deja votar;
+  - una propuesta aprobada solo deja de fijarse por decisión pública del
+    Safe (`ContenidoRetirado`) o por orden judicial, y la votación sigue;
   - Pinata y Filebase devuelven el mismo CID que calcula Civora;
   - 20 ideas al día sin cartera;
   - la web se reconstruye tras borrar `civora-db`;

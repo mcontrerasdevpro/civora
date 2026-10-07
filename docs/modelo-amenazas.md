@@ -206,6 +206,25 @@ Límites y arquitectura prevista: [ADR 0009](decisiones/0009-limites-asistente-i
   servidores externos; no se usa para elegir la opción
   ([ADR 0008](decisiones/0008-audios-propios-confirmacion.md)).
 
+### Vías fuera de cadena sobre votaciones abiertas (ADR 0016)
+
+Amenazas del diseño del
+[ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md), aún
+sin implementar. En cadena, nada del registro de ideas ni del Safe puede
+modificar una votación ya creada
+([comprobación](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#comprobación-nada-en-cadena-afecta-a-una-votación-ya-creada)).
+Fuera de la cadena hay dos vías para entorpecerla:
+
+| Amenaza | Quién puede | Efecto sin mitigar | Mitigación |
+|---|---|---|---|
+| **Retirar o falsificar el contenido** de una propuesta aprobada: dejar de fijarlo en los proveedores, borrarlo de `civora-db` o servir otro contenido desde una pasarela | El operador (tiene las credenciales de pinning y de la base de datos), un proveedor o una pasarela | Nadie puede leer qué se vota, o se muestra un texto distinto; si la web exigiera el contenido para votar, la votación quedaría suspendida | Una propuesta aprobada solo deja de fijarse por decisión pública del Safe en cadena, con su motivo (`ContenidoRetirado`), o por orden judicial. Cada fuente (varias pasarelas y `civora-db`) se verifica contra el CID; el contenido que no coincide no se muestra nunca. Si ninguna fuente devuelve contenido válido, la web avisa, muestra el CID y **deja votar**: retirar el contenido nunca detiene la votación. Quien conserve el JSON puede volver a fijarlo |
+| **Agotar el gas del relayer** con ideas sin cartera o con ejecuciones de aprobaciones del Safe | Cualquiera, con ideas sin cartera (hasta 20 al día y su límite por IP); el Safe o quien ejecute sus transacciones | Al agotarse el tope diario, el relayer dejaría de enviar votos de las votaciones abiertas hasta el día siguiente | Reserva de 8 € de los 10 € diarios solo para votos; ideas y aprobaciones tienen un subtope de 2 € y se rechazan al agotarlo, sin afectar a los votos. Alerta en cuanto un voto empieza a consumir la reserva ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#4-quién-paga-qué)) |
+
+Riesgo residual: el relayer sigue pudiendo dejar de enviar votos (censura
+del operador, M-02), y un ataque que agote la reserva con votos válidos
+bloquea el resto del día. Lo segundo exige pruebas de identidad válidas, así
+que su coste es alto.
+
 ## Próximos pasos de seguridad
 
 Las tareas que cierran estas amenazas, con su estado y criterios de

@@ -174,10 +174,11 @@ prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verifica
 La prueba se genera al confirmar el voto y lleva la opción vinculada
 (`custom_data = civora-voto:<propuesta>:<opción>`): el contrato rechaza
 cualquier otra opción ([ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)).
-La web toma la prueba en cuanto llega del móvil (`onProofGenerated`) y no
-deja que el SDK la verifique por su cuenta (no registra `onResult`): esa
-verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy
-o a la API de ZKPassport. Tampoco se suben pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
+La web toma la prueba en cuanto llega del móvil (`onProofGenerated`) y la
+envía al contrato sin esperar a que el SDK la verifique en el navegador: esa
+verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy,
+y la CSP la bloquea a propósito. El SDK se crea con `disableProofStorage`
+para que no suba las pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes publicas.
 

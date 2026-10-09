@@ -135,7 +135,7 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `CIVORA_DEMO_TESTNET` | no | sin definir | ejecución | solo para la demo con pruebas simuladas, que no se usa |
 | `EXPLORADOR_URL` | no | explorador de bloques de la red del contrato, solo `https` (en Sepolia, el de Etherscan para Sepolia) | ejecución | **nueva**: sin ella, `/resultados/<id>` muestra las transacciones sin enlace |
 | `RPC_MAX_BLOQUES_LOGS` | no | `10` (límite de `eth_getLogs` del plan gratuito de Alchemy) | ejecución | **nueva**: bloques por consulta del indexador de eventos ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)) |
-| `CONTRATO_BLOQUE_DESPLIEGUE` | recomendada | bloque en que se desplegó `CONTRATO_DIRECCION` (lo muestra el explorador) | ejecución | **nueva**: desde dónde empieza el indexador; sin ella lo busca en la cadena, con más consultas |
+| `CONTRATO_BLOQUE_DESPLIEGUE` | recomendada | número del bloque en que se desplegó `CONTRATO_DIRECCION`, en decimal (lo muestra el explorador; para el contrato de demostración actual, `11862164`). No es la dirección | ejecución | **nueva**: desde dónde empieza el indexador; sin ella, o con un valor que no sea un entero decimal, lo busca en la cadena con más consultas y lo avisa en el registro |
 | `INDEXADOR_EVENTOS` | no | sin definir (activo si hay `DATABASE_URL`); `false` lo desactiva | ejecución | **nueva** |
 | `INDEXADOR_INTERVALO_S` | no | `30` | ejecución | **nueva**: segundos entre ciclos cuando el índice está al día |
 | `INDEXADOR_CONSULTAS_POR_CICLO` | no | `100` | ejecución | **nueva**: consultas `eth_getLogs` por ciclo |

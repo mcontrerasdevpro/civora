@@ -113,7 +113,8 @@ solo en segundo plano ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)
 Es solo una caché de la cadena, siempre contrastada con el contrato.
 
 - **Primer arranque o contrato nuevo:** define `CONTRATO_BLOQUE_DESPLIEGUE`
-  para que no tenga que buscar el bloque de despliegue. Hasta completar la
+  (el número del bloque en decimal, no la dirección del contrato) para que
+  no tenga que buscar el bloque de despliegue. Hasta completar la
   carga inicial, `/resultados/<id>` dice que el índice se está completando.
 - **Reconstruirlo desde cero**, por ejemplo si la web muestra una
   discrepancia y el contrato da el recuento correcto: en la consola de

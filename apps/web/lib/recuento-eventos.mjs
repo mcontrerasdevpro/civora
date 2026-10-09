@@ -138,3 +138,19 @@ export function rangosDeBloques(desde, hasta, tamano) {
   }
   return rangos;
 }
+
+/**
+ * Lee un entero de una variable de entorno: solo dígitos decimales, sin signo
+ * y dentro de Number.MAX_SAFE_INTEGER. `Number()` aceptaría "0x…" (una
+ * dirección pegada por error se convertiría en un bloque inexistente), "1e3"
+ * o espacios.
+ *
+ * @param {string | undefined} valor
+ * @param {number} minimo
+ * @returns {number | null} null si falta o no es válido
+ */
+export function enteroDeEntorno(valor, minimo) {
+  if (valor === undefined || !/^\d+$/.test(valor)) return null;
+  const n = Number(valor);
+  return Number.isSafeInteger(n) && n >= minimo ? n : null;
+}

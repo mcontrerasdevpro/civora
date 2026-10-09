@@ -211,6 +211,14 @@ Verificación: 24 tests de contratos, 75 de web (15 nuevos: porcentajes, redonde
 
 Verificación: 24 tests de contratos, 67 de web (7 nuevos), typecheck, build y 92 E2E (12 nuevos: 6 por ancho, a 1280 y 375 px). Revisión a simple vista del justificante en pantalla e impresión.
 
+## Variables del indexador (2026-10-09, rama `fix/validar-bloque-despliegue`)
+
+- **Hallazgo:** el indexador leía `CONTRATO_BLOQUE_DESPLIEGUE` y sus otras variables con `Number()`, que acepta hexadecimal. Si en esa variable se pegaba la dirección del contrato, se convertía en un bloque de unos 1,3 × 10⁴⁸, que pasaba la comprobación `Number.isInteger`. El índice no avanzaba nunca, sin ningún aviso, y `/resultados/<id>` se quedaba en «el índice se está completando».
+- **Corrección:** `enteroDeEntorno` (`lib/recuento-eventos.mjs`) solo admite dígitos decimales dentro de `Number.MAX_SAFE_INTEGER`. Con un valor no válido, el bloque se busca en la cadena y se registra un aviso de texto fijo con `registrarAviso`, sin el valor.
+- **Sin efectos persistentes:** con un bloque inicial imposible no se procesa ningún rango ni se escribe el avance en `indice_eventos`, así que basta con corregir la variable.
+
+Verificación: test nuevo con el bloque real, la dirección, hexadecimal, notación científica, espacios, signos, decimales y un valor por encima de `MAX_SAFE_INTEGER`. Tests de contratos y de web, typecheck, build y E2E en verde.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

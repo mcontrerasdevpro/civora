@@ -83,15 +83,34 @@ test.describe("voto único: una sola vía de identificación", () => {
     await page.goto("/propuestas/nueva");
     const grupo = page.getByRole("group", { name: "Cómo se identificarán los votantes" });
     await expect(grupo).toBeVisible();
-    await expect(grupo.getByRole("radio", { name: /Certificado digital/ })).toBeChecked();
+    await expect(grupo.getByRole("radio")).toHaveCount(3);
+    await expect(grupo.getByRole("radio", { name: /El votante elige/ })).toBeChecked();
     await comprobarAccesibilidad(page, "formulario con selector de vía");
 
-    await grupo.getByRole("radio", { name: /ZKPassport/ }).check();
+    await grupo.getByRole("radio", { name: /^DNIe o pasaporte con ZKPassport/ }).check();
     await page.getByLabel("Título").fill("Prueba ZK");
     await page.getByLabel("¿Qué se quiere votar?").fill("¿Sí o no?");
     await page.getByRole("button", { name: "Crear propuesta" }).click();
     await expect(page).toHaveURL(/\/propuestas$/);
     expect(cuerpos[0]).toMatchObject({ titulo: "Prueba ZK", via: "zk" });
+  });
+
+  test("crear propuesta: por defecto, con las dos vías, elige el votante", async ({ page }) => {
+    const cuerpos: unknown[] = [];
+    await page.route("**/api/propuestas", (ruta) => {
+      if (ruta.request().method() !== "POST") {
+        return ruta.fulfill({ json: { propuestas: [], viasHabilitadas: ["certificado", "zk"] } });
+      }
+      cuerpos.push(ruta.request().postDataJSON());
+      return ruta.fulfill({ status: 201, json: { propuesta: { id: "x" } } });
+    });
+    await page.goto("/propuestas/nueva");
+    await expect(page.getByRole("radio", { name: /El votante elige/ })).toBeChecked();
+    await page.getByLabel("Título").fill("Prueba ambas");
+    await page.getByLabel("¿Qué se quiere votar?").fill("¿Sí o no?");
+    await page.getByRole("button", { name: "Crear propuesta" }).click();
+    await expect(page).toHaveURL(/\/propuestas$/);
+    expect(cuerpos[0]).toMatchObject({ via: "ambas" });
   });
 
   test("crear propuesta: con una sola vía no hay selector y se explica cuál es", async ({ page }) => {

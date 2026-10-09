@@ -39,7 +39,8 @@ Desplegado y verificado con `verificar:sepolia` el 2026-10-07 desde la rama
 | Red | Sepolia (chainId 11155111) |
 | `CONTRATO_DIRECCION` | `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` |
 | Contrato anterior (sin R-01, retirado) | `0xDCfe657B6699c684C0bB841f88a08Fd3390cFC3C` |
-| **Contrato de demostración** (en uso; `devModeZk=true`, `CIVORA_DEMO_TESTNET=true`, [ADR 0010](decisiones/0010-demo-publica-testnet.md); vía por propuesta, [ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)); desplegado y verificado el 2026-10-09 en el bloque 11876757 | `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8` |
+| **Contrato de demostración** (en uso; `devModeZk=true`, `CIVORA_DEMO_TESTNET=true`, [ADR 0010](decisiones/0010-demo-publica-testnet.md); vía por propuesta con opción `Ambas`, [ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md) y [0022](decisiones/0022-el-votante-elige-la-via.md)); desplegado y verificado el 2026-10-09 en el bloque 11878179 | `0xE1aF107F364aAd4A01ACDceA30D76E52E8718F05` |
+| Contrato de demostración anterior (vía por propuesta sin `Ambas`, retirado) | `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8` |
 | Contrato de demostración anterior (sin vía por propuesta, retirado; sus propuestas quedan archivadas) | `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6` |
 | Dominio ZK (`dominioZk`) | `civora.nexuraia.com` |
 | `devModeZk` | `false` (solo pruebas ZKPassport reales) |
@@ -50,7 +51,7 @@ certificados de ZKPassport en Sepolia solo contiene los de los pasaportes
 simulados; la raíz de mainnet (la de los documentos reales) no es válida en
 Sepolia, y en Base sí. Con `devModeZk=false` en Sepolia, la vía ZK no
 funciona con ningún documento. Para la demo, el servicio usa el contrato de
-demostración con `CONTRATO_DIRECCION=0xD2c9…44d8`,
+demostración con `CONTRATO_DIRECCION=0xE1aF…8F05`,
 `NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=true` (build) y `CIVORA_DEMO_TESTNET=true`;
 la web muestra el banner «MODO DEMOSTRACIÓN» y avisa en la vía DNIe. Las
 pruebas simuladas tienen todas el identificador `1`: un solo voto simulado
@@ -85,6 +86,7 @@ Remove-Item Env:CLAVE
 |---|---|---|
 | `SEPOLIA_RPC_URL` | URL RPC de Sepolia (Alchemy, Infura…) | sin cambios |
 | `SEPOLIA_PRIVATE_KEY` | clave de la cuenta que despliega, con ETH de Sepolia | sin cambios |
+| `DESPLIEGUE_MAX_FEE_GWEI` | opcional, p. ej. `0.01` | **nueva**: tope de comisión por unidad de gas. Sin ella, Hardhat reserva 1 gwei, y con los unos 20 millones de gas del despliegue en Sepolia pide unos 0,02 ETH de saldo aunque la comisión real sea mucho menor (el despliegue del 2026-10-09 con `0.01` costó 0,000013 ETH) |
 | `RELAYER_ADDRESS` | dirección del paso 1.1 | **nueva** (obligatoria en redes públicas) |
 | `ZKPASSPORT_DOMAIN` | `civora.nexuraia.com` | **modificada**: dominio nuevo; debe coincidir con `NEXT_PUBLIC_ZKPASSPORT_DOMAIN` |
 | `ZKPASSPORT_DEV_MODE` | `false` | **modificada**: antes `true` por defecto; ahora `false` explícito |
@@ -136,7 +138,7 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `CIVORA_DEMO_TESTNET` | no | sin definir | ejecución | solo para la demo con pruebas simuladas, que no se usa |
 | `EXPLORADOR_URL` | no | explorador de bloques de la red del contrato, solo `https` (en Sepolia, el de Etherscan para Sepolia) | ejecución | **nueva**: sin ella, `/resultados/<id>` muestra las transacciones sin enlace |
 | `RPC_MAX_BLOQUES_LOGS` | no | `10` (límite de `eth_getLogs` del plan gratuito de Alchemy) | ejecución | **nueva**: bloques por consulta del indexador de eventos ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)) |
-| `CONTRATO_BLOQUE_DESPLIEGUE` | recomendada | número del bloque en que se desplegó `CONTRATO_DIRECCION`, en decimal (lo muestra el explorador; para el contrato de demostración actual, `11876757`). No es la dirección | ejecución | **nueva**: desde dónde empieza el indexador; sin ella, o con un valor que no sea un entero decimal, lo busca en la cadena con más consultas y lo avisa en el registro |
+| `CONTRATO_BLOQUE_DESPLIEGUE` | recomendada | número del bloque en que se desplegó `CONTRATO_DIRECCION`, en decimal (lo muestra el explorador; para el contrato de demostración actual, `11878179`). No es la dirección | ejecución | **nueva**: desde dónde empieza el indexador; sin ella, o con un valor que no sea un entero decimal, lo busca en la cadena con más consultas y lo avisa en el registro |
 | `INDEXADOR_EVENTOS` | no | sin definir (activo si hay `DATABASE_URL`); `false` lo desactiva | ejecución | **nueva** |
 | `INDEXADOR_INTERVALO_S` | no | `30` | ejecución | **nueva**: segundos entre ciclos cuando el índice está al día |
 | `INDEXADOR_CONSULTAS_POR_CICLO` | no | `100` | ejecución | **nueva**: consultas `eth_getLogs` por ciclo |

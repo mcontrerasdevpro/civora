@@ -18,9 +18,10 @@ import {ProofVerificationParams} from "./zkpassport/Types.sol";
 ///        verifica fuera de cadena, en el servidor, y solo el relayer puede
 ///        llamar a esta funcion (ver docs/decisiones/0004 y 0006). Se
 ///        elimina en la Fase 1.
-///      Cada propuesta admite una sola de las dos vias, fijada al crearla
-///      (ADR 0021): los nullifiers de una via y de la otra no se pueden
-///      relacionar, asi que con las dos abiertas una persona votaria dos veces.
+///      Cada propuesta fija al crearla con que via se vota (ADR 0021 y 0022):
+///      una sola, o las dos (Ambas) para que elija el votante. Los nullifiers
+///      de una via y de la otra no se pueden relacionar: con Ambas, una
+///      persona puede votar una vez por cada via (riesgo aceptado en la demo).
 ///      Empadronamiento y 5 anios de residencia siguen sin verificacion real
 ///      (el chip del documento no los contiene, ver README/modelo-amenazas).
 contract VotacionAnonima {
@@ -31,9 +32,11 @@ contract VotacionAnonima {
     }
 
     /// @notice Via de identidad que admite una propuesta. Inmutable.
+    /// @dev Ambas: el votante elige; no impide votar una vez por cada via.
     enum Via {
         Certificado,
-        Zk
+        Zk,
+        Ambas
     }
 
     struct Propuesta {
@@ -44,7 +47,7 @@ contract VotacionAnonima {
         uint256 enContra;
         uint256 abstenciones;
         bool existe;
-        Via via; // unica via con la que se puede votar en esta propuesta
+        Via via; // via (o Ambas) con la que se puede votar en esta propuesta
     }
 
     /// @dev Requisitos de elegibilidad fijos para toda la instancia (iguales a los
@@ -202,7 +205,7 @@ contract VotacionAnonima {
     function _exigirVia(bytes32 propuestaId, Via via) internal view {
         Propuesta storage p = propuestas[propuestaId];
         require(p.existe, "Propuesta inexistente");
-        if (p.via != via) revert ViaNoPermitida();
+        if (p.via != Via.Ambas && p.via != via) revert ViaNoPermitida();
     }
 
     function _registrarVoto(bytes32 propuestaId, bytes32 nullifier, Opcion opcion) internal {

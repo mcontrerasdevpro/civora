@@ -100,7 +100,7 @@ export function nullifierABytes32(nullifierHex: string): string {
 }
 
 /** Índices del enum Via de VotacionAnonima.sol (ADR 0021). */
-const INDICE_VIA = { certificado: 0, zk: 1 } as const;
+const INDICE_VIA = { certificado: 0, zk: 1, ambas: 2 } as const;
 
 /** Selector de ViaNoPermitida(): el contrato rechaza la vía de esa propuesta. */
 export const SELECTOR_VIA_NO_PERMITIDA = ethersId("ViaNoPermitida()").slice(0, 10);

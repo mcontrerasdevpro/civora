@@ -46,8 +46,15 @@ pendientes de aprobación, así que hoy no todos los requisitos se verifican.
 
 ## Estado de la demo pública
 
-`https://civora.nexuraia.com` es una demo de pruebas en Sepolia, con el
-banner **MODO DEMOSTRACIÓN**:
+`https://civora.nexuraia.com` es el **entorno de pruebas**: corre en Sepolia,
+en un VPS compartido con otros servicios, y muestra el banner **MODO
+DEMOSTRACIÓN**. Si el proyecto sigue adelante, la producción irá en un VPS
+exclusivo para Civora, con dominio propio, en la red principal Base y con
+los contratos redesplegados para ese dominio
+([ROADMAP](docs/ROADMAP.md#servicios-propuestas-y-red-principal)). Los
+dominios se configuran por variables de entorno, nunca en el código.
+
+Estado del entorno de pruebas:
 
 - **Certificado digital (Autofirma):** funciona con certificados reales
   (probado en Edge y Brave). La edad se declara y no se contrasta.
@@ -76,10 +83,10 @@ banner **MODO DEMOSTRACIÓN**:
 | Voto único por persona | Parcial | El contrato impide repetir el mismo nullifier en una propuesta. No hay un identificador común verificable entre certificado y ZK ni un censo que impida voto cruzado. |
 | Integridad de la opción | Hecho | La prueba de identidad incluye la opción y no sirve para otra: el certificado firma un reto con la opción (R-04) y la prueba ZKPassport lleva la opción vinculada, comprobada en el contrato (R-01, [ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-zk.md)). |
 | Anonimato por vía | Parcial | **ZKPassport:** el contrato no recibe el documento, pero publica nullifier y opción; el servidor ve la petición. **Certificado:** el servidor verifica el certificado y recibe la opción en el mismo flujo, por lo que puede vincular identidad y voto. |
-| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado: tres canales (digital, punto asistido presencial y papel) y un único canal por persona, asignado al registrarse antes de congelar el censo. |
+| Canales y voto asistido | Pendiente (Fase 1) | Solo existe el canal digital autónomo. Diseño acordado ([ADR 0019](docs/decisiones/0019-ia-punto-asistido-auditoria.md)): dos canales (digital y punto asistido presencial con quiosco), un único canal por persona asignado antes de congelar el censo, papeleta impresa como pista de auditoría con auditorías de limitación de riesgo y techo de votos por punto en el contrato. Sin canal de papel independiente. |
 | Coacción en el voto remoto | Pendiente | Ninguna mitigación técnica hoy, y el recibo actual permite demostrar el voto tras el cierre ([modelo de amenazas](docs/modelo-amenazas.md#recibos-justificantes-y-coacción)). El justificante de participación opcional no revela la opción ni la hora. Previstas: asignación de canal (Fase 1), prevalencia del voto presencial sobre el digital y ticket de inclusión sin la opción (Fase 2, MACI). |
 | Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
-| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. |
+| Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. El recuento es siempre determinista: la IA nunca cuenta, decide ni anula votos; solo podría avisar de anomalías en datos públicos agregados ([ADR 0019](docs/decisiones/0019-ia-punto-asistido-auditoria.md)). |
 
 Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
 publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
@@ -92,34 +99,34 @@ está en el [modelo de amenazas](docs/modelo-amenazas.md#inclusión-y-voto-asist
 y los límites del asistente de IA, en el
 [ADR 0009](docs/decisiones/0009-limites-asistente-ia.md).
 
-## Que hay montado ahora mismo
+## Qué hay montado ahora mismo
 
-| Componente | Ubicacion | Estado |
+| Componente | Ubicación | Estado |
 |---|---|---|
-| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia |
+| Landing / web | apps/web | /propuestas lista y crea propuestas, /votar/[id], /resultados/[id] y /verificar funcionan de extremo a extremo, en local contra un nodo Hardhat y en la demo contra Sepolia. Tras el cierre, /resultados/[id] muestra gráfica, tabla, votos por vía y cómo rehacer el recuento desde los eventos del contrato |
 | Tipos compartidos | packages/shared-types | Esquema de propuesta, voto y resultados (Zod) |
 | Identidad | packages/zk-identity + apps/web/lib | /votar ofrece DNIe/pasaporte por NFC (ZKPassport, prueba verificada en el contrato) y certificado digital (Autofirma + FNMT/DNIe, firma verificada en el servidor); la vía de certificado no es anónima frente al servidor |
 | Contratos | packages/contracts | VotacionAnonima.sol - propuestas con apertura/cierre, relayer inmutable para crear propuestas y emitir votos de certificado, nullifier por propuesta y prueba ZKPassport verificada contra el RootVerifier oficial |
-| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); cualquier Postgres en local) | Guarda el contenido de cada propuesta (titulo, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
-| Documentacion | docs/ | Ver [Documentación](#documentación) |
+| Base de datos | Postgres (en el VPS en la demo, [ADR 0013](docs/decisiones/0013-postgres-en-el-vps.md); cualquier Postgres en local) | Guarda el contenido de cada propuesta (título, pregunta, fechas); el contrato ancla el hash de ese contenido para integridad |
+| Documentación | docs/ | Ver [Documentación](#documentación) |
 
 ## Arrancar en local o Codespaces
 
-Este repo esta preparado para abrirse directamente en GitHub Codespaces
+Este repo está preparado para abrirse directamente en GitHub Codespaces
 (.devcontainer ya configurado) o en local con pnpm. Los comandos de
 instalación, nodo local, despliegue y arranque están en
 [AGENTS.md](AGENTS.md#comandos).
 
 El contrato necesita un nodo Ethereum local corriendo antes de arrancar la
-web. El script de despliegue escribe la direccion + ABI en
+web. El script de despliegue escribe la dirección + ABI en
 apps/web/lib/generated/despliegue-localhost.json (se regenera en cada
-despliegue, no se versiona). Las propuestas ya no se crean aqui: se crean
+despliegue, no se versiona). Las propuestas ya no se crean aquí: se crean
 desde la web en /propuestas/nueva, lo que requiere una base de datos (ver
-siguiente seccion).
+siguiente sección).
 
 ## Base de datos
 
-El contenido de cada propuesta (titulo, pregunta, fechas de apertura y
+El contenido de cada propuesta (título, pregunta, fechas de apertura y
 cierre) se guarda en Postgres; el contrato solo ancla el hash de ese
 contenido para poder verificar su integridad.
 
@@ -140,14 +147,17 @@ Y en `apps/web/.env.local` (no se versiona):
 ejemplo; con un Postgres remoto usa `?sslmode=require`.
 
 La tabla `propuestas` se crea sola la primera vez que la web la necesita
-(no hace falta ejecutar ninguna migracion a mano).
+(no hace falta ejecutar ninguna migración a mano). La web guarda además una
+copia de los eventos públicos de voto para verificar los resultados; es
+solo una caché de la cadena y se puede borrar y reconstruir
+([ADR 0020](docs/decisiones/0020-indice-incremental-eventos.md)).
 
 Con el nodo de Hardhat, el contrato desplegado y `DATABASE_URL` definida,
 ya se puede arrancar la web ([AGENTS.md](AGENTS.md#comandos)). La web queda disponible en http://localhost:3000. Crea tu primera propuesta
 en http://localhost:3000/propuestas/nueva. Si reinicias el nodo de
-Hardhat, vuelve a ejecutar `deploy:localhost` (la direccion del contrato
+Hardhat, vuelve a ejecutar `deploy:localhost` (la dirección del contrato
 cambia con cada nodo nuevo; las propuestas guardadas en la base de datos
-quedan huerfanas hasta que las recrees).
+quedan huérfanas hasta que las recrees).
 
 ## Desplegar en Sepolia + VPS
 
@@ -159,20 +169,20 @@ El contrato, las variables (obligatorias, build arg o ejecución, cambios) y
 las comprobaciones antes de fusionar están en
 [docs/despliegue-produccion.md](docs/despliegue-produccion.md); DNS,
 Easypanel y la imagen, en [docs/despliegue-vps.md](docs/despliegue-vps.md).
-Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estas en local y
+Sin CONTRATO_DIRECCION, apps/web/lib/contrato.ts asume que estás en local y
 busca el despliegue de Hardhat.
 
-## Identidad con ZKPassport (verificacion on-chain)
+## Identidad con ZKPassport (verificación on-chain)
 
-La via de DNIe/pasaporte genera una prueba en modo `compressed-evm` y la
-envia, sin verificarla en ningun servidor, a
-`VotacionAnonima.votarConPruebaZk`: el contrato la verifica el mismo,
+La vía de DNIe/pasaporte genera una prueba en modo `compressed-evm` y la
+envía, sin verificarla en ningún servidor, a
+`VotacionAnonima.votarConPruebaZk`: el contrato la verifica él mismo,
 llamando al **RootVerifier oficial de ZKPassport**
 (`0x1D000001000EFD9a6371f4d90bB8920D5431c0D8`, mismo address en Ethereum,
-Sepolia y Base) y comprobando edad minima, nacionalidad y que la prueba se
-genero para esa propuesta concreta (ver `packages/contracts/contracts/`).
-Ni este servidor ni su operador pueden aceptar un voto por esta via sin una
-prueba criptografica valida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)).
+Sepolia y Base) y comprobando edad mínima, nacionalidad y que la prueba se
+generó para esa propuesta concreta (ver `packages/contracts/contracts/`).
+Ni este servidor ni su operador pueden aceptar un voto por esta vía sin una
+prueba criptográfica válida ([ADR 0003](docs/decisiones/0003-zkpassport-verificacion-on-chain.md)).
 
 La prueba se genera al confirmar el voto y lleva la opción vinculada
 (`custom_data = civora-voto:<propuesta>:<opción>`): el contrato rechaza
@@ -183,7 +193,7 @@ verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy,
 y la CSP la bloquea a propósito. El SDK se crea con `disableProofStorage`
 para que no suba las pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
-verificador real solo existe en redes publicas.
+verificador real solo existe en redes públicas.
 
 `DEV_MODE` está desactivado por defecto tanto en la web como en el contrato.
 En local, actívalo explícitamente solo para una demo con pruebas mock. Las
@@ -191,13 +201,13 @@ variables deben coincidir entre web y despliegue, o el contrato rechazará
 las pruebas:
 
     # apps/web/.env.local
-   NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
-   NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
+    NEXT_PUBLIC_ZKPASSPORT_DOMAIN=tu-dominio.com   # dominio propio, registrado en zkpassport.id
+    NEXT_PUBLIC_ZKPASSPORT_DEV_MODE=false          # false para exigir pruebas reales (NFC), no mock
 
     # packages/contracts/.env
-   ZKPASSPORT_DOMAIN=tu-dominio.com
-   ZKPASSPORT_DEV_MODE=false
-   RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
+    ZKPASSPORT_DOMAIN=tu-dominio.com
+    ZKPASSPORT_DEV_MODE=false
+    RELAYER_ADDRESS=<dirección que corresponde a HARDHAT_RELAYER_PRIVATE_KEY>
 
 En redes no locales el despliegue falla si no defines un dominio propio,
 `ZKPASSPORT_DEV_MODE=false` explícito y `RELAYER_ADDRESS`. La web aplica la
@@ -212,7 +222,7 @@ para cambiarlos hay que desplegar otro contrato. Para demo local, define
 
 ## Identidad con certificado digital (Autofirma)
 
-La via de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
+La vía de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
 la herramienta oficial del Gobierno de España (hay que tenerla instalada):
 el navegador le pide que firme un código aleatorio con el certificado
 instalado (FNMT, DNIe...) y el servidor comprueba, en
@@ -246,21 +256,46 @@ propuestas, con un límite por IP. El contrato restringe la creación al
 relayer inmutable, que paga el gas. Es un riesgo aceptado solo para la demo
 ([auditoría, M-04](docs/auditoria-seguridad.md#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
 
+**Cambio previsto** ([ADR 0016](docs/decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md),
+sin implementar):
+
+- Cualquiera propone una idea con un depósito y la aprueba o rechaza una
+  multifirma (Safe), en cadena. El contenido se publica en IPFS.
+- **En el entorno de pruebas, el Safe será 1 de 1: lo controla solo el
+  responsable de Civora.** La aprobación será pública y verificable, pero
+  la decidirá una sola persona.
+- Pasará a 2 de 3 cuando haya dos firmantes externos a NexuraIA, cada uno
+  con su propia cartera y dispositivo.
+- En producción, el Safe será de la administración convocante y nunca del
+  operador técnico.
+
 ## Estructura
 
-civora/
-  apps/web         -> Next.js: landing, propuestas, voto, resultados, verificador
-  packages/contracts    -> Contrato de votacion (Solidity)
-  packages/zk-identity   -> Capa de identidad ZK (agnostica de proveedor)
-  packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
-  docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoria y especificacion
+    civora/
+      apps/web         -> Next.js: landing, propuestas, voto, resultados, verificador
+      packages/contracts    -> Contrato de votación (Solidity)
+      packages/zk-identity   -> Capa de identidad ZK (agnóstica de proveedor)
+      packages/shared-types  -> Esquema compartido de propuesta/voto/resultados
+      docs/            -> ROADMAP, decisiones (ADR), modelo de amenazas, auditoría y especificación
 
-## Por que estas decisiones
+## Por qué estas decisiones
 
 Cada decisión, con su contexto y alternativas, está en
 [docs/decisiones/](docs/decisiones/README.md).
 
+## Licencia
+
+Civora se publica bajo la [GNU Affero General Public License v3.0 o
+posterior](LICENSE) (AGPL-3.0-or-later). Quien ofrezca una versión
+modificada como servicio en red debe dar a sus usuarios acceso a su código
+fuente. El titular de los derechos puede ofrecer licencias comerciales
+aparte. Por eso, las contribuciones externas requerirán un acuerdo de
+cesión (CLA), todavía no publicado; hasta entonces no se aceptan PR
+externas. Algunos componentes de terceros conservan su licencia (por
+ejemplo, las interfaces de ZKPassport, en Apache-2.0, y `autoscript.js` de
+Autofirma). Detalle en el [ADR 0018](docs/decisiones/0018-licencia-agpl.md).
+
 ## Aviso legal
 
-Esta es una prueba de concepto tecnica, no un sistema habilitado para
-elecciones oficiales vinculantes en Espana.
+Esta es una prueba de concepto técnica, no un sistema habilitado para
+elecciones oficiales vinculantes en España.

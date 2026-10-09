@@ -105,6 +105,23 @@ Postgres corre en el mismo proyecto como servicio `civora-db`
 
 No hay copias de seguridad mientras sea una demo.
 
+#### Índice de eventos
+
+`civora-db` guarda también una copia de los eventos públicos de voto
+(tablas `eventos_voto` e `indice_eventos`), que el servicio `civora` llena
+solo en segundo plano ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)).
+Es solo una caché de la cadena, siempre contrastada con el contrato.
+
+- **Primer arranque o contrato nuevo:** define `CONTRATO_BLOQUE_DESPLIEGUE`
+  para que no tenga que buscar el bloque de despliegue. Hasta completar la
+  carga inicial, `/resultados/<id>` dice que el índice se está completando.
+- **Reconstruirlo desde cero**, por ejemplo si la web muestra una
+  discrepancia y el contrato da el recuento correcto: en la consola de
+  `civora-db` (`psql -U postgres -d civora`), ejecuta
+  `TRUNCATE eventos_voto, indice_eventos;`. El servicio lo vuelve a llenar
+  solo, sin reiniciarlo. Detalle en el
+  [ADR 0020](decisiones/0020-indice-incremental-eventos.md#reconstruir-el-índice-desde-cero).
+
 ### Construir y probar la imagen a mano en el VPS
 
 Útil para diagnosticar un build fallido. Desde un clon del repositorio en

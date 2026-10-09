@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { VIAS, type ViaVoto } from "../../../lib/vias-voto.mjs";
 
 function fechaLocalPorDefecto(): string {
   const dentroDeUnaHora = new Date(Date.now() + 60 * 60 * 1000);
@@ -18,6 +19,26 @@ export default function NuevaPropuestaPage() {
   const [duracionDias, setDuracionDias] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Vías habilitadas en el servidor; hasta saberlas, solo certificado.
+  const [vias, setVias] = useState<ViaVoto[]>(["certificado"]);
+  const [via, setVia] = useState<ViaVoto>("certificado");
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/propuestas", { cache: "no-store" })
+      .then((respuesta) => (respuesta.ok ? respuesta.json() : null))
+      .then((cuerpo) => {
+        if (cancelado || !cuerpo || !Array.isArray(cuerpo.viasHabilitadas)) return;
+        const habilitadas = VIAS.filter((v) => cuerpo.viasHabilitadas.includes(v));
+        if (habilitadas.length === 0) return;
+        setVias(habilitadas);
+        setVia(habilitadas[0]);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   async function enviar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -39,6 +60,7 @@ export default function NuevaPropuestaPage() {
           descripcion: descripcion.trim(),
           fechaApertura: new Date(fechaApertura).toISOString(),
           duracionDias,
+          via,
         }),
       });
       const cuerpo = await respuesta.json();
@@ -123,6 +145,42 @@ export default function NuevaPropuestaPage() {
             Cierra automáticamente {duracionDias} días después de la apertura.
           </p>
         </div>
+
+        {vias.length > 1 ? (
+          <fieldset className="opciones-fieldset form-field">
+            <legend className="opciones-legend">Cómo se identificarán los votantes</legend>
+            <label className="form-check">
+              <input
+                type="radio"
+                name="via"
+                value="certificado"
+                checked={via === "certificado"}
+                onChange={() => setVia("certificado")}
+              />
+              <span>
+                <strong>Certificado digital</strong> (recomendado). El DNIe y el certificado de la FNMT dan el
+                mismo resultado: cada persona vota una sola vez.
+              </span>
+            </label>
+            <label className="form-check">
+              <input type="radio" name="via" value="zk" checked={via === "zk"} onChange={() => setVia("zk")} />
+              <span>
+                <strong>DNIe o pasaporte con ZKPassport</strong>. La web no conoce la identidad, pero quien tenga
+                DNIe y pasaporte podría votar dos veces.
+              </span>
+            </label>
+            <p className="form-hint">
+              Solo se admite una forma por votación, para que nadie vote por las dos. Queda fijada en el contrato y
+              no se puede cambiar.
+            </p>
+          </fieldset>
+        ) : (
+          <p className="form-hint">
+            {via === "zk"
+              ? "Los votantes se identificarán con su DNIe o pasaporte (ZKPassport). Es la única forma habilitada en esta instancia."
+              : "Los votantes se identificarán con su certificado digital. Es la única forma habilitada en esta instancia."}
+          </p>
+        )}
 
         {error && <div className="alert alert-error">{error}</div>}
 

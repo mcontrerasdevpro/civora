@@ -70,4 +70,36 @@ test.describe("voto único: una sola vía de identificación", () => {
     await expect(page.locator(".recibo, .nullifier")).toHaveCount(0);
     await comprobarAccesibilidad(page, "voto bloqueado por intentos repetidos");
   });
+
+  test("crear propuesta: con las dos vías habilitadas se elige una y se envía", async ({ page }) => {
+    const cuerpos: unknown[] = [];
+    await page.route("**/api/propuestas", (ruta) => {
+      if (ruta.request().method() !== "POST") {
+        return ruta.fulfill({ json: { propuestas: [], viasHabilitadas: ["certificado", "zk"] } });
+      }
+      cuerpos.push(ruta.request().postDataJSON());
+      return ruta.fulfill({ status: 201, json: { propuesta: { id: "x" } } });
+    });
+    await page.goto("/propuestas/nueva");
+    const grupo = page.getByRole("group", { name: "Cómo se identificarán los votantes" });
+    await expect(grupo).toBeVisible();
+    await expect(grupo.getByRole("radio", { name: /Certificado digital/ })).toBeChecked();
+    await comprobarAccesibilidad(page, "formulario con selector de vía");
+
+    await grupo.getByRole("radio", { name: /ZKPassport/ }).check();
+    await page.getByLabel("Título").fill("Prueba ZK");
+    await page.getByLabel("¿Qué se quiere votar?").fill("¿Sí o no?");
+    await page.getByRole("button", { name: "Crear propuesta" }).click();
+    await expect(page).toHaveURL(/\/propuestas$/);
+    expect(cuerpos[0]).toMatchObject({ titulo: "Prueba ZK", via: "zk" });
+  });
+
+  test("crear propuesta: con una sola vía no hay selector y se explica cuál es", async ({ page }) => {
+    await page.route("**/api/propuestas", (ruta) =>
+      ruta.fulfill({ json: { propuestas: [], viasHabilitadas: ["certificado"] } })
+    );
+    await page.goto("/propuestas/nueva");
+    await expect(page.getByRole("radio")).toHaveCount(0);
+    await expect(page.getByText("se identificarán con su certificado digital")).toBeVisible();
+  });
 });

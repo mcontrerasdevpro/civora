@@ -125,7 +125,7 @@ test.describe("las páginas cliente arrancan", () => {
     await expect(page).toHaveURL(/\/propuestas$/);
     expect(envios).toHaveLength(1);
     expect(envios[0].autorizacion).toBeNull();
-    expect(envios[0].cuerpo).toMatchObject({ titulo: "Prueba", pregunta: "¿Sí o no?" });
+    expect(envios[0].cuerpo).toMatchObject({ titulo: "Prueba", pregunta: "¿Sí o no?", via: "certificado" });
   });
 
   test("/verificar comprueba un recibo", async ({ page }) => {

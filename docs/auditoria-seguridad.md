@@ -267,11 +267,20 @@ Verificación:
 ## Esquema de propuestas sin reintento (2026-10-09, rama `fix/esquema-reintento`)
 
 - **Incidente:** tras desplegar el PR #34, todas las rutas que leen propuestas devolvían 500 (`/api/propuestas`, `/api/propuestas/<id>`, incluso con un id inexistente), con `/api/salud` en 200.
-- **Causa probable:** `asegurarEsquema()` guarda la promesa que crea la tabla y añade columnas, pero no la descartaba si fallaba. Durante el despliegue conviven el contenedor anterior y el nuevo. Si los dos ejecutan a la vez `ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS via`, Postgres puede rechazar uno, y ese proceso fallaba en cada consulta hasta reiniciarse.
+- **Causa real (confirmada después):** el servicio `civora` se quedó sin `DATABASE_URL` al cambiar las variables para el PR #34, y la web intentaba conectar a `127.0.0.1:5432`. Al reponerla con el host de la documentación (`nexuraia_civora-db`) falló con `ENOTFOUND`: el host correcto es `databases_civora-db` (el prefijo es el nombre del proyecto de Easypanel). Con la URL interna correcta, todo volvió a funcionar. La documentación se ha corregido en la rama `feat/selector-via-propuesta`.
+- **Hipótesis inicial, descartada como causa de este incidente pero corregida igualmente:** `asegurarEsquema()` guarda la promesa que crea la tabla y añade columnas, pero no la descartaba si fallaba. Durante el despliegue conviven el contenedor anterior y el nuevo. Si los dos ejecutan a la vez `ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS via`, Postgres puede rechazar uno, y ese proceso fallaba en cada consulta hasta reiniciarse.
 - **Corrección:** la promesa vuelve a `null` si falla, como ya hacían `asegurarEsquemaEventos` y la tabla de intentos. `test/esquema.test.mjs` exige ese reintento en todas las promesas de esquema cacheadas: falla sin el arreglo y pasa con él.
-- **Mitigación inmediata:** reiniciar el servicio `civora`.
+- **Lección:** `/api/salud` responde 200 sin base de datos, así que no detecta este fallo. Tras cambiar variables hay que comprobar también `/api/propuestas`.
 
 Verificación: 32 tests de contratos, 94 de web, typecheck, build y 122 E2E.
+
+## Selector de vía al crear propuestas (2026-10-09, rama `feat/selector-via-propuesta`)
+
+- Con más de una vía en `VIAS_HABILITADAS`, `/propuestas/nueva` ofrece elegir la vía de la votación: certificado (por defecto y recomendada) o ZKPassport, con el aviso de que quien tenga DNIe y pasaporte podría votar dos veces. Con una sola vía, no hay selector: se explica cuál es.
+- `GET /api/propuestas` devuelve `viasHabilitadas`. Hasta recibirlas, el formulario solo ofrece certificado, y el servidor vuelve a comprobar la vía al crear la propuesta.
+- **Detalle menor encontrado:** las filas de `propuestas` sin contrato guardado (anteriores a esa columna) se tratan como del contrato actual y se listan, aunque no admitan votos. En producción hay una, ya cerrada.
+
+Verificación: tests de contratos y de web, typecheck, build y E2E: selector con las dos vías (con axe) y sin selector con una sola.
 
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 

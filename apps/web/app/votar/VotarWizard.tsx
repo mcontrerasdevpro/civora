@@ -11,6 +11,7 @@ import { useModoSencillo } from "./ModoSencillo";
 import type { SolidityVerifierParameters } from "@civora/zk-identity";
 import { AudioConfirmacion, BotonEscuchar } from "./Escuchar";
 import { ErrorAutofirma, firmarReto } from "./autofirma";
+import { Justificante } from "./Justificante";
 import { esRetoCaducado, mensajeParaVotante } from "../../lib/modo-sencillo.mjs";
 
 /**
@@ -405,12 +406,24 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
               ? `Podrá comprobarlo cuando termine la votación, el ${fechaCierreLegible}.`
               : `Podrás verificarlo cuando cierre la votación, el ${fechaCierreLegible}.`}
           </p>
+          {/* Sin precarga: Next pediría /verificar?nullifier=… al servidor nada más
+              mostrar el recibo, y el recibo quedaría en los registros del proxy. */}
           <Link
             className="link-quiet"
+            prefetch={false}
             href={`/verificar?propuestaId=${propuesta.id}&nullifier=${nullifier}`}
           >
             {sencillo ? "Enlace para comprobar mi voto" : "Enlace para verificar mi voto"}
           </Link>
+          {/* Solo los datos públicos de la propuesta: nunca la opción ni el recibo. */}
+          <Justificante
+            propuesta={{
+              titulo: propuesta.titulo,
+              fechaApertura: propuesta.fechaApertura,
+              fechaCierre: propuesta.fechaCierre,
+            }}
+            sencillo={sencillo}
+          />
         </div>
       )}
     </>

@@ -1779,3 +1779,153 @@ a.hash {
     padding: 8px 6px;
   }
 }
+
+/* ---------- Justificante de participación (opcional) ---------- */
+
+.btn-discreto {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--texto-enlace, #00735c);
+  background: none;
+  border: none;
+  padding: 10px 2px;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.btn-discreto:focus-visible {
+  outline: 3px solid var(--foco, #00735c);
+  outline-offset: 3px;
+}
+
+.justificante-oferta {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linea);
+}
+
+.justificante-zona {
+  margin-top: 28px;
+}
+
+.justificante {
+  border: 2px solid var(--tinta);
+  border-radius: 12px;
+  background: var(--blanco);
+  color: var(--tinta);
+  padding: 24px;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.justificante h2 {
+  font-size: 26px;
+  margin: 0 0 6px;
+  color: var(--tinta);
+}
+
+.justificante h2:focus {
+  outline: none;
+}
+
+.justificante h2:focus-visible {
+  outline: 3px solid var(--foco, #00735c);
+  outline-offset: 3px;
+}
+
+.justificante-aviso {
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+
+.justificante dt {
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.justificante dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.justificante-secreto {
+  font-size: 21px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+}
+
+.justificante-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 16px;
+}
+
+.modo-sencillo .btn-discreto {
+  font-size: 20px;
+  min-height: 48px;
+}
+
+.modo-sencillo .justificante {
+  font-size: 22px;
+}
+
+.modo-sencillo .justificante dd {
+  font-size: 24px;
+}
+
+.modo-sencillo .justificante-secreto {
+  font-size: 26px;
+}
+
+/* Copia para imprimir (hija directa de <body>): oculta en pantalla. Al
+   imprimir con el justificante abierto solo sale ella, negro sobre blanco y
+   con letra grande; el resto de la página, recibo incluido, no se imprime. */
+.justificante-impresion {
+  display: none;
+}
+
+@media print {
+  body:has(> .justificante-impresion) > :not(.justificante-impresion) {
+    display: none !important;
+  }
+  body:has(> .justificante-impresion) {
+    background: #fff;
+  }
+  .justificante-impresion {
+    display: block;
+    color: #000;
+    background: #fff;
+    border: 3px solid #000;
+    border-radius: 0;
+    padding: 24pt;
+    font-family: var(--sans);
+    font-size: 20pt;
+    line-height: 1.45;
+  }
+  .justificante-impresion h2 {
+    color: #000;
+    font-size: 28pt;
+    margin: 0 0 6pt;
+  }
+  .justificante-impresion .justificante-aviso {
+    font-size: 14pt;
+  }
+  .justificante-impresion dt {
+    font-weight: 700;
+    margin-top: 12pt;
+  }
+  .justificante-impresion dd {
+    margin: 2pt 0 0;
+    font-size: 20pt;
+  }
+  .justificante-impresion .justificante-secreto {
+    font-size: 22pt;
+    font-weight: 700;
+    margin: 20pt 0 10pt;
+  }
+}

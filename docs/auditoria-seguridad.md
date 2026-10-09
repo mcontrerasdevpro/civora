@@ -197,6 +197,20 @@ Verificación: documentación, README, `LICENSE`, campo `license` y cabeceras SP
 
 Verificación: 24 tests de contratos, 75 de web (15 nuevos: porcentajes, redondeo, recuento desde eventos, búsqueda de bloques, rangos del indexador y rutas anidadas), typecheck, build y E2E de resultados (índice completo, en curso y con discrepancia, también en modo sencillo) en los dos anchos.
 
+## Justificante de participación y recibo (2026-10-07, rama `feat/justificante-voto`)
+
+- **Justificante (etapa 1):**
+  - Opcional: solo existe si la persona pulsa «Obtener justificante».
+  - Se imprime o se descarga en PDF generado en el navegador, con un PDF mínimo propio (Helvetica, texto real, `/Lang es-ES`, título declarado, letra de 13 pt o más). Sin librerías, sin `eval` y sin cambios en la CSP.
+  - El componente solo recibe título y periodo de la propuesta: no tiene acceso a la opción ni al recibo.
+  - Sin día ni hora del voto y sin fecha de creación en el PDF (correlación con las transacciones).
+  - Al imprimir solo sale el justificante (hoja de impresión negra sobre blanco, letra grande), nunca el recibo.
+  - Tests: 7 unitarios (datos, escapado WinAnsi, estructura y `xref` del PDF, ausencia de opción, recibo y fechas de creación) y 6 E2E por ancho (opcional, contenido, PDF descargado sin la opción ni el recibo, impresión, modo sencillo con axe y sin jerga, y ninguna petición de red al generarlo).
+- **Recibo enviado al servidor por precarga (corregido):** el `<Link>` «verificar mi voto» del recibo se precargaba al mostrarse, con `nullifier` y `propuestaId` en la URL. El recibo podía quedar en los registros del proxy junto a la IP de quien acababa de votar. Ahora lleva `prefetch={false}`, y un E2E falla si alguna petición contiene el recibo.
+- **Riesgo documentado, sin corregir:** `/verificar` muestra la opción a partir del recibo tras el cierre, y la cadena la expone. El recibo permite demostrar el voto (compra y coacción). Propuesta en el [modelo de amenazas](modelo-amenazas.md#recibos-justificantes-y-coacción); solución de fondo en la Fase 2 (MACI) con el ticket de inclusión.
+
+Verificación: 24 tests de contratos, 67 de web (7 nuevos), typecheck, build y 92 E2E (12 nuevos: 6 por ancho, a 1280 y 375 px). Revisión a simple vista del justificante en pantalla e impresión.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

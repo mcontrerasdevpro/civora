@@ -14,6 +14,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 | [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
 | [Revisión externa R-01 a R-05](#revisión-externa-r-01-a-r-05) | hecho, salvo R-01 | `correcciones-revision` |
 | [Spike ZKPassport](#spike-zkpassport-deduplicación-entre-vías) | pendiente (siguiente; primero R-01) | — |
+| [Servicios, propuestas y red principal](#servicios-propuestas-y-red-principal) | diseño aceptado, sin implementar ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md), [ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | `adr-arquitectura-servicios` (solo diseño) |
 | [Fase 1: Semaphore](#fase-1-semaphore) | pendiente | — |
 | [«Intenta hacer trampa» y script de auditoría](#intenta-hacer-trampa-y-script-de-auditoría) | pendiente | — |
 | [Idiomas](#idiomas) | pendiente | — |
@@ -106,6 +107,125 @@ voto cruzado hoy y documentan qué mecanismo lo impediría; ningún
 identificador derivado directamente del NIF o del número de documento en
 la propuesta.
 
+## Servicios, propuestas y red principal
+
+**Objetivo:**
+
+- Cerrar M-04 con un proceso de aprobación público.
+- Sacar el contenido de las propuestas de una única base de datos.
+- Separar las claves por frontera de confianza.
+- Preparar el censo y la producción.
+
+Diseño en el [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md),
+el [ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md) y el
+[ADR 0018](decisiones/0018-licencia-agpl.md) (licencia), con las decisiones
+del responsable del 2026-10-07. Usa como referencia los repositorios de
+[spain-in-parallel](https://github.com/spain-in-parallel), sin copiar su
+código: así se mantiene abierta la vía de licencias comerciales
+([ADR 0018](decisiones/0018-licencia-agpl.md#consecuencias)).
+
+**Entornos.** `civora.nexuraia.com` y el VPS compartido son el **entorno de
+pruebas actual**. La **producción irá en un VPS dedicado** solo a Civora,
+con dominio propio. Las tareas a-c se hacen y se prueban en el entorno de
+pruebas. La e es el paso a producción. Los dominios se leen siempre de la
+configuración.
+
+Las tareas van en este orden:
+
+| # | Tarea | Depende de | Estado |
+|---|---|---|---|
+| a | Extraer el relayer a `apps/relayer`: lista blanca de destino y selector, `estimateGas`, tope de gas, tope de gasto de 10 € al día con 8 € reservados para votos y alerta al empezar a consumir la reserva, autenticación por cliente y sin dominio público en ningún entorno ([ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | — | pendiente |
+| b | `RegistroIdeas` + Safe + IPFS: propuestas aprobadas por multifirma (Safe 1 de 1 declarado en pruebas), depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera, espera de 7 días para cambiar el Safe, votaciones de 1 hora a 90 días (inmutables por despliegue), CID verificado en la web contra cada fuente, pinning en Pinata y Filebase, y nueva versión de `VotacionAnonima` que solo acepta el registro ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md)) | a; redespliegue del contrato en Sepolia | pendiente |
+| c | Extraer el servicio de identidad a `apps/identidad`, en su propio subdominio (`identidad.<dominio>`, por configuración): certificados, OCSP, `NULLIFIER_CERTIFICADO_SECRET` y `RETO_CERTIFICADO_SECRET` fuera de la web; cupo de propuestas por persona ([ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) | a | pendiente |
+| d | Diseño del censo de la [Fase 1](#fase-1-semaphore) usando como referencia el registro y voto de Rarimo/spain-in-parallel | b, c; spike ZKPassport | pendiente |
+| e | **Producción, en un solo paso:** VPS dedicado solo a Civora, dominio definitivo, red principal Base y redespliegue de los contratos con ese dominio, para probar documentos reales con ZKPassport | a, b, c; verificación pública del bytecode; dominio definitivo registrado | pendiente: requiere la aprobación de los organismos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) |
+
+**Criterios de aceptación:**
+
+- **a.**
+  - El relayer rechaza destinos y selectores fuera de la lista, clientes sin
+    firma válida y llamadas que revierten en `estimateGas`, y respeta los
+    topes de gas y de gasto.
+  - Un test compara los selectores permitidos con el ABI compilado.
+  - `HARDHAT_RELAYER_PRIVATE_KEY` no está en `apps/web` ni en su imagen.
+  - `civora-relayer` no responde desde fuera del VPS.
+  - Al agotar el subtope de ideas y aprobaciones (2 €) sigue aceptando
+    votos; avisa en cuanto un voto empieza a consumir la reserva de 8 € y
+    solo rechaza votos al agotar los 10 € (tests). Los topes se cambian con
+    variables de entorno, sin reconstruir la imagen.
+  - `test:e2e` en verde; voto ZK y de certificado comprobados en la demo.
+- **b.** Los del [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#criterios-de-aceptación):
+  - solo el registro crea propuestas, y solo tras aprobarlas el Safe;
+  - pagos *pull* con invariante de solvencia;
+  - destino inmutable;
+  - espera de 7 días para cambiar el Safe, con evento y cancelación;
+  - duración de 1 hora a 90 días, inmutable por despliegue (en producción,
+    probablemente un mínimo de 24 horas);
+  - test que demuestra que nada del registro ni del Safe altera una
+    propuesta ya creada ni sus votos;
+  - Safe 1 de 1 declarado en el README y en `/consejo`;
+  - cada fuente (pasarelas y `civora-db`) verificada contra el CID; el
+    contenido que no coincide no se muestra nunca, y si ninguna fuente
+    responde con contenido válido, la web avisa, muestra el CID y deja votar;
+  - una propuesta aprobada solo deja de fijarse por decisión pública del
+    Safe (`ContenidoRetirado`) o por orden judicial, y la votación sigue;
+  - Pinata y Filebase devuelven el mismo CID que calcula Civora;
+  - 20 ideas al día sin cartera;
+  - la web se reconstruye tras borrar `civora-db`;
+  - M-04 cerrado en la auditoría.
+- **c.**
+  - Los dos secretos de identidad solo existen en `apps/identidad`
+    (test y job de imágenes).
+  - Solo `identidad` puede pedir `votarManual` al relayer.
+  - La web no recibe el certificado.
+  - Voto con certificado real comprobado en Edge y Brave tras desplegar.
+  - El origen de identidad y el de la web salen de la configuración; el CORS
+    solo admite el origen de la web y la CSP solo añade el de identidad.
+  - Memoria medida con `docker stats` y límites fijados en Easypanel.
+- **d.** Lo que debe cubrir el ADR del censo:
+  - **Comparación con Semaphore** del registro y voto de Rarimo:
+    - `RegistrationSimple` y `StateKeeper`;
+    - árbol de identidades `PoseidonSMT`;
+    - un `ProposalSMT` por propuesta contra el doble voto;
+    - reglas por propuesta en `ProposalsState`: nacionalidad, edad y
+      caducidad.
+
+    Fuentes: `deployed-contracts/deploy/architecture.txt` y
+    `council-dao/idea-v1.md`.
+  - **Riesgos que no se pueden heredar:**
+    - En el piloto de spain-in-parallel, `StateKeeper` está desplegado como
+      *mock*, con setters sin control y `_authorizeUpgrade` vacío
+      (`deployed-contracts/01-StateKeeperMock/README.md`).
+    - Sus contratos son UUPS (actualizables), lo que choca con la
+      inmutabilidad de los ADR 0004 y 0010.
+    - Su *registrator* verifica la cadena CSCA con `node-forge` y está
+      pendiente de auditoría (`gateway/registrator/passive-auth.mjs:19-28`).
+  - Los criterios de la Fase 1 siguen vigentes.
+- **e.** Por qué va todo junto: el dominio de ZKPassport (`dominioZk`) se
+  fija en el contrato al desplegarlo. Cambiar de dominio obliga a
+  redesplegar, y redesplegar en Base sin el VPS dedicado dejaría la
+  producción en un servidor compartido. Se hace una sola vez, en este
+  orden:
+  1. VPS dedicado endurecido.
+  2. Dominio definitivo registrado en ZKPassport.
+  3. Servicios desplegados con ese dominio por configuración.
+  4. Contratos desplegados en Base con `dominioZk` = dominio definitivo.
+  5. Verificación byte a byte.
+  6. Prueba con documento real.
+
+  Criterios:
+  - Contratos desplegados en Base y comprobados byte a byte (ver
+    [Verificación pública del bytecode](#verificación-pública-del-bytecode)).
+  - Ningún dominio fijo en el código ni en las imágenes; el de pruebas y el
+    de producción solo se distinguen por variables de entorno.
+  - Kubo propio como tercera copia de IPFS; Postgres con copias de seguridad
+    probadas y TLS o red aislada.
+  - `CIVORA_DEMO_TESTNET` retirada.
+  - Un voto con un DNIe o pasaporte real aceptado por el contrato, con
+    `devModeZk=false` y nacionalidad `ESP` exigida.
+  - Tope de gasto del relayer activo.
+  - Creación de propuestas solo por `RegistroIdeas`.
+
 ## Fase 1: Semaphore
 
 **Objetivo:** voto anónimo por pertenencia a un censo congelado, con un
@@ -114,6 +234,7 @@ A-04).
 
 | Tarea | Estado |
 |---|---|
+| Diseño del censo con el registro y voto de Rarimo/spain-in-parallel como referencia, comparado con Semaphore (tarea [d](#servicios-propuestas-y-red-principal)) | pendiente |
 | Definir la autoridad y el proceso de formación del censo (padrón e INE requieren convenio oficial) | pendiente |
 | Conexiones obligatorias con organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md#conexiones-obligatorias-con-organismos-públicos)): DGP (SVDI: DNI, nacionalidad y fecha de nacimiento), pasaporte español (a confirmar con la DGP), INE (residencia con fecha de última variación padronal e histórico), padrón municipal si convoca un ayuntamiento | pendiente: requiere administración convocante y alta en la PID |
 | Rechazar el registro si la fecha de nacimiento declarada no coincide con la de la DGP o si falta cualquiera de las cuatro condiciones | pendiente |
@@ -212,8 +333,13 @@ mensajería rechaza cualquier intento de votar.
 |---|---|
 | Procedimiento de despliegue y PR #5 a `main` ([despliegue-produccion.md](despliegue-produccion.md)) | hecho: PR #5 fusionado en `main` (2026-10-07) |
 | Demo pública en Sepolia con opt-in `CIVORA_DEMO_TESTNET` ([ADR 0010](decisiones/0010-demo-publica-testnet.md)) | en uso desde 2026-10-07: en Sepolia solo pasan los pasaportes simulados de ZKPassport; contrato de demostración `0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6` (`devMode`, sin exigir nacionalidad) |
-| Validar la vía ZK con un DNIe o pasaporte real: requiere red principal (Base o Ethereum), tope de gasto del relayer y autorización para crear propuestas | pendiente: a la espera de la aprobación de los organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) |
+| Validar la vía ZK con un DNIe o pasaporte real: requiere red principal (Base o Ethereum), tope de gasto del relayer y autorización para crear propuestas (tarea [e](#servicios-propuestas-y-red-principal)) | pendiente: a la espera de la aprobación de los organismos públicos ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) |
 | Script `verificar:sepolia` que compara relayer, dominio y `devMode` del contrato desplegado | hecho |
+| Ampliar `verificar:sepolia` a una comparación byte a byte del código desplegado ([propuesta](#verificación-pública-del-bytecode)) | pendiente (diseño propuesto) |
+| Licencia AGPL-3.0-or-later: `LICENSE`, campo `license` y cabeceras SPDX ([ADR 0018](decisiones/0018-licencia-agpl.md)); el contrato muestra la nueva cabecera desde su próximo despliegue | hecho (rama `adr-arquitectura-servicios`) |
+| Acuerdo de cesión (CLA) revisado por un abogado y `CONTRIBUTING.md`; hasta entonces no se aceptan PR externas ([ADR 0018](decisiones/0018-licencia-agpl.md)) | pendiente |
+| Enlace al código fuente del commit desplegado en el pie de la web (AGPL, sección 13) | pendiente |
+| Confirmar con ZKPassport, por escrito, la licencia de `@zkpassport/utils`, que no la declara en su `package.json` ([ADR 0018](decisiones/0018-licencia-agpl.md#dependencias)). Bloquea el paso a producción (tarea [e](#servicios-propuestas-y-red-principal)) y la oferta de cualquier licencia comercial | pendiente |
 | Imagen Docker reproducible, `/api/salud`, registros sin datos y job «Imagen Docker» en CI ([ADR 0011](decisiones/0011-alojamiento-vps-propio.md)) | hecho; CI en verde en GitHub |
 | Un solo servicio `civora` en Easypanel (proyecto `nexuraia`), primero en `actualizar-dependencias` y tras fusionar en `main` ([despliegue-vps.md](despliegue-vps.md#3-un-solo-servicio)) | hecho: *Source* en `main` (2026-10-07); durante la prueba de R-01, en su rama |
 | Contrato en Sepolia `0x628901F7bC5Ab55c8b6289a05F0AD543DA94Bdb7` (con R-01; sustituye a `0xDCfe…FC3C`) (dominio `civora.nexuraia.com`, `devMode` desactivado), verificado con `verificar:sepolia`; la demo usa el de demostración | hecho |
@@ -222,14 +348,14 @@ mensajería rechaza cualquier intento de votar.
 | Panel de Easypanel con dominio y HTTPS (hoy en `http://<IP>:3000`) y puerto 3000 cerrado en el firewall del VPS | pendiente |
 | *Auto Deploy* con webhook de GitHub creado a mano: el token de Easypanel no puede gestionar webhooks (403); la URL del webhook es secreta | pendiente |
 | Creación de propuestas abierta en la demo, sin `ADMIN_SECRET` (M-04 como riesgo aceptado) | hecho |
-| Volver a exigir autorización (cuentas individuales) y un tope de gasto del relayer antes de producción real | pendiente |
+| Volver a exigir autorización y un tope de gasto del relayer antes de producción real | pendiente: diseño en las tareas [a y b](#servicios-propuestas-y-red-principal) (aprobación por multifirma, [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md); tope en el servicio `relayer`, [ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md)) |
 | Demo de pruebas: la vía de certificado mantiene la edad declarada y se mantiene la residencia de 5 años en la elegibilidad, hasta tener las conexiones con DGP e INE ([ADR 0015](decisiones/0015-condiciones-voto-organismos-publicos.md)) | decidido (2026-10-07) |
 | Postgres de la demo en el VPS (`civora-db`, sin puerto externo) ([ADR 0013](decisiones/0013-postgres-en-el-vps.md)) | hecho; pendiente de revisar en producción |
 | Copias de seguridad automáticas y probadas de la base de datos, antes de producción real | pendiente |
 | Retirar Neon del proyecto: la web, la documentación y la vuelta atrás ya solo usan el Postgres del VPS | hecho (2026-10-07); la base sigue creada en Neon, sin uso |
 | Retirar Vercel tras completar la migración | en curso: desconectado de GitHub, ya no despliega |
-| Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente |
-| Entorno de pruebas separado (contrato y dominio propios), con el VPS dedicado | pendiente |
+| Para producción real: VPS dedicado solo a Civora, endurecido y supervisado | pendiente: va con la tarea [e](#servicios-propuestas-y-red-principal), junto con Base y el dominio definitivo |
+| Entorno de pruebas separado (contrato y dominio propios), con el VPS dedicado | pendiente: al pasar a producción (tarea [e](#servicios-propuestas-y-red-principal)), `civora.nexuraia.com` puede quedar como entorno de pruebas |
 | Dependencias: Next 15.5.27 y React 19.2.8, sin `node-forge` en runtime, `pnpm audit --prod` limpio y Dependabot agrupado ([ADR 0012](decisiones/0012-next-15-react-19.md)) | hecho |
 | CSP con nonce en todas las páginas (renderizado dinámico), resultados «no disponibles» sin 500, `Referrer-Policy: no-referrer` y E2E de todas las páginas ([auditoría](auditoria-seguridad.md#revisión-en-producción-2026-10-07-rama-actualizar-dependencias)) | hecho; pendiente de revisar en producción |
 | CSP que permite abrir Autofirma (`wss`/`https` a `127.0.0.1` y `frame-src afirma:`), E2E sin simulacro de la conexión y favicon ([auditoría](auditoria-seguridad.md#csp-y-autofirma-2026-10-07-rama-fixcsp-autofirma)) | hecho; firmado con Autofirma y certificado real en producción con Edge y Brave (2026-10-07); pendiente de probar en Firefox |
@@ -239,12 +365,12 @@ mensajería rechaza cualquier intento de votar.
 | `@zkpassport/sdk` 0.18.2 o posterior como tarea propia: compatibilidad con el verificador del contrato y prueba con un documento real (la 0.18.0 se publicó rota, PR #12) | revertido (2026-10-07): con la 0.18.2 desplegada, la app ZKPassport falla al generar la prueba con un pasaporte simulado («Something went wrong»); se vuelve a la 0.16.2, que funciona. Investigar la compatibilidad de la 0.18 con la app antes de reintentarlo |
 | TypeScript 7 y `@types/node` acorde al Node de ejecución, como tareas propias (Dependabot ignora sus versiones mayores) | TypeScript 7 bloqueado: su paquete ya no expone la API de JavaScript que usan `next build` y `next typegen`; esperar a que Next lo soporte (con Next 16) |
 | **Hardhat 3 (siguiente tarea, 1–2 h):** `packages/contracts` a ESM con `defineConfig`, `@nomicfoundation/hardhat-toolbox-mocha-ethers`, redes `type: "http"`, `network.create()` en tests y `network.connect()` en los scripts (`deploy`, `verificar-despliegue`, `deployment-config` a ESM); comprobar que el bytecode no cambia (salvo metadatos) para no redesplegar, que `node` y `deploy:localhost` siguen generando `apps/web/lib/generated/despliegue-localhost.json` y que desaparecen los 4 avisos de desarrollo. Ojo: el toolbox 4 pide `mocha` 12 | pendiente (2026-10-08) |
-| Decidir la red: Base u otra red principal, o red permisionada (ADR) | pendiente |
+| Decidir la red: Base u otra red principal, o red permisionada (ADR) | propuesta: Base, en la tarea [e](#servicios-propuestas-y-red-principal); falta el ADR |
 | Retirar `CIVORA_DEMO_TESTNET` al pasar a una red principal | pendiente |
 | Protección de `main` en GitHub (checks obligatorios «Tests, typecheck, build y E2E» e «Imagen Docker») | hecho |
 | CI con tests de contratos y web, typecheck, build y `test:e2e` (`.github/workflows/ci.yml`) | hecho; en verde en GitHub |
 | Rate limit compartido entre instancias (hoy en memoria) | pendiente |
-| Dominio ZKPassport propio registrado y `DEV_MODE=false` | pendiente |
+| Dominio ZKPassport propio registrado y `DEV_MODE=false` | pendiente: el dominio definitivo se registra y se fija en el contrato en la tarea [e](#servicios-propuestas-y-red-principal) |
 | Probar OCSP contra los respondedores reales de FNMT/DGP y añadir CRL de respaldo | pendiente |
 
 **Dependencias:** ninguna para CI y protección de `main`; la red, antes de
@@ -255,6 +381,67 @@ verde; `https://civora.nexuraia.com/api/salud` responde y el servicio de
 producción apunta al contrato de la red elegida; los registros del proxy no
 contienen IPs de votantes; dos instancias comparten el límite de intentos
 (test).
+
+### Verificación pública del bytecode
+
+Propuesta, sin implementar, inspirada en
+`spain-in-parallel/deployed-contracts`:
+
+- `verify/verify-bytecode.mjs` compara `eth_getCode` con el
+  `deployedBytecode` del artefacto.
+- Distingue tres resultados: idéntico, idéntico salvo metadatos, y
+  distinto (líneas 100-110).
+- Normaliza los enlaces a librerías y el inmutable `__self` de los
+  proxies UUPS.
+
+Hoy `verificar:sepolia` solo lee `relayer`, `dominioZk` y `devModeZk`. Eso
+no demuestra que el código desplegado sea el del repositorio.
+
+**Qué haría:**
+
+1. **Compilación reproducible:**
+   - Fijar en `hardhat.config.js` la versión exacta de `solc`, el
+     optimizador y `evmVersion`. Hoy solo se fija `0.8.30`; el resto son
+     valores por defecto que pueden cambiar con Hardhat 3.
+   - Guardar en `packages/contracts/desplegados/<red>/<contrato>.json` la
+     dirección, el commit, la configuración del compilador y los
+     argumentos del constructor (equivalente a su `onchain-expected.json`).
+2. **Comparación byte a byte** en `scripts/verificar-despliegue.js`:
+   - Se compila el commit.
+   - Se rellenan los inmutables con los valores esperados en las
+     posiciones de `immutableReferences` de `solc`: `verificadorZk`,
+     `relayer`, `devModeZk` y, con el ADR 0016, `registroIdeas`.
+   - Se compara con `eth_getCode`.
+   - Es más estricto que el método de `deployed-contracts`, que sustituye
+     cualquier aparición de la dirección del contrato en el código
+     (`verify-bytecode.mjs:83-87`): aquí cada valor va en su posición
+     exacta.
+   - Resultado: `IDÉNTICO`, `IDÉNTICO SALVO METADATOS` o `DISTINTO`. Con
+     `DISTINTO` termina con código 1.
+3. **Alcance:** todos los contratos propios, sin excepción.
+   - En `deployed-contracts`, el `IdeaRegistry` se declara idéntico al
+     código fuente sin comparar el bytecode
+     (`09-IdeaRegistry/README.md`).
+   - Además, el verificador de ZKPassport (dirección oficial) y el Safe del
+     [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md):
+     su proxy y su *singleton* comparados con los despliegues oficiales de
+     Safe.
+4. **Para cualquiera:**
+   - Un solo comando, con cualquier RPC (`RPC_URL=… pnpm --filter
+     @civora/contracts verificar:<red>`), sin claves.
+   - El CI comprueba sin red que la compilación del commit coincide con el
+     JSON guardado.
+   - Los resultados se publican en
+     [despliegue-produccion.md](despliegue-produccion.md#contrato-desplegado).
+
+**Criterios de aceptación:**
+
+- La verificación da `IDÉNTICO` con el contrato de Sepolia actual y
+  `DISTINTO` con un artefacto alterado en un byte (test).
+- Falla si un inmutable no coincide, por ejemplo con otro relayer.
+- El CI falla si la compilación ya no reproduce el JSON guardado.
+- Tras migrar a Hardhat 3, el contrato sigue dando `IDÉNTICO` o, si no,
+  queda documentado por qué.
 
 ## Fase 2: MACI y auditoría externa
 

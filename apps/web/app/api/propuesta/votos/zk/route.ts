@@ -5,6 +5,8 @@ import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { OPCIONES, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
 import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
 import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
+import { viaPermitida, viasHabilitadas } from "../../../../../lib/vias-voto.mjs";
+import { registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos";
 
 /**
  * Voto con prueba ZKPassport verificada dentro del propio contrato (ver
@@ -12,6 +14,10 @@ import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/error
  * aqui no se recibe ni se confia en ningun nullifier calculado por el
  * cliente. El contrato calcula el nullifier a partir de la prueba, ya
  * verificada, y esta ruta solo relaya la transaccion.
+ *
+ * Voto único (A-04): solo se admite si "zk" está en VIAS_HABILITADAS. El
+ * contrato acepta igualmente una llamada directa a votarConPruebaZk: cerrar
+ * esa vía exige la vía por propuesta en el contrato (ROADMAP, paso 2).
  */
 const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Se esperaba un valor de 32 bytes en hexadecimal.");
 const bytesHex = z.string().regex(/^0x([0-9a-fA-F]{2})*$/, "Se esperaba una cadena de bytes en hexadecimal.");
@@ -69,6 +75,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente" }, { status: 404 });
   }
 
+  if (!viaPermitida(viasHabilitadas(process.env.VIAS_HABILITADAS), "zk")) {
+    await registrarIntentoRepetido({ propuestaId, via: "zk", motivo: "via-no-permitida", nullifier: null });
+    return NextResponse.json(
+      { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
+      { status: 403 }
+    );
+  }
+
   let nullifier: string;
   try {
     const resultado = await votarConPruebaZkOnChain({
@@ -85,6 +99,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: MENSAJES_ERROR_CONTRATO[nombreError] }, { status: 400 });
     }
     if (razon.includes("ya ha votado")) {
+      // El servidor no ve el identificador de ZKPassport si el contrato
+      // rechaza el voto: los intentos se agregan por propuesta.
+      await registrarIntentoRepetido({ propuestaId, via: "zk", motivo: "voto-repetido", nullifier: null });
       return NextResponse.json({ error: razon }, { status: 409 });
     }
     if (razon.includes("Propuesta inexistente") || razon.includes("Votacion cerrada") || razon.includes("todavia no ha comenzado")) {

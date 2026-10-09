@@ -359,4 +359,54 @@ describe("VotacionAnonima", function () {
       });
     });
   });
+
+  // Hallazgo A-04. Estos tests reproducen el límite del contrato actual: solo
+  // rechaza un nullifier repetido, y cada vía calcula el suyo, así que nada
+  // en la cadena relaciona dos votos de la misma persona. La web lo cierra
+  // con VIAS_HABILITADAS (una sola vía); el contrato, con la vía por
+  // propuesta (paso 2 del spike, ROADMAP). Cuando llegue, estos tests pasan
+  // a comprobar el rechazo.
+  describe("voto cruzado (A-04): límite del contrato actual", function () {
+    async function votarPorLasDosVias() {
+      const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar();
+      const bloque = await ethers.provider.getBlock("latest");
+      // Misma persona: nullifier de certificado (HMAC del DNI en el servidor)
+      // e identificador único de ZKPassport (de su documento).
+      const nullifierCertificado = ethers.id("hmac-del-dni-de-la-persona");
+      await (await mock.fijarResultado(true, ethers.id("documento-de-la-persona"), bloque.timestamp, true, 18, "ESP")).wait();
+      await (await mock.fijarDatosVinculados("civora-voto:propuesta-demo:a_favor")).wait();
+      return { contrato, mock, propuestaId, propuestaIdTexto, nullifierCertificado, marca: bloque.timestamp };
+    }
+
+    it("acepta el voto de certificado y el ZK de la misma persona (dos votos)", async function () {
+      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await votarPorLasDosVias();
+
+      await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+
+      const [aFavor, enContra, abstenciones] = await contrato.resultados(propuestaId);
+      expect(aFavor + enContra + abstenciones).to.equal(2n);
+    });
+
+    it("acepta dos votos ZK de la misma persona con dos documentos (DNIe y pasaporte)", async function () {
+      const { contrato, mock, propuestaId, propuestaIdTexto, marca } = await votarPorLasDosVias();
+
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      // El identificador único de ZKPassport es por documento, no por persona.
+      await (await mock.fijarResultado(true, ethers.id("pasaporte-de-la-persona"), marca, true, 18, "ESP")).wait();
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+
+      const [aFavor] = await contrato.resultados(propuestaId);
+      expect(aFavor).to.equal(2n);
+    });
+
+    it("sí rechaza el mismo certificado dos veces: el DNIe y el de la FNMT dan el mismo NIF", async function () {
+      const { contrato, propuestaId, nullifierCertificado } = await votarPorLasDosVias();
+
+      await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
+      await expect(contrato.votarManual(propuestaId, nullifierCertificado, 1, "0x")).to.be.revertedWith(
+        "Este documento ya ha votado en esta propuesta"
+      );
+    });
+  });
 });

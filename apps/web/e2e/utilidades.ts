@@ -48,6 +48,8 @@ window.AutoScript = {
 export type OpcionesSimulacion = {
   /** Respuestas sucesivas del envío del voto con certificado. */
   respuestasVoto?: { status: number; body: unknown }[];
+  /** Vías que declara el servidor; null simula un servidor anterior que no las envía. */
+  vias?: string[] | null;
 };
 
 /**
@@ -62,7 +64,12 @@ export async function simularApi(page: Page, opciones: OpcionesSimulacion = {}) 
   const respuestas = [...(opciones.respuestasVoto ?? [{ status: 200, body: { nullifier: NULLIFIER } }])];
 
   await page.route(`**/api/propuestas/${PROPUESTA_ID}`, (ruta) =>
-    ruta.fulfill({ json: { propuesta: propuesta() } })
+    ruta.fulfill({
+      json:
+        opciones.vias === null
+          ? { propuesta: propuesta() }
+          : { propuesta: propuesta(), viasPermitidas: opciones.vias ?? ["certificado", "zk"] },
+    })
   );
   await page.route("**/js/autoscript.js", (ruta) =>
     ruta.fulfill({ contentType: "application/javascript", body: AUTOSCRIPT_FALSO })
@@ -140,7 +147,7 @@ export async function abrirVotacion(page: Page) {
 
 /** Recorre la identificación con certificado hasta la pantalla de elegir. */
 export async function identificarseConCertificado(page: Page) {
-  await page.locator(".metodo-card").nth(1).click();
+  await page.locator(".metodo-card").filter({ hasText: /certificado digital/i }).click();
   await page.waitForFunction(() => Boolean((window as unknown as { AutoScript?: unknown }).AutoScript));
   await page.locator("#fecha-nacimiento-cert").fill("1980-05-17");
   await page.locator(".form-check input[type=checkbox]").check();

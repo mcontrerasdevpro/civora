@@ -93,10 +93,12 @@ la vez sin publicar el NIF ni hashes directos del documento
 | Tarea | Estado |
 |---|---|
 | **Prioridad 1 (R-01, crítico):** atar la opción a la prueba ZKPassport (datos vinculados al ámbito o a la prueba) y verificarla en el contrato; test que reenvía la prueba con otra opción y es rechazada | hecho en código (rama `feat/r01-opcion-en-prueba-zk`), contrato en Sepolia; primera prueba real: la CSP bloqueaba la verificación local del SDK, corregido tomando la prueba en `onProofGenerated`; pendiente: repetir la prueba con DNIe o pasaporte real |
-| Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | pendiente |
-| Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | pendiente |
-| Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | pendiente |
-| ADR con la decisión y sus límites | pendiente |
+| Inventariar qué identificadores verificables ofrece ZKPassport (nullifiers con ámbito, atributos revelables) | hecho: el identificador único es por documento (DNIe y pasaporte dan dos) y lo revelable (`document_number`, nombre, fecha de nacimiento, etc.) no incluye el NIF ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)) |
+| Comprobar si alguno puede compartirse con la credencial de certificado sin filtrar el NIF | hecho: ninguno; nombre y fecha de nacimiento descartados (el certificado no lleva la fecha y habría falsos positivos) |
+| Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | hecho (rama `spike/voto-cruzado`): certificado + ZK y DNIe + pasaporte aceptados, mismo NIF rechazado |
+| ADR con la decisión y sus límites | hecho: [ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md) |
+| **Paso 1:** una sola vía por votación en la web (`VIAS_HABILITADAS`, solo certificado por defecto) y alertas de fraude por intentos repetidos | hecho (rama `spike/voto-cruzado`) |
+| **Paso 2:** vía permitida fijada en cada propuesta en el contrato; `votarConPruebaZk` y `votarManual` rechazan la otra vía; los tests del voto cruzado pasan a comprobar el rechazo; redespliegue en Sepolia | pendiente |
 
 **Dependencias:** ninguna. No despliega cambios de identidad: el resultado
 alimenta la Fase 1.

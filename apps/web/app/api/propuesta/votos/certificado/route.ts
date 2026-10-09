@@ -8,6 +8,8 @@ import { derivarNullifierCertificado, secretoNullifierCertificado } from "../../
 import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
 import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
 import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
+import { viaPermitida, viasHabilitadas } from "../../../../../lib/vias-voto.mjs";
+import { intentosBloqueados, registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos";
 
 /**
  * Voto con certificado digital (FNMT/DNIe vía Autofirma). A diferencia de
@@ -19,6 +21,10 @@ import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } fr
  * El nullifier es un HMAC con NULLIFIER_CERTIFICADO_SECRET (R-02) y el reto
  * firmado incluye la opcion (R-04). La firma y el certificado recibidos no
  * se guardan ni se registran: solo se usan para verificar.
+ *
+ * Voto único (A-04): solo se admite si la vía está en VIAS_HABILITADAS, y
+ * los intentos repetidos se cuentan para las alertas de fraude
+ * (lib/intentos-repetidos.ts).
  */
 const CuerpoSchema = z.object({
   propuestaId: z.string().uuid(),
@@ -50,6 +56,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
+  if (!viaPermitida(viasHabilitadas(process.env.VIAS_HABILITADAS), "certificado")) {
+    await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "via-no-permitida", nullifier: null });
+    return NextResponse.json(
+      { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
+      { status: 403 }
+    );
+  }
+
   const verificacion = await verificarFirmaCertificado({ propuestaId, opcion, timestamp, reto, signatureB64, certB64 });
   if (!verificacion.valido || !verificacion.identificador) {
     return NextResponse.json({ error: verificacion.error ?? "Certificado no válido." }, { status: 400 });
@@ -61,6 +75,14 @@ export async function POST(request: Request) {
     secretoNullifierCertificado(process.env)
   );
   const nullifierBytes32 = nullifierABytes32(nullifier);
+
+  if (await intentosBloqueados(propuestaId, "certificado", nullifier)) {
+    await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "voto-repetido", nullifier });
+    return NextResponse.json(
+      { error: "Demasiados intentos de volver a votar en esta propuesta. Cada persona solo puede votar una vez." },
+      { status: 429 }
+    );
+  }
 
   try {
     const contrato = contratoEscritura();
@@ -74,6 +96,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const razon = mensajeRevert(error) ?? "";
     if (razon.includes("ya ha votado")) {
+      await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "voto-repetido", nullifier });
       return NextResponse.json({ error: razon }, { status: 409 });
     }
     if (

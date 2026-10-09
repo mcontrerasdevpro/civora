@@ -5,6 +5,7 @@ import { leerResultados } from "../../../../lib/contrato";
 import { resultadosVisibles } from "../../../../lib/resultados-visibles.mjs";
 import { segmentoFinal } from "../../../../lib/parametros-ruta.mjs";
 import { registrarError } from "../../../../lib/registro.mjs";
+import { viasHabilitadas } from "../../../../lib/vias-voto.mjs";
 
 // Sin esto, Next.js horneraria el resultado on-chain como contenido
 // estatico en el build y nunca volveria a consultar el contrato.
@@ -20,16 +21,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: MENSAJE_PROPUESTA_ARCHIVADA, archivada: true }, { status: 410 });
   }
   const { propuesta } = encontrada;
+  // Vías con las que se admite votar (A-04): la página de voto solo ofrece estas.
+  const viasPermitidas = viasHabilitadas(process.env.VIAS_HABILITADAS);
 
   if (!resultadosVisibles(propuesta.fechaCierre)) {
-    return NextResponse.json({ propuesta, resultados: null });
+    return NextResponse.json({ propuesta, viasPermitidas, resultados: null });
   }
 
   try {
-    return NextResponse.json({ propuesta, resultados: await leerResultados(id) });
+    return NextResponse.json({ propuesta, viasPermitidas, resultados: await leerResultados(id) });
   } catch (error) {
     // Pasa, por ejemplo, con propuestas creadas con un contrato anterior.
     registrarError("resultados no disponibles", error);
-    return NextResponse.json({ propuesta, resultados: null, resultadosNoDisponibles: true });
+    return NextResponse.json({ propuesta, viasPermitidas, resultados: null, resultadosNoDisponibles: true });
   }
 }

@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Propuesta } from "@civora/shared-types";
 import { VotarWizard } from "../VotarWizard";
+import { viasHabilitadas, type ViaVoto } from "../../../lib/vias-voto.mjs";
 
 type Estado =
   | { fase: "cargando" }
   | { fase: "error" }
   | { fase: "archivada"; mensaje: string }
-  | { fase: "lista"; propuesta: Propuesta };
+  | { fase: "lista"; propuesta: Propuesta; vias: ViaVoto[] };
 
 export default function VotarPropuestaPage() {
   // useParams funciona igual en Next 14 y 15 (en 15 la prop `params` es una promesa).
@@ -29,7 +30,10 @@ export default function VotarPropuestaPage() {
         }
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta });
+        // Sin la lista (servidor anterior), solo certificado: nunca se abre
+        // una vía que el servidor no haya declarado.
+        const vias = viasHabilitadas(Array.isArray(cuerpo.viasPermitidas) ? cuerpo.viasPermitidas.join(",") : undefined);
+        if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta, vias });
       })
       .catch(() => {
         if (!cancelado) setEstado({ fase: "error" });
@@ -72,7 +76,7 @@ export default function VotarPropuestaPage() {
         </div>
       )}
 
-      {estado.fase === "lista" && <VotarWizard propuesta={estado.propuesta} />}
+      {estado.fase === "lista" && <VotarWizard propuesta={estado.propuesta} vias={estado.vias} />}
     </main>
   );
 }

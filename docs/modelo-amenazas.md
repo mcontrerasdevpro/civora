@@ -7,8 +7,11 @@ y ya es seguro".
 
 ## Qué previene el sistema
 
-- **Doble voto**: cada prueba ZK genera un `nullifier` único; el contrato
-  rechaza un segundo voto con el mismo nullifier para la misma propuesta.
+- **Doble voto**: el contrato rechaza un segundo voto con el mismo
+  `nullifier` en la misma propuesta. Como cada vía calcula el suyo, cada
+  votación admite **una sola vía**, por defecto solo certificado
+  ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)). Lo que
+  no cubre está en [Voto cruzado entre vías](#voto-cruzado-entre-vías-a-04).
 - **Manipulación del resultado**: el recuento vive en un contrato público,
   auditable por cualquiera; nadie (ni el operador del sistema) puede alterar
   los votos ya emitidos.
@@ -44,6 +47,34 @@ ZKPassport la verificaría consultando un nodo de Alchemy con la prueba (con
 nullifier y opción) y la IP del votante, y la subiría a su panel. La web la
 envía directamente al contrato y crea el SDK con `disableProofStorage`; la
 CSP no permite WebAssembly ni Alchemy.
+
+### Voto cruzado entre vías (A-04)
+
+El 2026-10-09 una misma persona votó dos veces en la misma propuesta, con
+ZKPassport y con certificado. Los tests `voto cruzado (A-04)` del contrato
+lo reproducen ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)).
+
+- **Mitigado en la web:**
+  - Cada votación admite una sola vía (`VIAS_HABILITADAS`, solo
+    certificado por defecto). La página solo ofrece esa vía y la API rechaza
+    las demás.
+  - Los intentos repetidos, o por una vía no permitida, se cuentan. Al
+    tercero en 24 horas se lanza una alerta de fraude y se bloquea a esa
+    persona hasta que pase la ventana. La alerta no lleva la opción, el NIF,
+    el nullifier ni la IP.
+- **Sin resolver:**
+  - **Llamada directa al contrato:** `votarConPruebaZk` no tiene
+    restricción de remitente. Quien tenga una prueba válida puede votar por
+    ZK aunque la web no ofrezca esa vía. Se cierra fijando la vía de cada
+    propuesta en el contrato (paso 2 del ADR 0021).
+  - **Dos documentos en la vía ZK:** el identificador de ZKPassport es por
+    documento. Con `VIAS_HABILITADAS=zk`, quien tenga DNIe y pasaporte puede
+    votar dos veces. Por eso no es el valor por defecto.
+  - **Intentos ZK agregados:** si el contrato rechaza un voto ZK, el
+    servidor no ve el identificador y cuenta los intentos por propuesta,
+    no por persona.
+  - **Solución completa:** el censo con un único canal por persona
+    ([Fase 1](ROADMAP.md#fase-1-semaphore)).
 
 ### Firma y certificado en la vía de certificado
 

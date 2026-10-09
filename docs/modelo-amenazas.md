@@ -133,7 +133,58 @@ Ver [ADR 0011](decisiones/0011-alojamiento-vps-propio.md) y
   vote bajo presión en el momento de emitir el voto (problema abierto en
   todo el e-voting remoto, no exclusivo de este proyecto). La coacción
   familiar o de cuidadores se trata en
-  [Inclusión y voto asistido](#inclusión-y-voto-asistido).
+  [Inclusión y voto asistido](#inclusión-y-voto-asistido). El recibo actual
+  agrava el problema: ver [Recibos, justificantes y coacción](#recibos-justificantes-y-coacción).
+
+### Recibos, justificantes y coacción
+
+Regla: nada de lo que se entrega al votante debe permitir a un tercero saber
+qué opción votó.
+
+- **El recibo actual (nullifier) permite demostrar el voto. Riesgo abierto.**
+  - Al terminar de votar, la web muestra siempre el recibo.
+  - Tras el cierre, `/verificar` (y su API
+    `/api/propuesta/votos/<nullifier>`) **muestra la opción** que
+    corresponde a ese recibo.
+  - Quien compre votos o coaccione puede exigir el recibo y comprobar qué se
+    votó, en la web o directamente en el contrato (`votoDe` y los eventos
+    `VotoEmitido` son públicos).
+  - Es la otra cara del hallazgo A-02 (votos y nullifiers públicos y sin
+    cifrar).
+- **Corregido:** el enlace «verificar mi voto» del recibo se precargaba
+  nada más mostrarse. El navegador pedía al servidor
+  `/verificar?nullifier=…`, y el recibo podía quedar en los registros del
+  proxy junto a la IP. Ahora el enlace no se precarga, con un test.
+- **Propuesta para limitarlo** (pendiente de decisión,
+  [ROADMAP](ROADMAP.md#fase-2-maci-y-auditoría-externa)):
+  1. `/verificar` y su API dejan de devolver la opción: solo «su voto está
+     registrado» o «no se encuentra». Es barato y quita la comprobación
+     cómoda, pero no la técnica, porque la opción sigue en la cadena.
+  2. El recibo pasa a ser opcional, como el justificante: un botón
+     discreto, con un aviso de que nadie puede pedírselo, y nunca en el
+     quiosco del punto asistido salvo que el votante lo pida.
+  3. La solución de fondo es la Fase 2 (MACI):
+     - votos cifrados, para que la cadena deje de exponer la opción;
+     - cambio de clave, para que un voto forzado se pueda sustituir sin
+       que lo sepa quien coacciona;
+     - un ticket de inclusión que no revela la opción (etapa 2 del
+       justificante).
+- **Justificante de participación (etapa 1, implementado):**
+  - Es opcional: solo se crea si la persona pulsa «Obtener justificante»;
+    nunca se genera ni se imprime solo, y no hace falta para que el voto
+    cuente.
+  - Se genera en el navegador (impresión o PDF) sin enviar nada al
+    servidor (test).
+  - Contiene la propuesta, el periodo de votación y «Su voto ha quedado
+    registrado de forma secreta».
+  - **No contiene la opción, el recibo, la transacción ni el día o la hora
+    del voto.** Cruzada con la hora de las transacciones públicas, en una
+    votación con poca participación, la hora delataría el voto. Por la misma
+    razón, el PDF no lleva fecha de creación en sus metadatos.
+  - Al imprimir solo sale el justificante, nunca el recibo.
+  - **Riesgo residual:** acredita que la persona votó. Si toda la votación
+    va en un sentido (unanimidad), participar revela la opción, como en
+    cualquier elección.
 - **Disponibilidad/DoS**: no se ha diseñado todavía la resiliencia de la
   infraestructura ante ataques de denegación de servicio.
 - **Legalidad**: el voto electrónico vinculante en España está limitado por

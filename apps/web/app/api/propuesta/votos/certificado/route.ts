@@ -2,13 +2,19 @@ import { toUtf8Bytes } from "ethers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
-import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
+import { obtenerPropuesta, viasPermitidasDe } from "../../../../../lib/propuestas-store";
 import { verificarFirmaCertificado } from "../../../../../lib/certificado-digital";
 import { derivarNullifierCertificado, secretoNullifierCertificado } from "../../../../../lib/nullifier-certificado.mjs";
 import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
 import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
-import { OPCIONES, contratoEscritura, nullifierABytes32, propuestaIdBytes32 } from "../../../../../lib/contrato";
-import { viaPermitida, viasHabilitadas } from "../../../../../lib/vias-voto.mjs";
+import {
+  OPCIONES,
+  SELECTOR_VIA_NO_PERMITIDA,
+  contratoEscritura,
+  nullifierABytes32,
+  propuestaIdBytes32,
+} from "../../../../../lib/contrato";
+import { viaPermitida } from "../../../../../lib/vias-voto.mjs";
 import { intentosBloqueados, registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos";
 
 /**
@@ -22,7 +28,8 @@ import { intentosBloqueados, registrarIntentoRepetido } from "../../../../../lib
  * firmado incluye la opcion (R-04). La firma y el certificado recibidos no
  * se guardan ni se registran: solo se usan para verificar.
  *
- * Voto único (A-04): solo se admite si la vía está en VIAS_HABILITADAS, y
+ * Voto único (A-04): solo se admite si la propuesta tiene fijada esta vía
+ * en el contrato y sigue en VIAS_HABILITADAS (el contrato lo exige también), y
  * los intentos repetidos se cuentan para las alertas de fraude
  * (lib/intentos-repetidos.ts).
  */
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
-  if (!viaPermitida(viasHabilitadas(process.env.VIAS_HABILITADAS), "certificado")) {
+  if (!viaPermitida(await viasPermitidasDe(propuestaId), "certificado")) {
     await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "via-no-permitida", nullifier: null });
     return NextResponse.json(
       { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
@@ -105,6 +112,13 @@ export async function POST(request: Request) {
       razon.includes("todavia no ha comenzado")
     ) {
       return NextResponse.json({ error: razon }, { status: 400 });
+    }
+    if (selectorDeRevert(error) === SELECTOR_VIA_NO_PERMITIDA) {
+      await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "via-no-permitida", nullifier });
+      return NextResponse.json(
+        { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
+        { status: 403 }
+      );
     }
     if (esRechazoDelContrato(error)) {
       registrarAviso("voto de certificado rechazado por el contrato", selectorDeRevert(error) ?? "sin selector");

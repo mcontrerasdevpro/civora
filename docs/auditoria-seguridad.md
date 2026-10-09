@@ -247,6 +247,23 @@ Verificación:
 - 120 E2E (12 nuevos en `voto-unico.spec.ts`: una vía, servidor sin vías, bloqueo 429 y axe, a 1280 y 375 px).
 - SQL de `intentos_repetidos` ejecutado en Postgres (PGlite): contador por persona y motivo, una alerta por ventana, bloqueo al llegar al umbral, reinicio fuera de la ventana y una sola alerta con dos marcas simultáneas.
 
+## Vía fijada en el contrato (2026-10-09, rama `feat/via-en-contrato`)
+
+- **Contrato:** `Propuesta.via` (`Certificado` o `Zk`) se fija en `crearPropuesta`, va en `PropuestaCreada` y no se puede cambiar. `votarManual` y `votarConPruebaZk` revierten con `ViaNoPermitida()` si la propuesta no admite esa vía. En `votarConPruebaZk`, la vía se comprueba antes que la prueba: una llamada directa no llega a verificarla. Para una propuesta inexistente, el mensaje sigue siendo «Propuesta inexistente».
+- **Web:**
+  - `POST /api/propuestas` acepta `via` opcional (debe estar habilitada; si no se pide, la primera de `VIAS_HABILITADAS`) y la guarda en `propuestas.via`.
+  - `/api/propuestas/<id>` solo devuelve la vía de la propuesta, si sigue habilitada. Si no lo está, la página no ofrece ninguna y lo explica.
+  - Las rutas de voto responden 403 y cuentan el intento si la vía no corresponde, también cuando quien lo rechaza es el contrato.
+  - La página respeta la lista vacía. No la sustituye por la vía por defecto (fallo encontrado y corregido en esta rama).
+- **Despliegue:** contrato de demostración `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8` en el bloque 11876757 (tx `0x27b77f73…08dc9`), con los mismos parámetros que el anterior, leídos de la cadena: dominio `civora.nexuraia.com`, `devModeZk=true`, relayer `0x9bC3…25be6` y verificador oficial. `verificar:sepolia` correcto.
+- **Sin resolver:** DNIe y pasaporte de la misma persona en una propuesta ZK (identificador por documento), hasta la Fase 1.
+
+Verificación:
+- 32 tests de contratos (8 de la vía por propuesta).
+- 93 de web (2 nuevos: vía de la propuesta y vía de una propuesta nueva).
+- Typecheck y build.
+- 122 E2E (nuevo: propuesta sin vía habilitada, con axe).
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.
@@ -316,7 +333,7 @@ No se encontró árbol Merkle, raíz de censo ni verificador de pertenencia en e
 
 La vía manual de la aplicación se retiró en Fase 0. Sigue sin existir un identificador común verificable entre certificado y ZK; el contrato compara únicamente el nullifier exacto y no vincula métodos. No hay evidencia en este repositorio para afirmar que el SDK de ZKPassport equipare siempre un DNI y un pasaporte de la misma persona.
 
-**Estado (2026-10-09): reproducido y mitigado en la web, abierto en el contrato.** Una persona votó dos veces en producción, con ZKPassport y con certificado. La documentación de ZKPassport confirma que su identificador único es por documento, así que un DNI y un pasaporte de la misma persona dan dos. Medida: una sola vía por votación, por defecto certificado, y alertas por intentos repetidos ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)). Queda abierta la llamada directa a `votarConPruebaZk`, que se cierra con la vía por propuesta en el contrato.
+**Estado (2026-10-09): reproducido y mitigado en la web, abierto en el contrato.** Una persona votó dos veces en producción, con ZKPassport y con certificado. La documentación de ZKPassport confirma que su identificador único es por documento, así que un DNI y un pasaporte de la misma persona dan dos. Medida: una sola vía por votación, por defecto certificado, y alertas por intentos repetidos ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)). La llamada directa queda cerrada: la vía se fija en el contrato al crear la propuesta (contrato `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8`, rama `feat/via-en-contrato`). Queda abierto el caso de DNIe y pasaporte en una propuesta ZK, hasta el censo de la Fase 1.
 
 **Arreglo propuesto:** un único mecanismo de deduplicación verificable y común a todos los medios de acreditación, ligado a una credencial/censo y a la elección. Añadir pruebas de integración que prueben explícitamente los intentos cruzados DNI, pasaporte, certificado y renovación.
 

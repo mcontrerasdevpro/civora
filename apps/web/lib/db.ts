@@ -118,6 +118,8 @@ export function asegurarEsquema(): Promise<void> {
       // Contrato con el que se creó cada propuesta: al cambiar de contrato,
       // las anteriores dejan de listarse y de admitir votos.
       .then(() => query("ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS contrato TEXT"))
+      // Vía fijada en el contrato al crearla (ADR 0021); null en las anteriores.
+      .then(() => query("ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS via TEXT"))
       .then(() => undefined);
   }
   return esquemaListo;

@@ -17,7 +17,11 @@ export function MetodoSelector({
   return (
     <div className="panel metodo-selector">
       <p className="form-hint" style={{ marginTop: 0, marginBottom: 20 }}>
-        {vias.length > 1
+        {vias.length === 0
+          ? sencillo
+            ? "Ahora mismo no se puede votar en esta votación. Pida ayuda."
+            : "Esta votación no admite ahora ninguna forma de identificarse. Consulta con la organización."
+          : vias.length > 1
           ? sencillo
             ? "Elija cómo quiere demostrar que puede votar."
             : "Elige cómo quieres acreditar que cumples los requisitos para votar."

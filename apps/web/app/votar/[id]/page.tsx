@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Propuesta } from "@civora/shared-types";
 import { VotarWizard } from "../VotarWizard";
-import { viasHabilitadas, type ViaVoto } from "../../../lib/vias-voto.mjs";
+import { VIAS, viasHabilitadas, type ViaVoto } from "../../../lib/vias-voto.mjs";
 
 type Estado =
   | { fase: "cargando" }
@@ -30,9 +30,11 @@ export default function VotarPropuestaPage() {
         }
         if (!respuesta.ok) throw new Error();
         const cuerpo = await respuesta.json();
-        // Sin la lista (servidor anterior), solo certificado: nunca se abre
-        // una vía que el servidor no haya declarado.
-        const vias = viasHabilitadas(Array.isArray(cuerpo.viasPermitidas) ? cuerpo.viasPermitidas.join(",") : undefined);
+        // Solo las vías que declara el servidor (puede no haber ninguna). Sin
+        // la lista (servidor anterior), solo certificado.
+        const vias: ViaVoto[] = Array.isArray(cuerpo.viasPermitidas)
+          ? VIAS.filter((via) => cuerpo.viasPermitidas.includes(via))
+          : viasHabilitadas(undefined);
         if (!cancelado) setEstado({ fase: "lista", propuesta: cuerpo.propuesta, vias });
       })
       .catch(() => {

@@ -42,6 +42,14 @@ test.describe("voto único: una sola vía de identificación", () => {
     await expect(page.locator(".metodo-card")).toContainText("DNIe o pasaporte");
   });
 
+  test("si la vía de la propuesta ya no está habilitada, no se ofrece ninguna y se explica", async ({ page }) => {
+    await simularApi(page, { vias: [] });
+    await abrirVotacion(page);
+    await expect(page.locator(".metodo-card")).toHaveCount(0);
+    await expect(page.locator(".metodo-selector")).toContainText("no admite ahora ninguna forma de identificarse");
+    await comprobarAccesibilidad(page, "selector sin vías");
+  });
+
   test("con las dos vías se ofrecen las dos, sin el aviso de vía única", async ({ page }) => {
     await simularApi(page, { vias: ["certificado", "zk"] });
     await abrirVotacion(page);

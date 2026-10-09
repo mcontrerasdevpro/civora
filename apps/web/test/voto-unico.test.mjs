@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { permiteVotoCruzado, viaPermitida, viasHabilitadas } from "../lib/vias-voto.mjs";
+import {
+  permiteVotoCruzado,
+  viaParaNuevaPropuesta,
+  viaPermitida,
+  viasDePropuesta,
+  viasHabilitadas,
+} from "../lib/vias-voto.mjs";
 import { configuracionAlertas, cuerpoAlerta, seudonimoIntento, superaUmbral } from "../lib/alertas-fraude.mjs";
 
 // Hallazgo A-04: con las dos vías abiertas, una persona puede votar dos veces
@@ -88,10 +94,26 @@ test("las rutas de voto comprueban la vía y registran los intentos repetidos", 
     ["app/api/propuesta/votos/zk/route.ts", "zk"],
   ]) {
     const fuente = await readFile(new URL(`../${ruta}`, import.meta.url), "utf8");
-    assert.ok(fuente.includes(`viaPermitida(viasHabilitadas(process.env.VIAS_HABILITADAS), "${via}")`), ruta);
+    assert.ok(fuente.includes(`viaPermitida(await viasPermitidasDe(propuestaId), "${via}")`), ruta);
     assert.match(fuente, /motivo: "via-no-permitida"/, ruta);
     assert.match(fuente, /motivo: "voto-repetido"/, ruta);
   }
   const certificado = await readFile(new URL("../app/api/propuesta/votos/certificado/route.ts", import.meta.url), "utf8");
   assert.match(certificado, /intentosBloqueados\(/);
+});
+
+test("vía de la propuesta: la fijada en el contrato, si sigue habilitada", () => {
+  assert.deepEqual(viasDePropuesta("certificado", ["certificado", "zk"]), ["certificado"]);
+  assert.deepEqual(viasDePropuesta("zk", ["certificado", "zk"]), ["zk"]);
+  // Vía deshabilitada después de crearla: no se ofrece ninguna.
+  assert.deepEqual(viasDePropuesta("zk", ["certificado"]), []);
+  // Propuesta anterior sin vía guardada: solo las habilitadas.
+  assert.deepEqual(viasDePropuesta(null, ["certificado"]), ["certificado"]);
+});
+
+test("vía de una propuesta nueva: la pedida si está habilitada; si no se pide, la primera", () => {
+  assert.equal(viaParaNuevaPropuesta(undefined, ["certificado"]), "certificado");
+  assert.equal(viaParaNuevaPropuesta(undefined, ["zk"]), "zk");
+  assert.equal(viaParaNuevaPropuesta("zk", ["certificado", "zk"]), "zk");
+  assert.equal(viaParaNuevaPropuesta("zk", ["certificado"]), null);
 });

@@ -98,7 +98,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 | Casos de prueba que reproduzcan el voto cruzado actual (hallazgo A-04) | hecho (rama `spike/voto-cruzado`): certificado + ZK y DNIe + pasaporte aceptados, mismo NIF rechazado |
 | ADR con la decisión y sus límites | hecho: [ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md) |
 | **Paso 1:** una sola vía por votación en la web (`VIAS_HABILITADAS`, solo certificado por defecto) y alertas de fraude por intentos repetidos | hecho (rama `spike/voto-cruzado`) |
-| **Paso 2:** vía permitida fijada en cada propuesta en el contrato; `votarConPruebaZk` y `votarManual` rechazan la otra vía; los tests del voto cruzado pasan a comprobar el rechazo; redespliegue en Sepolia | pendiente |
+| **Paso 2:** vía permitida fijada en cada propuesta en el contrato; `votarConPruebaZk` y `votarManual` rechazan la otra vía; los tests del voto cruzado pasan a comprobar el rechazo; redespliegue en Sepolia | hecho (rama `feat/via-en-contrato`): contrato `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8`, bloque 11876757 |
 
 **Dependencias:** ninguna. No despliega cambios de identidad: el resultado
 alimenta la Fase 1.

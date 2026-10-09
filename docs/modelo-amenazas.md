@@ -54,22 +54,20 @@ El 2026-10-09 una misma persona votó dos veces en la misma propuesta, con
 ZKPassport y con certificado. Los tests `voto cruzado (A-04)` del contrato
 lo reproducen ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)).
 
-- **Mitigado en la web:**
-  - Cada votación admite una sola vía (`VIAS_HABILITADAS`, solo
-    certificado por defecto). La página solo ofrece esa vía y la API rechaza
-    las demás.
+- **Mitigado:**
+  - Cada propuesta admite una sola vía, fijada en el contrato al crearla
+    (por defecto, la primera de `VIAS_HABILITADAS`: certificado). El
+    contrato rechaza la otra con `ViaNoPermitida()`, aunque se le llame
+    directamente. La página solo ofrece esa vía y la API la rechaza antes
+    de llegar al contrato.
   - Los intentos repetidos, o por una vía no permitida, se cuentan. Al
     tercero en 24 horas se lanza una alerta de fraude y se bloquea a esa
     persona hasta que pase la ventana. La alerta no lleva la opción, el NIF,
     el nullifier ni la IP.
 - **Sin resolver:**
-  - **Llamada directa al contrato:** `votarConPruebaZk` no tiene
-    restricción de remitente. Quien tenga una prueba válida puede votar por
-    ZK aunque la web no ofrezca esa vía. Se cierra fijando la vía de cada
-    propuesta en el contrato (paso 2 del ADR 0021).
   - **Dos documentos en la vía ZK:** el identificador de ZKPassport es por
-    documento. Con `VIAS_HABILITADAS=zk`, quien tenga DNIe y pasaporte puede
-    votar dos veces. Por eso no es el valor por defecto.
+    documento. En una propuesta ZK, quien tenga DNIe y pasaporte puede votar
+    dos veces. Por eso la vía por defecto es la de certificado.
   - **Intentos ZK agregados:** si el contrato rechaza un voto ZK, el
     servidor no ve el identificador y cuenta los intentos por propuesta,
     no por persona.

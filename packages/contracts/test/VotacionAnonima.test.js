@@ -3,6 +3,7 @@ const { ethers } = require("hardhat");
 const { obtenerConfiguracionDespliegue } = require("../scripts/deployment-config");
 
 const DOMINIO_ZK = "demo.zkpassport.id";
+const VIA = { Certificado: 0, Zk: 1 };
 
 function paramsVacios(overrides = {}) {
   return {
@@ -86,7 +87,7 @@ describe("VotacionAnonima", function () {
     });
   });
 
-  async function desplegar({ devModeZk = true } = {}) {
+  async function desplegar({ devModeZk = true, via = VIA.Certificado } = {}) {
     const [relayer, atacante] = await ethers.getSigners();
 
     const MockRootVerifier = await ethers.getContractFactory("MockRootVerifier");
@@ -102,7 +103,7 @@ describe("VotacionAnonima", function () {
     const bloque = await ethers.provider.getBlock("latest");
     const apertura = bloque.timestamp;
     const cierre = apertura + 3600;
-    await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre)).wait();
+    await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre, via)).wait();
 
     return { contrato, mock, propuestaId, propuestaIdTexto, apertura, cierre, relayer, atacante };
   }
@@ -125,7 +126,7 @@ describe("VotacionAnonima", function () {
 
     expect(await contrato.relayer()).to.equal(relayer.address);
     await expect(
-      contrato.connect(atacante).crearPropuesta(propuestaId, ethers.id("otra"), 1, 2)
+      contrato.connect(atacante).crearPropuesta(propuestaId, ethers.id("otra"), 1, 2, VIA.Certificado)
     ).to.be.revertedWithCustomError(contrato, "SoloRelayer");
   });
 
@@ -172,7 +173,7 @@ describe("VotacionAnonima", function () {
       const bloque = await ethers.provider.getBlock("latest");
       const apertura = bloque.timestamp + 3600;
       const cierre = apertura + 3600;
-      await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre)).wait();
+      await (await contrato.crearPropuesta(propuestaId, ethers.id("contenido"), apertura, cierre, VIA.Certificado)).wait();
       mock; // solo para reusar el contrato ya desplegado
 
       await expect(contrato.votarManual(propuestaId, ethers.id("documento-1"), 0, "0x")).to.be.revertedWith(
@@ -217,7 +218,7 @@ describe("VotacionAnonima", function () {
     const paramsProduccion = () => paramsVacios({ serviceConfig: { ...paramsVacios().serviceConfig, devMode: false } });
 
     it("acepta una prueba valida y usa el identificador unico como nullifier", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       const bloque = await ethers.provider.getBlock("latest");
       const identificador = await prepararMockValido(mock, bloque.timestamp);
 
@@ -232,7 +233,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba que el verificador marca como invalida", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       const bloque = await ethers.provider.getBlock("latest");
       await (await mock.fijarResultado(false, ethers.id("x"), bloque.timestamp, true, 18, "ESP")).wait();
 
@@ -243,7 +244,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba con el ambito (scope) incorrecto", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       const bloque = await ethers.provider.getBlock("latest");
       await (await mock.fijarResultado(true, ethers.id("x"), bloque.timestamp, false, 18, "ESP")).wait();
 
@@ -254,7 +255,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba caducada", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       await (await mock.fijarResultado(true, ethers.id("x"), 1, true, 18, "ESP")).wait();
 
       await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).to.be.revertedWithCustomError(
@@ -264,7 +265,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba que no llega a la edad minima", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       const bloque = await ethers.provider.getBlock("latest");
       await (await mock.fijarResultado(true, ethers.id("x"), bloque.timestamp, true, 16, "ESP")).wait();
 
@@ -275,7 +276,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba de otra nacionalidad", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar({ devModeZk: false });
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk, devModeZk: false });
       const bloque = await ethers.provider.getBlock("latest");
       await (await mock.fijarResultado(true, ethers.id("x"), bloque.timestamp, true, 18, "FRA")).wait();
 
@@ -286,7 +287,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("el contrato de demostración (devModeZk) acepta pasaportes simulados de otra nacionalidad", async function () {
-      const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar({ devModeZk: true });
+      const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar({ via: VIA.Zk, devModeZk: true });
       const bloque = await ethers.provider.getBlock("latest");
       const identificador = await prepararMockValido(mock, bloque.timestamp);
       await (await mock.fijarResultado(true, identificador, bloque.timestamp, true, 18, "ZKR")).wait();
@@ -297,7 +298,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza una prueba en modo desarrollo si el contrato no lo permite", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar({ devModeZk: false });
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk, devModeZk: false });
       const bloque = await ethers.provider.getBlock("latest");
       await prepararMockValido(mock, bloque.timestamp);
 
@@ -308,7 +309,7 @@ describe("VotacionAnonima", function () {
     });
 
     it("rechaza un segundo voto con el mismo identificador unico", async function () {
-      const { contrato, mock, propuestaIdTexto } = await desplegar();
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
       const bloque = await ethers.provider.getBlock("latest");
       await prepararMockValido(mock, bloque.timestamp);
       const params = paramsProduccion();
@@ -324,14 +325,14 @@ describe("VotacionAnonima", function () {
 
     describe("R-01: la opción va vinculada a la prueba", function () {
       it("datosVinculados sigue el formato civora-voto:<propuesta>:<opción>", async function () {
-        const { contrato } = await desplegar();
+        const { contrato } = await desplegar({ via: VIA.Zk });
         expect(await contrato.datosVinculados("p-1", 0)).to.equal("civora-voto:p-1:a_favor");
         expect(await contrato.datosVinculados("p-1", 1)).to.equal("civora-voto:p-1:en_contra");
         expect(await contrato.datosVinculados("p-1", 2)).to.equal("civora-voto:p-1:abstencion");
       });
 
       it("rechaza la misma prueba reenviada con otra opción (front-running)", async function () {
-        const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar();
+        const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
         const bloque = await ethers.provider.getBlock("latest");
         const identificador = await prepararMockValido(mock, bloque.timestamp, "civora-voto:propuesta-demo:a_favor");
 
@@ -348,7 +349,7 @@ describe("VotacionAnonima", function () {
       });
 
       it("rechaza una prueba sin datos vinculados o vinculada a otra propuesta", async function () {
-        const { contrato, mock, propuestaIdTexto } = await desplegar();
+        const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Zk });
         const bloque = await ethers.provider.getBlock("latest");
         for (const datos of ["", "civora-voto:otra-propuesta:a_favor", "civora-voto:propuesta-demo:a_favor:extra"]) {
           await prepararMockValido(mock, bloque.timestamp, datos);
@@ -360,53 +361,101 @@ describe("VotacionAnonima", function () {
     });
   });
 
-  // Hallazgo A-04. Estos tests reproducen el límite del contrato actual: solo
-  // rechaza un nullifier repetido, y cada vía calcula el suyo, así que nada
-  // en la cadena relaciona dos votos de la misma persona. La web lo cierra
-  // con VIAS_HABILITADAS (una sola vía); el contrato, con la vía por
-  // propuesta (paso 2 del spike, ROADMAP). Cuando llegue, estos tests pasan
-  // a comprobar el rechazo.
-  describe("voto cruzado (A-04): límite del contrato actual", function () {
-    async function votarPorLasDosVias() {
-      const { contrato, mock, propuestaId, propuestaIdTexto } = await desplegar();
+  // Hallazgo A-04 (ADR 0021). Cada vía calcula su nullifier y nada los
+  // relaciona: con las dos vías abiertas, la misma persona votaba dos veces
+  // (certificado + ZK). Ahora cada propuesta admite una sola vía, fijada al
+  // crearla, y el contrato rechaza la otra aunque se le llame directamente.
+  describe("voto cruzado (A-04): una sola vía por propuesta", function () {
+    async function prepararPersona(via) {
+      const desplegado = await desplegar({ via });
       const bloque = await ethers.provider.getBlock("latest");
       // Misma persona: nullifier de certificado (HMAC del DNI en el servidor)
       // e identificador único de ZKPassport (de su documento).
       const nullifierCertificado = ethers.id("hmac-del-dni-de-la-persona");
-      await (await mock.fijarResultado(true, ethers.id("documento-de-la-persona"), bloque.timestamp, true, 18, "ESP")).wait();
-      await (await mock.fijarDatosVinculados("civora-voto:propuesta-demo:a_favor")).wait();
-      return { contrato, mock, propuestaId, propuestaIdTexto, nullifierCertificado, marca: bloque.timestamp };
+      await (await desplegado.mock.fijarResultado(true, ethers.id("documento-de-la-persona"), bloque.timestamp, true, 18, "ESP")).wait();
+      await (await desplegado.mock.fijarDatosVinculados("civora-voto:propuesta-demo:a_favor")).wait();
+      return { ...desplegado, nullifierCertificado, marca: bloque.timestamp };
     }
 
-    it("acepta el voto de certificado y el ZK de la misma persona (dos votos)", async function () {
-      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await votarPorLasDosVias();
+    it("guarda la vía al crear la propuesta y la emite en el evento", async function () {
+      const { contrato, propuestaId } = await desplegar({ via: VIA.Zk });
+      expect((await contrato.propuestas(propuestaId)).via).to.equal(BigInt(VIA.Zk));
+
+      const otra = ethers.id("otra-propuesta");
+      const bloque = await ethers.provider.getBlock("latest");
+      await expect(contrato.crearPropuesta(otra, "h", bloque.timestamp, bloque.timestamp + 60, VIA.Certificado))
+        .to.emit(contrato, "PropuestaCreada")
+        .withArgs(otra, "h", bloque.timestamp, bloque.timestamp + 60, VIA.Certificado);
+    });
+
+    it("rechaza una vía que no existe al crear la propuesta", async function () {
+      const { contrato } = await desplegar();
+      await expect(contrato.crearPropuesta(ethers.id("x"), "h", 1, 2, 2)).to.be.reverted;
+    });
+
+    it("propuesta de certificado: rechaza el voto ZK de la misma persona", async function () {
+      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await prepararPersona(VIA.Certificado);
 
       await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
-      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).to.be.revertedWithCustomError(
+        contrato,
+        "ViaNoPermitida"
+      );
 
       const [aFavor, enContra, abstenciones] = await contrato.resultados(propuestaId);
-      expect(aFavor + enContra + abstenciones).to.equal(2n);
+      expect(aFavor + enContra + abstenciones).to.equal(1n);
     });
 
-    it("acepta dos votos ZK de la misma persona con dos documentos (DNIe y pasaporte)", async function () {
-      const { contrato, mock, propuestaId, propuestaIdTexto, marca } = await votarPorLasDosVias();
+    it("propuesta ZK: rechaza el voto de certificado de la misma persona", async function () {
+      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await prepararPersona(VIA.Zk);
 
       await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
-      // El identificador único de ZKPassport es por documento, no por persona.
-      await (await mock.fijarResultado(true, ethers.id("pasaporte-de-la-persona"), marca, true, 18, "ESP")).wait();
-      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      await expect(contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).to.be.revertedWithCustomError(
+        contrato,
+        "ViaNoPermitida"
+      );
 
       const [aFavor] = await contrato.resultados(propuestaId);
-      expect(aFavor).to.equal(2n);
+      expect(aFavor).to.equal(1n);
     });
 
-    it("sí rechaza el mismo certificado dos veces: el DNIe y el de la FNMT dan el mismo NIF", async function () {
-      const { contrato, propuestaId, nullifierCertificado } = await votarPorLasDosVias();
+    it("comprueba la vía antes que la prueba: una llamada directa no llega a verificarla", async function () {
+      const { contrato, mock, propuestaIdTexto } = await desplegar({ via: VIA.Certificado });
+      await (await mock.fijarResultado(false, ethers.id("x"), 1, false, 0, "XXX")).wait();
+      await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).to.be.revertedWithCustomError(
+        contrato,
+        "ViaNoPermitida"
+      );
+    });
+
+    it("en una propuesta inexistente sigue diciendo que no existe", async function () {
+      const { contrato } = await desplegar();
+      await expect(contrato.votarManual(ethers.id("no-existe"), ethers.id("n"), 0, "0x")).to.be.revertedWith(
+        "Propuesta inexistente"
+      );
+      await expect(contrato.votarConPruebaZk("no-existe", 0, paramsVacios())).to.be.revertedWith("Propuesta inexistente");
+    });
+
+    it("propuesta de certificado: el mismo NIF (DNIe o FNMT) solo vota una vez", async function () {
+      const { contrato, propuestaId, nullifierCertificado } = await prepararPersona(VIA.Certificado);
 
       await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
       await expect(contrato.votarManual(propuestaId, nullifierCertificado, 1, "0x")).to.be.revertedWith(
         "Este documento ya ha votado en esta propuesta"
       );
+    });
+
+    // Límite que sigue abierto (ADR 0021): el identificador de ZKPassport es
+    // por documento. Por eso la vía por defecto es la de certificado.
+    it("límite documentado: en una propuesta ZK, DNIe y pasaporte de la misma persona dan dos votos", async function () {
+      const { contrato, mock, propuestaId, propuestaIdTexto, marca } = await prepararPersona(VIA.Zk);
+
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      await (await mock.fijarResultado(true, ethers.id("pasaporte-de-la-persona"), marca, true, 18, "ESP")).wait();
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+
+      const [aFavor] = await contrato.resultados(propuestaId);
+      expect(aFavor).to.equal(2n);
     });
   });
 });

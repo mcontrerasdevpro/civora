@@ -99,11 +99,18 @@ export function nullifierABytes32(nullifierHex: string): string {
   return conPrefijo;
 }
 
+/** Índices del enum Via de VotacionAnonima.sol (ADR 0021). */
+const INDICE_VIA = { certificado: 0, zk: 1 } as const;
+
+/** Selector de ViaNoPermitida(): el contrato rechaza la vía de esa propuesta. */
+export const SELECTOR_VIA_NO_PERMITIDA = ethersId("ViaNoPermitida()").slice(0, 10);
+
 export async function crearPropuestaOnChain(params: {
   propuestaId: string;
   contenidoHash: string;
   fechaApertura: string;
   fechaCierre: string;
+  via: keyof typeof INDICE_VIA;
 }): Promise<{ txHash: string }> {
   const contrato = contratoEscritura();
   const apertura = Math.floor(new Date(params.fechaApertura).getTime() / 1000);
@@ -112,7 +119,8 @@ export async function crearPropuestaOnChain(params: {
     propuestaIdBytes32(params.propuestaId),
     params.contenidoHash,
     apertura,
-    cierre
+    cierre,
+    INDICE_VIA[params.via]
   );
   await tx.wait();
   return { txHash: tx.hash };

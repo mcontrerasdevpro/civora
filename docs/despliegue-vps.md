@@ -97,9 +97,12 @@ Postgres corre en el mismo proyecto como servicio `civora-db`
 
 1. **+ Service → Postgres**, nombre `civora-db`, base de datos `civora`,
    contraseña generada por Easypanel. **Sin puerto externo.**
-2. Copia la *Internal Connection URL* (host `nexuraia_civora-db`, puerto
-   `5432`), añade `?sslmode=disable` y ponla en `DATABASE_URL` del servicio
-   `civora`. Sin ese parámetro, la web intenta TLS y la conexión falla.
+2. Copia la *Internal Connection URL* (host `<proyecto>_civora-db`; en
+   este VPS, `databases_civora-db`, puerto `5432`), añade `?sslmode=disable`
+   y ponla en `DATABASE_URL` del servicio `civora`. Sin ese parámetro, la web
+   intenta TLS y la conexión falla. Sin `DATABASE_URL`, o con otro host,
+   `/api/salud` sigue en 200 pero `/api/propuestas` da 500: compruébalo
+   tras cada cambio de variables.
 3. Redespliega `civora`. La tabla `propuestas` se crea en la primera
    petición; `/propuestas` debe salir vacía.
 

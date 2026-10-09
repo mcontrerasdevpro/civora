@@ -19,7 +19,11 @@ const CuerpoCreacionSchema = z.object({
 });
 
 export async function GET() {
-  return NextResponse.json({ propuestas: await listarPropuestas() });
+  // Vías con las que se puede crear una propuesta (el formulario solo ofrece estas).
+  return NextResponse.json({
+    propuestas: await listarPropuestas(),
+    viasHabilitadas: viasHabilitadas(process.env.VIAS_HABILITADAS),
+  });
 }
 
 export async function POST(request: Request) {

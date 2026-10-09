@@ -120,7 +120,14 @@ export function asegurarEsquema(): Promise<void> {
       .then(() => query("ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS contrato TEXT"))
       // Vía fijada en el contrato al crearla (ADR 0021); null en las anteriores.
       .then(() => query("ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS via TEXT"))
-      .then(() => undefined);
+      .then(() => undefined)
+      // Sin esto, un fallo pasajero (p. ej., dos contenedores ejecutando el
+      // mismo ALTER a la vez durante un despliegue) dejaba la promesa
+      // rechazada y todas las consultas fallaban hasta reiniciar.
+      .catch((error) => {
+        esquemaListo = null;
+        throw error;
+      });
   }
   return esquemaListo;
 }

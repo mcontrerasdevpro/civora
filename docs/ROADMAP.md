@@ -99,6 +99,7 @@ la vez sin publicar el NIF ni hashes directos del documento
 | ADR con la decisión y sus límites | hecho: [ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md) |
 | **Paso 1:** una sola vía por votación en la web (`VIAS_HABILITADAS`, solo certificado por defecto) y alertas de fraude por intentos repetidos | hecho (rama `spike/voto-cruzado`) |
 | **Paso 2:** vía permitida fijada en cada propuesta en el contrato; `votarConPruebaZk` y `votarManual` rechazan la otra vía; los tests del voto cruzado pasan a comprobar el rechazo; redespliegue en Sepolia | hecho (rama `feat/via-en-contrato`): contrato `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8`, bloque 11876757 |
+| **Alertas de fraude por n8n** (aplazado): el flujo «[DEV] Civora — Alertas de fraude» ya existe en n8n, desactivado (Telegram y, si falla, correo). Falta: credencial Header Auth (`Authorization: Bearer <token>`) en el webhook, `ALERTA_FRAUDE_WEBHOOK_URL` y `ALERTA_FRAUDE_WEBHOOK_TOKEN` en Easypanel, activarlo y exportarlo a `docs/n8n`. Hasta entonces las alertas solo quedan en el registro del servidor; el bloqueo por intentos repetidos funciona igual | pendiente |
 
 **Dependencias:** ninguna. No despliega cambios de identidad: el resultado
 alimenta la Fase 1.

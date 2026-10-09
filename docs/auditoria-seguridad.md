@@ -264,6 +264,15 @@ Verificación:
 - Typecheck y build.
 - 122 E2E (nuevo: propuesta sin vía habilitada, con axe).
 
+## Esquema de propuestas sin reintento (2026-10-09, rama `fix/esquema-reintento`)
+
+- **Incidente:** tras desplegar el PR #34, todas las rutas que leen propuestas devolvían 500 (`/api/propuestas`, `/api/propuestas/<id>`, incluso con un id inexistente), con `/api/salud` en 200.
+- **Causa probable:** `asegurarEsquema()` guarda la promesa que crea la tabla y añade columnas, pero no la descartaba si fallaba. Durante el despliegue conviven el contenedor anterior y el nuevo. Si los dos ejecutan a la vez `ALTER TABLE propuestas ADD COLUMN IF NOT EXISTS via`, Postgres puede rechazar uno, y ese proceso fallaba en cada consulta hasta reiniciarse.
+- **Corrección:** la promesa vuelve a `null` si falla, como ya hacían `asegurarEsquemaEventos` y la tabla de intentos. `test/esquema.test.mjs` exige ese reintento en todas las promesas de esquema cacheadas: falla sin el arreglo y pasa con él.
+- **Mitigación inmediata:** reiniciar el servicio `civora`.
+
+Verificación: 32 tests de contratos, 94 de web, typecheck, build y 122 E2E.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

@@ -1,4 +1,4 @@
-import { Pool, type QueryResultRow } from "pg";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 /**
  * Conexion a Postgres. En la demo es el servicio civora-db del VPS, con
@@ -29,6 +29,66 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
 ): Promise<T[]> {
   const resultado = await obtenerPool().query<T>(texto, valores);
   return resultado.rows;
+}
+
+/**
+ * Ejecuta `fn` dentro de una transacción: si lanza, se deshace todo.
+ */
+export async function enTransaccion<T>(fn: (cliente: PoolClient) => Promise<T>): Promise<T> {
+  const cliente = await obtenerPool().connect();
+  try {
+    await cliente.query("BEGIN");
+    const resultado = await fn(cliente);
+    await cliente.query("COMMIT");
+    return resultado;
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    throw error;
+  } finally {
+    cliente.release();
+  }
+}
+
+let esquemaEventosListo: Promise<void> | null = null;
+
+/**
+ * Tablas del índice de eventos (ver ADR 0020): copia de los eventos públicos
+ * VotoEmitido del contrato y último bloque procesado por contrato. Son una
+ * caché de la cadena: se pueden borrar y se reconstruyen solas.
+ */
+export function asegurarEsquemaEventos(): Promise<void> {
+  if (!esquemaEventosListo) {
+    esquemaEventosListo = query(`
+      CREATE TABLE IF NOT EXISTS eventos_voto (
+        contrato TEXT NOT NULL,
+        tx_hash TEXT NOT NULL,
+        indice_log INTEGER NOT NULL,
+        bloque BIGINT NOT NULL,
+        propuesta_id TEXT NOT NULL,
+        nullifier TEXT NOT NULL,
+        opcion SMALLINT NOT NULL,
+        selector TEXT,
+        PRIMARY KEY (contrato, tx_hash, indice_log)
+      )
+    `)
+      .then(() => query("CREATE INDEX IF NOT EXISTS eventos_voto_propuesta ON eventos_voto (contrato, propuesta_id)"))
+      .then(() =>
+        query(`
+          CREATE TABLE IF NOT EXISTS indice_eventos (
+            contrato TEXT PRIMARY KEY,
+            ultimo_bloque BIGINT NOT NULL,
+            ultimo_timestamp BIGINT NOT NULL DEFAULT 0,
+            actualizado_en TIMESTAMPTZ NOT NULL DEFAULT now()
+          )
+        `)
+      )
+      .then(() => undefined)
+      .catch((error) => {
+        esquemaEventosListo = null;
+        throw error;
+      });
+  }
+  return esquemaEventosListo;
 }
 
 let esquemaListo: Promise<void> | null = null;

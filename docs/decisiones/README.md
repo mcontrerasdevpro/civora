@@ -24,6 +24,8 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0016](0016-propuestas-registro-ideas-multifirma-ipfs.md) | Propuestas con registro de ideas, multifirma e IPFS | aceptada (diseño; sin implementar) |
 | [0017](0017-servicios-por-frontera-de-confianza.md) | Separación en servicios por frontera de confianza, en monorepo | aceptada (diseño; sin implementar) |
 | [0018](0018-licencia-agpl.md) | Licencia AGPL-3.0-or-later | aceptada |
+| [0019](0019-ia-punto-asistido-auditoria.md) | IA, punto asistido y auditoría | aceptada (diseño; sin implementar) |
+| [0020](0020-indice-incremental-eventos.md) | Índice incremental de eventos en civora-db | aceptada |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

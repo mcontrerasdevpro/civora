@@ -160,6 +160,43 @@ Tarea solo de diseño: [ADR 0016](decisiones/0016-propuestas-registro-ideas-mult
 
 Verificación: documentación, README, `LICENSE`, campo `license` y cabeceras SPDX (solo comentarios, sin cambios de lógica). Enlaces y anclas comprobados con un script; 24 tests de contratos, 60 de web, typecheck, build e instalación con lockfile congelado en verde.
 
+## Resultados con gráfica y verificación (2026-10-07, rama `resultados-graficos`)
+
+- **Ocultación hasta el cierre (M-01) intacta:**
+  - `/api/propuestas/<id>` sigue sin devolver resultados antes del cierre.
+  - La nueva ruta `/api/propuestas/<id>/verificacion` responde 423 antes del cierre, y la página no la pide hasta tener los resultados.
+  - El E2E «antes del cierre» comprueba que no aparecen gráfica, tabla, porcentajes ni verificación, y que no se pide la ruta.
+- **Recuento desde eventos:**
+  - El servidor rehace el recuento con los eventos `VotoEmitido` del rango de bloques de la votación (búsqueda binaria por timestamp) y deduce la vía de cada voto por el selector de su transacción (`votarManual` o `votarConPruebaZk`). Solo usa datos públicos de la cadena.
+  - Un nullifier repetido cuenta una vez y se informa; una opción desconocida es un error, no se ignora (tests).
+  - Tras el cierre el resultado es definitivo y se guarda en memoria; un fallo se reintenta al cabo de 60 s.
+- **Proveedor RPC:**
+  - El plan gratuito de Alchemy limita `eth_getLogs` a 10 bloques. Las consultas se trocean (`RPC_MAX_BLOQUES_LOGS`) con un tope por propuesta (`RPC_MAX_CONSULTAS_LOGS`).
+  - Por encima del tope, la web lo explica y remite a los pasos para rehacer el recuento por cuenta propia, sin bloquear la página.
+  - Los errores se registran solo con `registrarError` (código corto), nunca con la consulta.
+- **CSP sin cambios:** gráfica en SVG propio, sin librerías ni scripts inline. Los enlaces al explorador son navegación (`EXPLORADOR_URL`, solo `https`, con `rel="noopener noreferrer"`), sin conexiones nuevas desde el navegador. El E2E de CSP de `/resultados/<id>` sigue en verde.
+- **Accesibilidad (WCAG 2.1 AA):**
+  - Cada opción se distingue por texto, color y trama (lisa, rayas, puntos).
+  - Los colores de las barras tienen contraste ≥ 3:1 y un borde oscuro.
+  - Las cifras son texto, y hay una tabla equivalente con `caption`, `scope` y total.
+  - La verificación es plegable con teclado.
+  - En modo sencillo, la letra y las barras son más grandes, no hay jerga y la verificación queda plegada.
+  - Axe sin infracciones antes y después del cierre, en modo normal y sencillo, a 1280 y 375 px. Revisado a simple vista en ambos anchos.
+- **Diseño ([ADR 0019](decisiones/0019-ia-punto-asistido-auditoria.md)):**
+  - Sin canal de papel independiente.
+  - Quiosco con papeleta como pista de auditoría y auditorías de limitación de riesgo.
+  - Envío por lotes para evitar la correlación por hora y techo por censo en cadena.
+  - La IA solo avisa, sobre datos públicos agregados. Modelo de amenazas actualizado.
+
+- **Índice incremental de eventos ([ADR 0020](decisiones/0020-indice-incremental-eventos.md)):**
+  - Sustituye la lectura directa de la cadena en cada consulta, inviable con el límite de 10 bloques del plan gratuito de Alchemy en votaciones de hasta 90 días.
+  - Solo indexa bloques finales. Cada rango se guarda en una transacción junto con su avance (que no retrocede).
+  - El recuento del índice se compara siempre, en el servidor, con `resultados()` del contrato; una discrepancia (o un nullifier repetido) se devuelve con las dos cifras y la web la muestra también fuera de la sección plegada.
+  - `civora-db` guarda ahora nullifier y opción de cada voto: los mismos datos públicos de la cadena, ninguno identificativo. Los registros siguen sin nullifiers.
+  - Probado de extremo a extremo en local: nodo Hardhat, Postgres de prueba y tres votos. El recuento coincide; al borrar un evento de la caché se muestra la discrepancia, y tras `TRUNCATE` el índice se reconstruye solo y vuelve a coincidir.
+
+Verificación: 24 tests de contratos, 75 de web (15 nuevos: porcentajes, redondeo, recuento desde eventos, búsqueda de bloques, rangos del indexador y rutas anidadas), typecheck, build y E2E de resultados (índice completo, en curso y con discrepancia, también en modo sencillo) en los dos anchos.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

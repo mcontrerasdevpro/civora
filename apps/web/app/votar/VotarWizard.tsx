@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { OpcionVoto, Propuesta } from "@civora/shared-types";
 import { MetodoSelector, type MetodoIdentificacion } from "./MetodoSelector";
+import type { ViaVoto } from "../../lib/vias-voto.mjs";
 import { IdentificacionDnie, PruebaZk } from "./IdentificacionDnie";
 import { IdentificacionCertificado, type DatosCertificado } from "./IdentificacionCertificado";
 import type { Identificacion } from "./identificacion";
@@ -50,7 +51,7 @@ const PASOS: { id: Paso; normal: string; sencillo: string }[] = [
 
 const ERROR_GENERICO = "No se ha podido guardar su voto. Inténtelo de nuevo o pida ayuda.";
 
-export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
+export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: readonly ViaVoto[] }) {
   const { sencillo } = useModoSencillo();
   const [paso, setPaso] = useState<Paso>("identificacion");
   const [metodo, setMetodo] = useState<MetodoIdentificacion | null>(null);
@@ -226,7 +227,9 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
   const textoEscuchar: Record<Paso, string> = {
     identificacion: metodo
       ? "Siga las instrucciones de la pantalla para identificarse."
-      : `${propuesta.pregunta}. Primero tiene que identificarse. Elija cómo hacerlo: con su DNI o pasaporte y el móvil, o con su certificado digital.`,
+      : vias.length > 1
+        ? `${propuesta.pregunta}. Primero tiene que identificarse. Elija cómo hacerlo: con su DNI o pasaporte y el móvil, o con su certificado digital.`
+        : `${propuesta.pregunta}. Primero tiene que identificarse ${vias.includes("zk") ? "con su DNI o pasaporte y el móvil" : "con su certificado digital"}. Solo se puede votar una vez.`,
     voto: `${propuesta.pregunta}. Elija una opción: ${opciones}. Después pulse Continuar.`,
     confirmacion: "",
     recibo: "Su voto se ha guardado. Guarde el código de recibo: podrá comprobar su voto cuando termine la votación.",
@@ -258,7 +261,7 @@ export function VotarWizard({ propuesta }: { propuesta: Propuesta }) {
         </div>
       )}
 
-      {paso === "identificacion" && !metodo && <MetodoSelector onElegir={setMetodo} />}
+      {paso === "identificacion" && !metodo && <MetodoSelector vias={vias} onElegir={setMetodo} />}
 
       {paso === "identificacion" && metodo === "dnie" && (
         <IdentificacionDnie

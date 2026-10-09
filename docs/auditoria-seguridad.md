@@ -219,6 +219,34 @@ Verificación: 24 tests de contratos, 67 de web (7 nuevos), typecheck, build y 9
 
 Verificación: test nuevo con el bloque real, la dirección, hexadecimal, notación científica, espacios, signos, decimales y un valor por encima de `MAX_SAFE_INTEGER`. Tests de contratos y de web, typecheck, build y E2E en verde.
 
+## Voto cruzado y alertas de fraude (2026-10-09, rama `spike/voto-cruzado`)
+
+- **Incidente:** en la propuesta `a8fff8cc-…` hay dos votos de la misma persona, uno ZK y otro de certificado. Comprobado en el contrato `0xe5B8…1Ed6`: `resultados()` devuelve 2, y el nullifier del recibo de certificado consta como usado. No se puede deshacer.
+- **Causa ([A-04](#a-04--alto--una-misma-persona-puede-usar-vías-con-espacios-de-nullifier-distintos)):** cada vía calcula su nullifier y nada los relaciona. El identificador de ZKPassport es por documento, y lo que ZKPassport puede revelar no incluye el NIF (documentación de ZKPassport, consultada con Context7).
+- **Reproducción:** tres tests nuevos del contrato:
+  - Certificado + ZK: dos votos aceptados.
+  - DNIe + pasaporte por ZK: dos votos aceptados.
+  - El mismo NIF por certificado: rechazado.
+- **Medida ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)):**
+  - `VIAS_HABILITADAS`, solo `certificado` por defecto. Un valor desconocido no abre ninguna vía. La página solo ofrece las vías que declara el servidor (si no declara ninguna, solo certificado) y las rutas rechazan las demás con 403.
+  - Alertas de fraude:
+    - Cada intento repetido o por una vía no permitida se cuenta en `intentos_repetidos`, por propuesta, seudónimo y motivo.
+    - Al tercero en 24 horas se registra un aviso, se envía como mucho una alerta al webhook (solo `https`) y se responde 429 hasta que pase la ventana.
+    - El seudónimo es un HMAC con una clave derivada del secreto del nullifier: no coincide con el nullifier publicado y no permite buscar la opción.
+    - La alerta lleva solo campos fijos (test). Ni la tabla, ni el registro, ni el webhook guardan la opción, el NIF, el nullifier ni la IP.
+    - Un fallo de la base de datos o del webhook no cambia la respuesta del voto.
+- **Sin resolver:**
+  - La llamada directa a `votarConPruebaZk`, sin restricción de remitente (paso 2 del ADR 0021, con redespliegue).
+  - Dos documentos con `VIAS_HABILITADAS=zk`.
+  - Los intentos ZK rechazados se agregan por propuesta.
+
+Verificación:
+- 27 tests de contratos (3 nuevos).
+- 91 de web (8 nuevos en `voto-unico.test.mjs`).
+- Typecheck y build.
+- 120 E2E (12 nuevos en `voto-unico.spec.ts`: una vía, servidor sin vías, bloqueo 429 y axe, a 1280 y 375 px).
+- SQL de `intentos_repetidos` ejecutado en Postgres (PGlite): contador por persona y motivo, una alerta por ventana, bloqueo al llegar al umbral, reinicio fuera de la ventana y una sola alerta con dos marcas simultáneas.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.
@@ -287,6 +315,8 @@ No se encontró árbol Merkle, raíz de censo ni verificador de pertenencia en e
 ### A-04 · Alto — Una misma persona puede usar vías con espacios de nullifier distintos
 
 La vía manual de la aplicación se retiró en Fase 0. Sigue sin existir un identificador común verificable entre certificado y ZK; el contrato compara únicamente el nullifier exacto y no vincula métodos. No hay evidencia en este repositorio para afirmar que el SDK de ZKPassport equipare siempre un DNI y un pasaporte de la misma persona.
+
+**Estado (2026-10-09): reproducido y mitigado en la web, abierto en el contrato.** Una persona votó dos veces en producción, con ZKPassport y con certificado. La documentación de ZKPassport confirma que su identificador único es por documento, así que un DNI y un pasaporte de la misma persona dan dos. Medida: una sola vía por votación, por defecto certificado, y alertas por intentos repetidos ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)). Queda abierta la llamada directa a `votarConPruebaZk`, que se cierra con la vía por propuesta en el contrato.
 
 **Arreglo propuesto:** un único mecanismo de deduplicación verificable y común a todos los medios de acreditación, ligado a una credencial/censo y a la elección. Añadir pruebas de integración que prueben explícitamente los intentos cruzados DNI, pasaporte, certificado y renovación.
 

@@ -140,6 +140,11 @@ arg) o al ejecutarla; las de build obligan a reconstruir tras cambiarlas.
 | `INDEXADOR_INTERVALO_S` | no | `30` | ejecución | **nueva**: segundos entre ciclos cuando el índice está al día |
 | `INDEXADOR_CONSULTAS_POR_CICLO` | no | `100` | ejecución | **nueva**: consultas `eth_getLogs` por ciclo |
 | `INDEXADOR_PAUSA_MS` | no | `200` | ejecución | **nueva**: pausa entre consultas, para no superar el ritmo del proveedor |
+| `VIAS_HABILITADAS` | no | `certificado` (por defecto) | ejecución | **nueva** ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)): vías con las que se admite votar. `certificado,zk` vuelve a permitir el voto cruzado; un valor desconocido equivale a `certificado` |
+| `ALERTA_FRAUDE_UMBRAL` | no | `3` (mínimo 2) | ejecución | **nueva**: intentos repetidos que lanzan la alerta y bloquean a esa persona |
+| `ALERTA_FRAUDE_VENTANA_HORAS` | no | `24` | ejecución | **nueva**: ventana en la que se cuentan los intentos |
+| `ALERTA_FRAUDE_WEBHOOK_URL` | no | URL `https` de un webhook (p. ej. de n8n); sin ella, la alerta solo queda en el registro | ejecución | **nueva**: recibe la alerta, sin opción, NIF, nullifier ni IP |
+| `ALERTA_FRAUDE_WEBHOOK_TOKEN` | no | cadena aleatoria larga | ejecución | **nueva**: se envía como `Authorization: Bearer` al webhook |
 
 `NODE_ENV`, `PORT` y `HOSTNAME` los fija la imagen; no los definas. **Ningún
 secreto debe declararse como `ARG` en el Dockerfile**: Easypanel pasa todas

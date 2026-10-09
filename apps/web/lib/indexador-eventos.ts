@@ -1,7 +1,7 @@
 import type { EventLog, Provider } from "ethers";
 import { contratoLectura, direccionContrato } from "./contrato";
 import { asegurarEsquemaEventos, enTransaccion, query } from "./db";
-import { primerBloqueQueCumple, rangosDelCiclo } from "./recuento-eventos.mjs";
+import { enteroDeEntorno, primerBloqueQueCumple, rangosDelCiclo } from "./recuento-eventos.mjs";
 import { registrarAviso, registrarError } from "./registro.mjs";
 
 /**
@@ -18,16 +18,16 @@ import { registrarAviso, registrarError } from "./registro.mjs";
  *   INDEXADOR_CONSULTAS_POR_CICLO  consultas eth_getLogs por ciclo (100)
  *   INDEXADOR_PAUSA_MS             pausa entre consultas (200)
  *   RPC_MAX_BLOQUES_LOGS           bloques por consulta (10, plan gratuito de Alchemy)
- *   CONTRATO_BLOQUE_DESPLIEGUE     bloque desde el que empezar; si falta, se
- *                                  busca el primero con código en la dirección
+ *   CONTRATO_BLOQUE_DESPLIEGUE     bloque desde el que empezar, en decimal; si
+ *                                  falta o no es válido, se busca el primero
+ *                                  con código en la dirección
  */
 
 const MARGEN_SIN_FINALIZED = 64;
 const ESPERA_TRAS_ERROR_MS = 5 * 60_000;
 
 function entero(valor: string | undefined, porDefecto: number): number {
-  const n = Number(valor);
-  return Number.isInteger(n) && n > 0 ? n : porDefecto;
+  return enteroDeEntorno(valor, 1) ?? porDefecto;
 }
 
 const esperar = (ms: number) => new Promise((resolver) => setTimeout(resolver, ms));
@@ -44,8 +44,11 @@ async function bloqueObjetivo(proveedor: Provider): Promise<number> {
 }
 
 async function bloqueInicial(proveedor: Provider, contrato: string, objetivo: number): Promise<number> {
-  const configurado = Number(process.env.CONTRATO_BLOQUE_DESPLIEGUE);
-  if (Number.isInteger(configurado) && configurado >= 0) return configurado;
+  const valor = process.env.CONTRATO_BLOQUE_DESPLIEGUE;
+  const configurado = enteroDeEntorno(valor, 0);
+  if (configurado !== null) return configurado;
+  // Un valor no válido (p. ej., la dirección del contrato) se ignora y se avisa.
+  if (valor) registrarAviso("CONTRATO_BLOQUE_DESPLIEGUE", "no es un numero de bloque decimal; se busca en la cadena");
   return primerBloqueQueCumple(async (numero) => (await proveedor.getCode(contrato, numero)) !== "0x", 0, objetivo);
 }
 

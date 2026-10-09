@@ -13,6 +13,7 @@ import {
   rangosDelCiclo,
   recontarEventos,
   viaDeSelector,
+  enteroDeEntorno,
 } from "../lib/recuento-eventos.mjs";
 import { segmentoDesdeElFinal } from "../lib/parametros-ruta.mjs";
 
@@ -174,4 +175,18 @@ test("rangos de un ciclo del indexador: continúa donde lo dejó y respeta el m�
   ]);
   assert.deepEqual(rangosDelCiclo(125, 125, 10, 100), []);
   assert.deepEqual(rangosDelCiclo(130, 125, 10, 100), []);
+});
+
+test("variables del indexador: solo enteros decimales; una dirección no es un bloque", () => {
+  assert.equal(enteroDeEntorno("11862164", 0), 11862164);
+  assert.equal(enteroDeEntorno("0", 0), 0);
+  assert.equal(enteroDeEntorno("0", 1), null);
+  assert.equal(enteroDeEntorno(undefined, 0), null);
+  assert.equal(enteroDeEntorno("", 0), null);
+  // La dirección del contrato pegada por error: Number() la convertiría en ~1,3e48.
+  assert.equal(enteroDeEntorno("0xe5B87219E2dda01c61f8491Cc6AcEd5dD85C1Ed6", 0), null);
+  assert.equal(enteroDeEntorno("0x10", 0), null);
+  for (const valor of ["1e3", " 10", "10 ", "-5", "+5", "1.5", "1_000", "9007199254740993"]) {
+    assert.equal(enteroDeEntorno(valor, 0), null, valor);
+  }
 });

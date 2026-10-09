@@ -50,3 +50,4 @@ export function rangosDelCiclo(
   tamano: number,
   maximo: number
 ): [number, number][];
+export function enteroDeEntorno(valor: string | undefined, minimo: number): number | null;

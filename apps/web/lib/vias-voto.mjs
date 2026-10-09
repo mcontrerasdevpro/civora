@@ -41,3 +41,30 @@ export function viaPermitida(vias, via) {
 export function permiteVotoCruzado(vias) {
   return vias.length > 1;
 }
+
+/**
+ * Vías con las que se puede votar en una propuesta: la que tiene fijada en el
+ * contrato, si sigue habilitada. Las propuestas sin vía guardada (anteriores
+ * al contrato con vía, ya archivadas) se rigen solo por VIAS_HABILITADAS.
+ *
+ * @param {string | null | undefined} viaDeLaPropuesta
+ * @param {readonly ("certificado" | "zk")[]} habilitadas
+ * @returns {("certificado" | "zk")[]}
+ */
+export function viasDePropuesta(viaDeLaPropuesta, habilitadas) {
+  if (!viaDeLaPropuesta) return [...habilitadas];
+  return habilitadas.filter((via) => via === viaDeLaPropuesta);
+}
+
+/**
+ * Vía con la que se crea una propuesta: la pedida, si está habilitada; si no
+ * se pide, la primera habilitada. null si se pide una no habilitada.
+ *
+ * @param {string | undefined} pedida
+ * @param {readonly ("certificado" | "zk")[]} habilitadas
+ * @returns {"certificado" | "zk" | null}
+ */
+export function viaParaNuevaPropuesta(pedida, habilitadas) {
+  if (pedida === undefined) return habilitadas[0];
+  return habilitadas.find((via) => via === pedida) ?? null;
+}

@@ -4,6 +4,7 @@ import { EligibilitySchema, type Eligibility, type OpcionVoto, type Propuesta } 
 import { asegurarEsquema, query } from "./db";
 import { crearPropuestaOnChain, direccionContrato } from "./contrato";
 import { esPropuestaVigente } from "./errores-contrato.mjs";
+import { viasDePropuesta, viasHabilitadas, type ViaVoto } from "./vias-voto.mjs";
 
 /** Requisitos fijos de esta PoC (ver README): no se exponen en el formulario todavia. */
 const ELEGIBILIDAD_POR_DEFECTO: Eligibility = EligibilitySchema.parse({});
@@ -20,6 +21,7 @@ interface FilaPropuesta {
   elegibilidad: Eligibility;
   contenido_hash: string;
   contrato: string | null;
+  via: ViaVoto | null;
 }
 
 function filaAPropuesta(fila: FilaPropuesta): Propuesta {
@@ -51,13 +53,16 @@ export async function listarPropuestas(): Promise<Propuesta[]> {
  * Busca una propuesta e indica si es de un contrato anterior (archivada):
  * existe, pero el contrato actual no la conoce y no admite votos.
  */
-export async function buscarPropuesta(id: string): Promise<{ propuesta: Propuesta; archivada: boolean } | null> {
+export async function buscarPropuesta(
+  id: string
+): Promise<{ propuesta: Propuesta; archivada: boolean; via: ViaVoto | null } | null> {
   await asegurarEsquema();
   const filas = await query<FilaPropuesta>("SELECT * FROM propuestas WHERE id = $1", [id]);
   if (!filas[0]) return null;
   return {
     propuesta: filaAPropuesta(filas[0]),
     archivada: !esPropuestaVigente(filas[0].contrato, direccionContrato()),
+    via: filas[0].via,
   };
 }
 
@@ -73,6 +78,7 @@ export async function crearPropuesta(datos: {
   descripcion: string;
   fechaApertura: string;
   fechaCierre: string;
+  via: ViaVoto;
 }): Promise<Propuesta> {
   await asegurarEsquema();
 
@@ -98,12 +104,13 @@ export async function crearPropuesta(datos: {
     contenidoHash,
     fechaApertura: datos.fechaApertura,
     fechaCierre: datos.fechaCierre,
+    via: datos.via,
   });
 
   await query(
     `INSERT INTO propuestas
-      (id, titulo, descripcion, pregunta, opciones, fecha_apertura, fecha_cierre, elegibilidad, contenido_hash, contrato)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      (id, titulo, descripcion, pregunta, opciones, fecha_apertura, fecha_cierre, elegibilidad, contenido_hash, contrato, via)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [
       id,
       datos.titulo,
@@ -115,8 +122,18 @@ export async function crearPropuesta(datos: {
       JSON.stringify(ELEGIBILIDAD_POR_DEFECTO),
       contenidoHash,
       direccionContrato(),
+      datos.via,
     ]
   );
 
   return { ...contenido, contenidoHash };
+}
+
+/**
+ * Vías con las que se puede votar en una propuesta vigente: la fijada en el
+ * contrato, si sigue habilitada (ADR 0021).
+ */
+export async function viasPermitidasDe(id: string): Promise<ViaVoto[]> {
+  const encontrada = await buscarPropuesta(id);
+  return viasDePropuesta(encontrada?.via, viasHabilitadas(process.env.VIAS_HABILITADAS));
 }

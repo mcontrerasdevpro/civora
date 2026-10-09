@@ -18,6 +18,9 @@ import {ProofVerificationParams} from "./zkpassport/Types.sol";
 ///        verifica fuera de cadena, en el servidor, y solo el relayer puede
 ///        llamar a esta funcion (ver docs/decisiones/0004 y 0006). Se
 ///        elimina en la Fase 1.
+///      Cada propuesta admite una sola de las dos vias, fijada al crearla
+///      (ADR 0021): los nullifiers de una via y de la otra no se pueden
+///      relacionar, asi que con las dos abiertas una persona votaria dos veces.
 ///      Empadronamiento y 5 anios de residencia siguen sin verificacion real
 ///      (el chip del documento no los contiene, ver README/modelo-amenazas).
 contract VotacionAnonima {
@@ -25,6 +28,12 @@ contract VotacionAnonima {
         AFavor,
         EnContra,
         Abstencion
+    }
+
+    /// @notice Via de identidad que admite una propuesta. Inmutable.
+    enum Via {
+        Certificado,
+        Zk
     }
 
     struct Propuesta {
@@ -35,6 +44,7 @@ contract VotacionAnonima {
         uint256 enContra;
         uint256 abstenciones;
         bool existe;
+        Via via; // unica via con la que se puede votar en esta propuesta
     }
 
     /// @dev Requisitos de elegibilidad fijos para toda la instancia (iguales a los
@@ -61,7 +71,7 @@ contract VotacionAnonima {
     mapping(bytes32 => mapping(bytes32 => bool)) public nullifierUsado; // propuestaId => nullifier => usado
     mapping(bytes32 => mapping(bytes32 => Opcion)) public votoDeNullifier; // propuestaId => nullifier => opcion
 
-    event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 apertura, uint256 cierre);
+    event PropuestaCreada(bytes32 indexed propuestaId, string contenidoHash, uint256 apertura, uint256 cierre, Via via);
     event VotoEmitido(bytes32 indexed propuestaId, bytes32 indexed nullifier, Opcion opcion);
 
     error PruebaInvalida();
@@ -71,6 +81,7 @@ contract VotacionAnonima {
     error NoCumpleEdadMinima();
     error NacionalidadNoValida();
     error OpcionNoVinculada();
+    error ViaNoPermitida();
 
     error SoloRelayer();
     error DireccionCero();
@@ -87,7 +98,8 @@ contract VotacionAnonima {
         bytes32 propuestaId,
         string calldata contenidoHash,
         uint256 apertura,
-        uint256 cierre
+        uint256 cierre,
+        Via via
     ) external {
         if (msg.sender != relayer) revert SoloRelayer();
         require(!propuestas[propuestaId].existe, "La propuesta ya existe");
@@ -99,9 +111,10 @@ contract VotacionAnonima {
             aFavor: 0,
             enContra: 0,
             abstenciones: 0,
-            existe: true
+            existe: true,
+            via: via
         });
-        emit PropuestaCreada(propuestaId, contenidoHash, apertura, cierre);
+        emit PropuestaCreada(propuestaId, contenidoHash, apertura, cierre, via);
     }
 
     /// @notice Registra un voto de la via de certificado digital. El servidor
@@ -115,6 +128,7 @@ contract VotacionAnonima {
     function votarManual(bytes32 propuestaId, bytes32 nullifier, Opcion opcion, bytes calldata nota) external {
         if (msg.sender != relayer) revert SoloRelayer();
         nota;
+        _exigirVia(propuestaId, Via.Certificado);
         _registrarVoto(propuestaId, nullifier, opcion);
     }
 
@@ -133,6 +147,9 @@ contract VotacionAnonima {
         Opcion opcion,
         ProofVerificationParams calldata params
     ) external {
+        // Antes que la prueba: en una propuesta de certificado no se acepta
+        // ninguna prueba ZK, ni siquiera llamando al contrato directamente.
+        _exigirVia(keccak256(bytes(propuestaIdTexto)), Via.Zk);
         if (params.serviceConfig.devMode && !devModeZk) revert ModoDesarrolloNoPermitido();
 
         (bool valida, bytes32 identificadorUnico, IVerifierHelper helper) = verificadorZk.verify(params);
@@ -180,6 +197,12 @@ contract VotacionAnonima {
                 ? "en_contra"
                 : "abstencion";
         return string.concat("civora-voto:", propuestaIdTexto, ":", nombre);
+    }
+
+    function _exigirVia(bytes32 propuestaId, Via via) internal view {
+        Propuesta storage p = propuestas[propuestaId];
+        require(p.existe, "Propuesta inexistente");
+        if (p.via != via) revert ViaNoPermitida();
     }
 
     function _registrarVoto(bytes32 propuestaId, bytes32 nullifier, Opcion opcion) internal {

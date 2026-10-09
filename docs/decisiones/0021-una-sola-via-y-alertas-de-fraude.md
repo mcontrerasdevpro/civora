@@ -1,6 +1,6 @@
 # 0021. Una sola vía de identidad por votación y alertas de fraude
 
-- **Estado:** aceptada (paso 1 implementado; paso 2, en el contrato, pendiente)
+- **Estado:** aceptada (pasos 1 y 2 implementados)
 - **Fecha:** 2026-10-09
 - **Relacionada:** [ADR 0005](0005-no-publicar-nif.md) (nullifier de certificado), [ADR 0014](0014-opcion-vinculada-prueba-zk.md) (vía ZK), hallazgo [A-04](../auditoria-seguridad.md#a-04--alto--una-misma-persona-puede-usar-vías-con-espacios-de-nullifier-distintos)
 
@@ -65,12 +65,20 @@ certificado de la FNMT llevan el mismo NIF, así que dan el mismo nullifier.
   - Un fallo de la base de datos o del webhook no cambia la respuesta del
     voto: solo se registra con `registrarError`.
 
-### Paso 2: en el contrato (pendiente, en el ROADMAP)
+### Paso 2: en el contrato
 
-- La vía permitida se guarda en cada propuesta al crearla y no se puede
-  cambiar. `votarManual` y `votarConPruebaZk` rechazan la vía que no
-  corresponde. Así se cierra también la llamada directa al contrato.
-- Exige redesplegar. Las propuestas actuales quedan archivadas.
+- `crearPropuesta` recibe la vía (`Via { Certificado, Zk }`), que se guarda
+  en la propuesta, va en el evento `PropuestaCreada` y no se puede cambiar.
+- `votarManual` solo admite propuestas de certificado, y `votarConPruebaZk`
+  solo propuestas ZK. La otra vía revierte con `ViaNoPermitida()`, y en
+  `votarConPruebaZk` la comprobación va antes que la prueba. Así se cierra
+  también la llamada directa al contrato.
+- La web crea cada propuesta con la vía pedida, si está habilitada, o con la
+  primera de `VIAS_HABILITADAS`. La guarda en `propuestas.via` y solo
+  ofrece esa vía, mientras siga habilitada.
+- Contrato de demostración nuevo en Sepolia:
+  `0xD2c9D21dcddBdb26cEF026Fa50088ea1974344d8` (bloque 11876757), con los mismos parámetros que el
+  anterior. Las propuestas del contrato anterior quedan archivadas.
 
 ## Alternativas
 
@@ -96,9 +104,8 @@ certificado de la FNMT llevan el mismo NIF, así que dan el mismo nullifier.
     el mismo nullifier en el DNIe y en la FNMT.
   - Con `zk`, quien tenga DNIe y pasaporte sigue pudiendo votar dos veces.
     Por eso no es el valor por defecto.
-- **Hasta el paso 2**, quien llame directamente a `votarConPruebaZk` con una
-  prueba válida puede votar por ZK aunque la web no lo ofrezca. En la demo
-  de Sepolia solo valen pasaportes simulados (ADR 0010).
+- **Ni llamando directamente al contrato** se puede votar por la vía que
+  la propuesta no admite.
 - La vía de certificado no oculta la identidad al servidor (README, garantía
   «Anonimato por vía»). El voto único se gana a costa de anonimato frente al
   operador hasta la Fase 1.
@@ -107,8 +114,13 @@ certificado de la FNMT llevan el mismo NIF, así que dan el mismo nullifier.
 
 ## Verificación
 
-- Contrato: 3 tests del voto cruzado (certificado + ZK, DNIe + pasaporte, y
-  el mismo NIF rechazado).
+- Contrato: 8 tests de la vía por propuesta:
+  - La vía se guarda y va en el evento; una vía inexistente se rechaza.
+  - El voto cruzado se rechaza en los dos sentidos.
+  - En `votarConPruebaZk`, la vía se comprueba antes que la prueba.
+  - Una propuesta inexistente sigue dando «Propuesta inexistente».
+  - El mismo NIF vota una sola vez.
+  - Límite documentado: DNIe y pasaporte en una propuesta ZK.
 - Web: `test/voto-unico.test.mjs` (vías, seudónimo, configuración, umbral,
   campos de la alerta y uso en las rutas).
 - E2E: `e2e/voto-unico.spec.ts` (una tarjeta por vía, servidor sin vías,

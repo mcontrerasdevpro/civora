@@ -3,6 +3,7 @@ import { z } from "zod";
 import { checkAdminRateLimit } from "../../../lib/admin-auth.mjs";
 import { registrarError } from "../../../lib/registro.mjs";
 import { crearPropuesta, listarPropuestas } from "../../../lib/propuestas-store";
+import { viaParaNuevaPropuesta, viasHabilitadas } from "../../../lib/vias-voto.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,9 @@ const CuerpoCreacionSchema = z.object({
   descripcion: z.string().trim().default(""),
   fechaApertura: z.string().datetime({ message: "Fecha de apertura invalida." }),
   duracionDias: z.number().int().positive().max(365),
+  // Única vía con la que se podrá votar, fijada en el contrato (ADR 0021).
+  // Sin ella, la primera de VIAS_HABILITADAS.
+  via: z.enum(["certificado", "zk"]).optional(),
 });
 
 export async function GET() {
@@ -40,6 +44,10 @@ export async function POST(request: Request) {
   }
 
   const { titulo, pregunta, descripcion, fechaApertura, duracionDias } = parseo.data;
+  const via = viaParaNuevaPropuesta(parseo.data.via, viasHabilitadas(process.env.VIAS_HABILITADAS));
+  if (!via) {
+    return NextResponse.json({ error: "Esa forma de identificarse no está habilitada." }, { status: 400 });
+  }
   const apertura = new Date(fechaApertura);
   const cierre = new Date(apertura.getTime() + duracionDias * 24 * 60 * 60 * 1000);
 
@@ -50,6 +58,7 @@ export async function POST(request: Request) {
       descripcion,
       fechaApertura: apertura.toISOString(),
       fechaCierre: cierre.toISOString(),
+      via,
     });
     return NextResponse.json({ propuesta }, { status: 201 });
   } catch (error) {

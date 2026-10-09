@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
-import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
+import { obtenerPropuesta, viasPermitidasDe } from "../../../../../lib/propuestas-store";
 import { OPCIONES, votarConPruebaZkOnChain } from "../../../../../lib/contrato";
 import { registrarAviso, registrarError } from "../../../../../lib/registro.mjs";
 import { esRechazoDelContrato, selectorDeRevert } from "../../../../../lib/errores-contrato.mjs";
-import { viaPermitida, viasHabilitadas } from "../../../../../lib/vias-voto.mjs";
+import { viaPermitida } from "../../../../../lib/vias-voto.mjs";
 import { registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos";
 
 /**
@@ -15,9 +15,9 @@ import { registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos"
  * cliente. El contrato calcula el nullifier a partir de la prueba, ya
  * verificada, y esta ruta solo relaya la transaccion.
  *
- * Voto único (A-04): solo se admite si "zk" está en VIAS_HABILITADAS. El
- * contrato acepta igualmente una llamada directa a votarConPruebaZk: cerrar
- * esa vía exige la vía por propuesta en el contrato (ROADMAP, paso 2).
+ * Voto único (A-04): solo se admite si la propuesta tiene fijada la vía ZK
+ * en el contrato y sigue en VIAS_HABILITADAS. El contrato lo exige también,
+ * así que una llamada directa a votarConPruebaZk se rechaza igual.
  */
 const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "Se esperaba un valor de 32 bytes en hexadecimal.");
 const bytesHex = z.string().regex(/^0x([0-9a-fA-F]{2})*$/, "Se esperaba una cadena de bytes en hexadecimal.");
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Propuesta inexistente" }, { status: 404 });
   }
 
-  if (!viaPermitida(viasHabilitadas(process.env.VIAS_HABILITADAS), "zk")) {
+  if (!viaPermitida(await viasPermitidasDe(propuestaId), "zk")) {
     await registrarIntentoRepetido({ propuestaId, via: "zk", motivo: "via-no-permitida", nullifier: null });
     return NextResponse.json(
       { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
@@ -93,6 +93,14 @@ export async function POST(request: Request) {
     nullifier = resultado.nullifier;
   } catch (error) {
     const razon = mensajeRevert(error) ?? "";
+
+    if (razon.includes("ViaNoPermitida")) {
+      await registrarIntentoRepetido({ propuestaId, via: "zk", motivo: "via-no-permitida", nullifier: null });
+      return NextResponse.json(
+        { error: "En esta votación no se admite esta forma de identificarse. Vuelva a /votar y elija otra." },
+        { status: 403 }
+      );
+    }
 
     const nombreError = Object.keys(MENSAJES_ERROR_CONTRATO).find((nombre) => razon.includes(nombre));
     if (nombreError) {

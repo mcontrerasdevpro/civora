@@ -34,8 +34,20 @@ async function main() {
     direccionVerificador = ROOT_VERIFIER_ZKPASSPORT;
   }
 
+  // Tope de comisión opcional (gwei, p. ej. "0.01"). Sin él, Hardhat reserva
+  // 1 gwei por unidad de gas: el despliegue usa unos 20 millones de gas en
+  // Sepolia (unos 0,02 ETH reservados), aunque la comisión real sea mucho menor.
+  const comisiones = {};
+  const maxFeeGwei = process.env.DESPLIEGUE_MAX_FEE_GWEI;
+  if (maxFeeGwei) {
+    if (!/^\d+(\.\d+)?$/.test(maxFeeGwei)) throw new Error("DESPLIEGUE_MAX_FEE_GWEI debe ser un número en gwei, p. ej. 0.01");
+    comisiones.maxFeePerGas = hre.ethers.parseUnits(maxFeeGwei, "gwei");
+    const prioridad = hre.ethers.parseUnits("0.001", "gwei");
+    comisiones.maxPriorityFeePerGas = prioridad < comisiones.maxFeePerGas ? prioridad : comisiones.maxFeePerGas;
+  }
+
   const VotacionAnonima = await hre.ethers.getContractFactory("VotacionAnonima");
-  const contrato = await VotacionAnonima.deploy(direccionVerificador, dominioZk, devModeZk, relayerAddress);
+  const contrato = await VotacionAnonima.deploy(direccionVerificador, dominioZk, devModeZk, relayerAddress, comisiones);
   await contrato.waitForDeployment();
 
   const artifact = await hre.artifacts.readArtifact("VotacionAnonima");

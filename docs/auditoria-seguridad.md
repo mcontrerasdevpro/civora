@@ -282,6 +282,22 @@ Verificación: 32 tests de contratos, 94 de web, typecheck, build y 122 E2E.
 
 Verificación: tests de contratos y de web, typecheck, build y E2E: selector con las dos vías (con axe) y sin selector con una sola.
 
+## El votante elige la vía (2026-10-09, rama `feat/via-ambas`)
+
+- **Decisión del responsable ([ADR 0022](decisiones/0022-el-votante-elige-la-via.md)):** de momento, una propuesta puede admitir las dos vías y que elija el votante.
+- **Contrato:** `Via { Certificado, Zk, Ambas }`. Con `Ambas` se aceptan `votarManual` y `votarConPruebaZk`; con las otras dos, todo sigue como en el ADR 0021. Desplegado en `0xE1aF107F364aAd4A01ACDceA30D76E52E8718F05` (bloque 11878179, tx `0x0dec70ea…6c2a`), con los mismos parámetros que el anterior. `verificar:sepolia` correcto.
+- **Riesgo reabierto en las propuestas `Ambas` ([A-04](#a-04--alto--una-misma-persona-puede-usar-vías-con-espacios-de-nullifier-distintos)):** la misma persona puede votar una vez con cada vía. Test que lo documenta. Las alertas no lo detectan. El formulario lo avisa al elegir «El votante elige».
+- **Despliegue:**
+  - El despliegue usa unos 20 millones de gas en Sepolia.
+  - Con el tope de 1 gwei que reserva Hardhat por defecto, el despliegue de la mañana costó unos 0,02 ETH y dejó la cuenta sin saldo para otro.
+  - Nueva variable `DESPLIEGUE_MAX_FEE_GWEI`, validada como número decimal: con `0.01`, el despliegue costó 0,000013 ETH.
+
+Verificación:
+- 34 tests de contratos (2 nuevos de `Ambas`).
+- 94 de web (casos `ambas` en vías de propuesta y de creación).
+- Typecheck y build.
+- 128 E2E (formulario con tres opciones y valor por defecto `ambas`, con axe).
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.

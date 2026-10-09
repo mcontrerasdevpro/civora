@@ -4,7 +4,7 @@ import { EligibilitySchema, type Eligibility, type OpcionVoto, type Propuesta } 
 import { asegurarEsquema, query } from "./db";
 import { crearPropuestaOnChain, direccionContrato } from "./contrato";
 import { esPropuestaVigente } from "./errores-contrato.mjs";
-import { viasDePropuesta, viasHabilitadas, type ViaVoto } from "./vias-voto.mjs";
+import { viasDePropuesta, viasHabilitadas, type ViaPropuesta, type ViaVoto } from "./vias-voto.mjs";
 
 /** Requisitos fijos de esta PoC (ver README): no se exponen en el formulario todavia. */
 const ELEGIBILIDAD_POR_DEFECTO: Eligibility = EligibilitySchema.parse({});
@@ -21,7 +21,7 @@ interface FilaPropuesta {
   elegibilidad: Eligibility;
   contenido_hash: string;
   contrato: string | null;
-  via: ViaVoto | null;
+  via: ViaPropuesta | null;
 }
 
 function filaAPropuesta(fila: FilaPropuesta): Propuesta {
@@ -55,7 +55,7 @@ export async function listarPropuestas(): Promise<Propuesta[]> {
  */
 export async function buscarPropuesta(
   id: string
-): Promise<{ propuesta: Propuesta; archivada: boolean; via: ViaVoto | null } | null> {
+): Promise<{ propuesta: Propuesta; archivada: boolean; via: ViaPropuesta | null } | null> {
   await asegurarEsquema();
   const filas = await query<FilaPropuesta>("SELECT * FROM propuestas WHERE id = $1", [id]);
   if (!filas[0]) return null;
@@ -78,7 +78,7 @@ export async function crearPropuesta(datos: {
   descripcion: string;
   fechaApertura: string;
   fechaCierre: string;
-  via: ViaVoto;
+  via: ViaPropuesta;
 }): Promise<Propuesta> {
   await asegurarEsquema();
 

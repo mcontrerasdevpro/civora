@@ -109,6 +109,9 @@ test("vía de la propuesta: la fijada en el contrato, si sigue habilitada", () =
   assert.deepEqual(viasDePropuesta("zk", ["certificado"]), []);
   // Propuesta anterior sin vía guardada: solo las habilitadas.
   assert.deepEqual(viasDePropuesta(null, ["certificado"]), ["certificado"]);
+  // "ambas" (ADR 0022): el votante elige entre las habilitadas.
+  assert.deepEqual(viasDePropuesta("ambas", ["certificado", "zk"]), ["certificado", "zk"]);
+  assert.deepEqual(viasDePropuesta("ambas", ["certificado"]), ["certificado"]);
 });
 
 test("vía de una propuesta nueva: la pedida si está habilitada; si no se pide, la primera", () => {
@@ -116,4 +119,9 @@ test("vía de una propuesta nueva: la pedida si está habilitada; si no se pide,
   assert.equal(viaParaNuevaPropuesta(undefined, ["zk"]), "zk");
   assert.equal(viaParaNuevaPropuesta("zk", ["certificado", "zk"]), "zk");
   assert.equal(viaParaNuevaPropuesta("zk", ["certificado"]), null);
+  // Con las dos habilitadas, por defecto elige el votante; "ambas" exige las dos.
+  assert.equal(viaParaNuevaPropuesta(undefined, ["certificado", "zk"]), "ambas");
+  assert.equal(viaParaNuevaPropuesta("ambas", ["certificado", "zk"]), "ambas");
+  assert.equal(viaParaNuevaPropuesta("ambas", ["certificado"]), null);
+  assert.equal(viaParaNuevaPropuesta("certificado", ["certificado", "zk"]), "certificado");
 });

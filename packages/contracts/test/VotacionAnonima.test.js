@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { obtenerConfiguracionDespliegue } = require("../scripts/deployment-config");
 
 const DOMINIO_ZK = "demo.zkpassport.id";
-const VIA = { Certificado: 0, Zk: 1 };
+const VIA = { Certificado: 0, Zk: 1, Ambas: 2 };
 
 function paramsVacios(overrides = {}) {
   return {
@@ -390,7 +390,7 @@ describe("VotacionAnonima", function () {
 
     it("rechaza una vía que no existe al crear la propuesta", async function () {
       const { contrato } = await desplegar();
-      await expect(contrato.crearPropuesta(ethers.id("x"), "h", 1, 2, 2)).to.be.reverted;
+      await expect(contrato.crearPropuesta(ethers.id("x"), "h", 1, 2, 3)).to.be.reverted;
     });
 
     it("propuesta de certificado: rechaza el voto ZK de la misma persona", async function () {
@@ -441,6 +441,31 @@ describe("VotacionAnonima", function () {
 
       await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
       await expect(contrato.votarManual(propuestaId, nullifierCertificado, 1, "0x")).to.be.revertedWith(
+        "Este documento ya ha votado en esta propuesta"
+      );
+    });
+
+    // ADR 0022: con Ambas el votante elige la vía. Se acepta en la demo que
+    // la misma persona pueda votar una vez por cada vía.
+    it("propuesta con las dos vías: acepta certificado y ZK, y documenta el doble voto", async function () {
+      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await prepararPersona(VIA.Ambas);
+
+      await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+
+      const [aFavor] = await contrato.resultados(propuestaId);
+      expect(aFavor).to.equal(2n);
+    });
+
+    it("propuesta con las dos vías: cada vía sigue rechazando su nullifier repetido", async function () {
+      const { contrato, propuestaId, propuestaIdTexto, nullifierCertificado } = await prepararPersona(VIA.Ambas);
+
+      await (await contrato.votarManual(propuestaId, nullifierCertificado, 0, "0x")).wait();
+      await expect(contrato.votarManual(propuestaId, nullifierCertificado, 1, "0x")).to.be.revertedWith(
+        "Este documento ya ha votado en esta propuesta"
+      );
+      await (await contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).wait();
+      await expect(contrato.votarConPruebaZk(propuestaIdTexto, 0, paramsVacios())).to.be.revertedWith(
         "Este documento ya ha votado en esta propuesta"
       );
     });

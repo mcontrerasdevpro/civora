@@ -13,9 +13,10 @@ const CuerpoCreacionSchema = z.object({
   descripcion: z.string().trim().default(""),
   fechaApertura: z.string().datetime({ message: "Fecha de apertura invalida." }),
   duracionDias: z.number().int().positive().max(365),
-  // Única vía con la que se podrá votar, fijada en el contrato (ADR 0021).
-  // Sin ella, la primera de VIAS_HABILITADAS.
-  via: z.enum(["certificado", "zk"]).optional(),
+  // Vía con la que se podrá votar, fijada en el contrato (ADR 0021 y 0022):
+  // una sola, o "ambas" para que elija el votante. Sin ella, "ambas" si las
+  // dos están habilitadas; si no, la única habilitada.
+  via: z.enum(["certificado", "zk", "ambas"]).optional(),
 });
 
 export async function GET() {

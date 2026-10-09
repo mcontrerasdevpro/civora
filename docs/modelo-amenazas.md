@@ -54,7 +54,12 @@ El 2026-10-09 una misma persona votó dos veces en la misma propuesta, con
 ZKPassport y con certificado. Los tests `voto cruzado (A-04)` del contrato
 lo reproducen ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)).
 
-- **Mitigado:**
+- **Riesgo aceptado temporalmente en la demo**
+  ([ADR 0022](decisiones/0022-el-votante-elige-la-via.md)): una propuesta
+  puede crearse con las dos vías («El votante elige»). En ella, la misma
+  persona puede votar una vez con certificado y otra con ZKPassport, y nada
+  lo detecta. Las propuestas de una sola vía mantienen lo que sigue.
+- **Mitigado (propuestas de una sola vía):**
   - Cada propuesta admite una sola vía, fijada en el contrato al crearla
     (por defecto, la primera de `VIAS_HABILITADAS`: certificado). El
     contrato rechaza la otra con `ViaNoPermitida()`, aunque se le llame

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { VIAS, type ViaVoto } from "../../../lib/vias-voto.mjs";
+import { VIAS, type ViaPropuesta, type ViaVoto } from "../../../lib/vias-voto.mjs";
 
 function fechaLocalPorDefecto(): string {
   const dentroDeUnaHora = new Date(Date.now() + 60 * 60 * 1000);
@@ -21,7 +21,7 @@ export default function NuevaPropuestaPage() {
   const [enviando, setEnviando] = useState(false);
   // Vías habilitadas en el servidor; hasta saberlas, solo certificado.
   const [vias, setVias] = useState<ViaVoto[]>(["certificado"]);
-  const [via, setVia] = useState<ViaVoto>("certificado");
+  const [via, setVia] = useState<ViaPropuesta>("certificado");
 
   useEffect(() => {
     let cancelado = false;
@@ -32,7 +32,8 @@ export default function NuevaPropuestaPage() {
         const habilitadas = VIAS.filter((v) => cuerpo.viasHabilitadas.includes(v));
         if (habilitadas.length === 0) return;
         setVias(habilitadas);
-        setVia(habilitadas[0]);
+        // Con las dos habilitadas, por defecto elige el votante (ADR 0022).
+        setVia(habilitadas.length > 1 ? "ambas" : habilitadas[0]);
       })
       .catch(() => undefined);
     return () => {
@@ -153,6 +154,19 @@ export default function NuevaPropuestaPage() {
               <input
                 type="radio"
                 name="via"
+                value="ambas"
+                checked={via === "ambas"}
+                onChange={() => setVia("ambas")}
+              />
+              <span>
+                <strong>El votante elige</strong>: certificado digital o DNIe/pasaporte con ZKPassport. Atención:
+                una persona podría votar una vez con cada forma, y no se detecta.
+              </span>
+            </label>
+            <label className="form-check">
+              <input
+                type="radio"
+                name="via"
                 value="certificado"
                 checked={via === "certificado"}
                 onChange={() => setVia("certificado")}
@@ -170,8 +184,8 @@ export default function NuevaPropuestaPage() {
               </span>
             </label>
             <p className="form-hint">
-              Solo se admite una forma por votación, para que nadie vote por las dos. Queda fijada en el contrato y
-              no se puede cambiar.
+              Con una sola forma, nadie puede votar dos veces. La elección queda fijada en el contrato y no se puede
+              cambiar.
             </p>
           </fieldset>
         ) : (

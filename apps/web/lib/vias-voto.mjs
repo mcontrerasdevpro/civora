@@ -52,19 +52,24 @@ export function permiteVotoCruzado(vias) {
  * @returns {("certificado" | "zk")[]}
  */
 export function viasDePropuesta(viaDeLaPropuesta, habilitadas) {
-  if (!viaDeLaPropuesta) return [...habilitadas];
+  // "ambas" (ADR 0022): el votante elige entre las habilitadas.
+  if (!viaDeLaPropuesta || viaDeLaPropuesta === "ambas") return [...habilitadas];
   return habilitadas.filter((via) => via === viaDeLaPropuesta);
 }
 
 /**
- * Vía con la que se crea una propuesta: la pedida, si está habilitada; si no
- * se pide, la primera habilitada. null si se pide una no habilitada.
+ * Vía con la que se crea una propuesta: la pedida, si está habilitada
+ * ("ambas" exige las dos). Si no se pide: "ambas" con las dos habilitadas
+ * (el votante elige, ADR 0022); si no, la única habilitada. null si se pide
+ * una no habilitada.
  *
  * @param {string | undefined} pedida
  * @param {readonly ("certificado" | "zk")[]} habilitadas
- * @returns {"certificado" | "zk" | null}
+ * @returns {"certificado" | "zk" | "ambas" | null}
  */
 export function viaParaNuevaPropuesta(pedida, habilitadas) {
-  if (pedida === undefined) return habilitadas[0];
+  const ambas = VIAS.every((via) => habilitadas.includes(via));
+  if (pedida === undefined) return ambas ? "ambas" : habilitadas[0];
+  if (pedida === "ambas") return ambas ? "ambas" : null;
   return habilitadas.find((via) => via === pedida) ?? null;
 }

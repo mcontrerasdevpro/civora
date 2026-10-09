@@ -12,7 +12,7 @@
 | A-01 | Parcial | Se elimina el respaldo emisor+serie y se rechaza un certificado sin NIF. El servidor todavía recibe certificado y opción en el mismo flujo. |
 | M-01 | Mitigado en la aplicación | UI, API de resultados y respuestas de voto ocultan recuentos hasta el cierre. La cadena pública sigue exponiendo eventos y almacenamiento. |
 | M-03 | Parcial | Se autoalojan fuentes y se añade CSP con nonce. El SDK ZKPassport y el script de Autofirma siguen requiriendo control de cadena de suministro. |
-| M-04 | Riesgo aceptado en la demo (2026-10-07) | `POST /api/propuestas` ya no exige `ADMIN_SECRET`: cualquiera puede crear propuestas, limitado a 5 por IP cada 15 minutos (en memoria, por instancia). El contrato sigue limitando la creación al relayer, que paga el gas. Volver a exigir autorización antes de producción real. |
+| M-04 | Riesgo aceptado en la demo (2026-10-07) | `POST /api/propuestas` ya no exige `ADMIN_SECRET`: cualquiera puede crear propuestas, limitado a 5 por IP cada 15 minutos (en memoria, por instancia). El contrato sigue limitando la creación al relayer, que paga el gas. **Se cerrará con el [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md)** (propuestas aprobadas por multifirma en cadena, contenido en IPFS); hasta entonces, riesgo aceptado solo en la demo. |
 
 La arquitectura de identidad, el censo verificable y el secreto criptográfico de papeleta quedan fuera de Fase 0 y no se consideran resueltos.
 
@@ -125,6 +125,41 @@ Verificación: 51 tests de web, typecheck, build y 72 E2E.
 - **Configuración:** el SDK de identidad (`@zkpassport/*`) sale del grupo semanal y llega en su propia PR, porque en 0.x una versión menor puede cambiar la API o el formato de la prueba que verifica el contrato. Dependabot ignora las versiones mayores de TypeScript, `@types/node`, Hardhat y `hardhat-toolbox`, que se harán como tareas propias.
 - PR #11 (`pbkdf2`, seguridad) y #10 (acciones del CI) en verde: se pueden fusionar. #14, #15 y #16 (versiones mayores) se cierran.
 
+## Diseño de servicios y propuestas (2026-10-07, rama `adr-arquitectura-servicios`)
+
+Tarea solo de diseño: [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md) y [ADR 0017](decisiones/0017-servicios-por-frontera-de-confianza.md). No cambia contratos, apps ni paquetes. Se han revisado los repositorios de [spain-in-parallel](https://github.com/spain-in-parallel) (`registry` e9b2ccd, `gateway` a74caad, `deployed-contracts` b94c07d, `council-dao` 76188d7 y `app` 182a29d) sin copiar código.
+
+- **M-04:** se cerrará con el ADR 0016 (ver [M-04](#m-04--medio--creación-de-propuestas-sin-autorización-riesgo-aceptado-en-la-demo)).
+- **Secretos en un solo proceso (riesgo documentado, sin cambio de estado):** hoy la web tiene a la vez la clave del relayer, `NULLIFIER_CERTIFICADO_SECRET` y `RETO_CERTIFICADO_SECRET`.
+  - Una intrusión en la web permitiría emitir votos de certificado falsos (`votarManual` solo comprueba el remitente) y calcular el nullifier de cualquier DNI.
+  - El ADR 0017 propone separar `web`, `relayer` e `identidad`, con lista blanca por cliente y tope de gasto.
+  - El ADR 0017 también documenta que comprometer `relayer` o `identidad` sigue permitiendo votos de certificado falsos hasta la Fase 1.
+- **Hallazgos en el código de referencia,** que no se adoptan:
+  - `IdeaRegistry.setConfig` permite al Safe cambiar sin espera el contrato de destino y el propio Safe.
+  - `ProposalsState.createProposal` no está restringido.
+  - `council-dao` y `app` descargan el contenido de pasarelas IPFS sin recalcular el CID.
+  - El *registrator* del `gateway` verifica la cadena CSCA con `node-forge`, afectado por GHSA-86w9-cpqp-85rv, y registra errores completos.
+  - `StateKeeper` está desplegado como *mock* actualizable.
+  - En `deployed-contracts`, el bytecode de `IdeaRegistry` no se compara.
+  - Las propuestas de los ADR 0016 y 0017 evitan cada uno de estos puntos.
+- **Licencia (decidida, [ADR 0018](decisiones/0018-licencia-agpl.md)):**
+  - El repositorio era público sin `LICENSE`. Ahora es AGPL-3.0-or-later, con `LICENSE` (texto oficial de la FSF, igual al del `gateway`), campo `license` en los cinco `package.json` y cabecera SPDX en los dos contratos propios.
+  - El cambio de cabecera solo altera el *hash* de metadatos de `solc`. Es efectivo en el próximo despliegue, y los contratos de Sepolia siguen correspondiendo a su commit.
+  - `pnpm licenses list --prod`: dependencias compatibles. Queda pendiente `@zkpassport/utils`, que no declara licencia.
+- **Decisiones del responsable (2026-10-07):**
+  - Safe 1 de 1 declarado en pruebas, que pasa a 2 de 3 con firmantes externos.
+  - Depósito de 5 € (2 € no reembolsables), 20 ideas al día sin cartera y tope del relayer de 10 € al día con 8 € reservados para votos, configurables sin redesplegar.
+  - Pinata como principal y Filebase como respaldo.
+  - Espera de 7 días para cambiar el Safe, con evento y cancelación, para detectar a tiempo un intento de tomar el control del consejo. La condición «espera mayor que la duración máxima» y el bloqueo de votaciones durante un cambio pendiente se retiraron el mismo día: se comprobó que nada del registro ni del Safe puede afectar a una votación ya creada ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#comprobación-nada-en-cadena-afecta-a-una-votación-ya-creada)).
+  - Duración de las votaciones de 1 hora a 90 días, inmutable por despliegue.
+  - Identidad en su propio subdominio, configurable, y relayer solo en la red interna.
+- **Dos vías fuera de cadena sobre votaciones abiertas (diseño, mitigadas):** dejar de fijar el contenido y agotar el gas del relayer con ideas o aprobaciones. Ver el [modelo de amenazas](modelo-amenazas.md#vías-fuera-de-cadena-sobre-votaciones-abiertas-adr-0016).
+- **Hallazgo de diseño al aplicar las decisiones:** los propietarios del Safe se cambian dentro del propio Safe, sin pasar por la espera del registro. En pruebas es aceptable; en producción se propone un módulo de retardo ([ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md#2-quién-es-el-safe)).
+- **Entornos:** `civora.nexuraia.com` y el VPS compartido quedan documentados como entorno de pruebas. La producción en un VPS dedicado va unida al paso a Base y al redespliegue con el dominio definitivo.
+- **Verificación del bytecode:** propuesta en el [ROADMAP](ROADMAP.md#verificación-pública-del-bytecode), sin implementar.
+
+Verificación: documentación, README, `LICENSE`, campo `license` y cabeceras SPDX (solo comentarios, sin cambios de lógica). Enlaces y anclas comprobados con un script; 24 tests de contratos, 60 de web, typecheck, build e instalación con lockfile congelado en verde.
+
 ## Revisión del PR #5 (2026-10-07, rama `fix/revision-pr5`)
 
 Revisión de todo lo que lleva `actualizar-dependencias` a `main`, sin el lockfile ni `autoscript.js`.
@@ -221,6 +256,8 @@ La ruta `POST /api/propuestas` inicialmente carecía de control de acceso. Fase 
 **Riesgos aceptados:** gasto del relayer en Sepolia (si se queda sin saldo, la demo deja de registrar votos) y contenido sin moderar en el listado público; el hash de cada propuesta queda en el contrato aunque se borre de la base de datos.
 
 **Arreglo propuesto:** restaurar autenticación y autorización en servidor, limitar tasa y validar que la propuesta se aprueba antes de enviar la transacción. No exponer secretos al cliente.
+
+**Cierre previsto:** [ADR 0016](decisiones/0016-propuestas-registro-ideas-multifirma-ipfs.md), tarea [b](ROADMAP.md#servicios-propuestas-y-red-principal). Cualquiera propone con depósito en `RegistroIdeas`, un Safe multifirma aprueba o rechaza, y la aprobación crea la propuesta en `VotacionAnonima`, que solo acepta llamadas del registro. El relayer deja de poder crear propuestas.
 
 ### R-01 · Crítico — La opción no está atada a la prueba ZK (front-running)
 

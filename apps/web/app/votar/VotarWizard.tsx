@@ -67,6 +67,12 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
   const [enviando, setEnviando] = useState<false | "firmando" | "enviando">(false);
   // Vía ZK: el QR de ZKPassport se muestra en la confirmación tras pulsar «Sí».
   const [pruebaZkEnCurso, setPruebaZkEnCurso] = useState(false);
+  const [prepararAbstencion, setPrepararAbstencion] = useState(false);
+  const [enviandoAbstencion, setEnviandoAbstencion] = useState(false);
+  const [reciboAbstencion, setReciboAbstencion] = useState<{
+    id: string; fechaDeclaracion: string; huella: string;
+    declaracion: { titulo: string; pregunta: string; fechaApertura: string; fechaCierre: string; fechaDeclaracion: string };
+  } | null>(null);
   const encabezado = useRef<HTMLHeadingElement>(null);
   const primerRender = useRef(true);
 
@@ -149,6 +155,40 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ propuestaId: propuesta.id, opcion: opcionElegida, parametrosVerificacion }),
     });
+  }
+
+  async function notificarAbstencion() {
+    if (identificacion?.tipo !== "certificado") return;
+    setError(null);
+    setEnviandoAbstencion(true);
+    try {
+      const respuestaReto = await fetch("/api/identidad/certificado/reto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propuestaId: propuesta.id, opcion: "abstencion_notificada" }),
+      });
+      const cuerpoReto = await respuestaReto.json();
+      if (!respuestaReto.ok) throw new Error(cuerpoReto.error ?? "No se ha podido preparar la firma.");
+      const firma = await firmarReto(cuerpoReto.reto);
+      const respuesta = await fetch("/api/propuesta/abstenciones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propuestaId: propuesta.id,
+          timestamp: cuerpoReto.timestamp,
+          reto: cuerpoReto.reto,
+          signatureB64: firma.firmaB64,
+          certB64: firma.certB64,
+        }),
+      });
+      const resultado = await respuesta.json();
+      if (!respuesta.ok) throw new Error(resultado.error ?? "No se ha podido registrar la abstención.");
+      setReciboAbstencion(resultado.recibo);
+    } catch (errorAbstencion) {
+      setError(errorAbstencion instanceof Error ? errorAbstencion.message : "No se ha podido registrar la abstención.");
+    } finally {
+      setEnviandoAbstencion(false);
+    }
   }
 
   function confirmar() {
@@ -280,7 +320,29 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
         />
       )}
 
-      {paso === "voto" && (
+      {paso === "voto" && reciboAbstencion && (
+        <section className="panel" aria-labelledby="abstencion-registrada">
+          <h3 id="abstencion-registrada">Abstención notificada en Civora</h3>
+          <div className="alert alert-ok" role="status">
+            Tu declaración responsable se ha guardado. No es un voto ni un documento oficial electoral.
+          </div>
+          <p>Identificador del registro: <code>{reciboAbstencion.id}</code></p>
+          <dl>
+            <dt>Declaración</dt><dd>Manifiesto que no ejerceré mi voto en esta votación.</dd>
+            <dt>Propuesta</dt><dd>{reciboAbstencion.declaracion.titulo}: {reciboAbstencion.declaracion.pregunta}</dd>
+            <dt>Periodo</dt><dd>{new Date(reciboAbstencion.declaracion.fechaApertura).toLocaleString("es-ES")} — {new Date(reciboAbstencion.declaracion.fechaCierre).toLocaleString("es-ES")}</dd>
+            <dt>Huella del contenido</dt><dd><code>{reciboAbstencion.huella}</code></dd>
+          </dl>
+          <p className="form-hint">
+            Conserva este recibo. El registro impide un voto posterior con este certificado en Civora,
+            pero no afecta a un voto presencial, por correo ni a otra vía de identidad.
+          </p>
+          <a className="link-quiet" href={`/abstencion/${reciboAbstencion.id}`}>Consultar este registro</a>
+        </section>
+      )}
+
+      {paso === "voto" && !reciboAbstencion && (
+        <>
         <form className="panel" onSubmit={irAConfirmacion}>
           <fieldset className="opciones-fieldset">
             <legend className="opciones-legend">
@@ -305,6 +367,34 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
             Continuar
           </button>
         </form>
+        <section className="panel" aria-labelledby="notificar-abstencion">
+          <h3 id="notificar-abstencion">¿Ha decidido no votar?</h3>
+          <p>
+            Puede firmar una declaración responsable y conservar un recibo de Civora. No cuenta como voto,
+            no anula un voto por correo y no equivale al registro oficial descrito por el OpTE.
+          </p>
+          {identificacion?.tipo === "certificado" ? (
+            prepararAbstencion ? (
+              <div className="confirmacion-voto">
+                <p>
+                  Al continuar firmará explícitamente que no emitirá un voto en esta votación. Este registro
+                  bloqueará su voto posterior con certificado en Civora. ¿Confirma?
+                </p>
+                <button className="btn-primary" type="button" onClick={() => void notificarAbstencion()} disabled={enviandoAbstencion}>
+                  {enviandoAbstencion ? "Firmando y registrando…" : "Sí, firmar y registrar mi abstención"}
+                </button>
+                <button className="btn-secundario" type="button" onClick={() => setPrepararAbstencion(false)} disabled={enviandoAbstencion}>Cancelar</button>
+              </div>
+            ) : (
+              <button className="btn-secundario" type="button" onClick={() => { setError(null); setPrepararAbstencion(true); }}>
+                Notificar abstención con certificado
+              </button>
+            )
+          ) : (
+            <p className="form-hint">Para firmar una abstención se requiere un certificado digital admitido y Autofirma.</p>
+          )}
+        </section>
+        </>
       )}
 
       {paso === "confirmacion" && opcion && (

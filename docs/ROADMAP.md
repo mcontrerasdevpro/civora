@@ -10,6 +10,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 
 | Fase | Estado | Rama |
 |---|---|---|
+| [Registro interno de abstención notificada](#registro-interno-de-abstención-notificada) | implementado en la PoC; no oficial | `feat/abstencion-notificada` |
 | [Fase 0: seguridad](#fase-0-seguridad) | hecho | `fase-0-seguridad` |
 | [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
 | [Revisión externa R-01 a R-05](#revisión-externa-r-01-a-r-05) | hecho, salvo R-01 | `correcciones-revision` |
@@ -21,6 +22,19 @@ Estados: **hecho**, **en curso**, **pendiente**.
 | [Asistente de IA](#asistente-de-ia) | pendiente (futuro) | — |
 | [Paso a producción](#paso-a-producción) | en curso | `despliegue-vps` |
 | [Fase 2: MACI y auditoría externa](#fase-2-maci-y-auditoría-externa) | pendiente | — |
+
+## Registro interno de abstención notificada
+
+**Objetivo:** permitir que quien ya se identificó con certificado deje constancia en Civora de su intención de no votar en una propuesta, sin emitir una opción en el recuento. Diseño y límites: [ADR 0023](decisiones/0023-registro-abstencion-notificada.md).
+
+| Tarea | Estado |
+|---|---|
+| Declaración firmada con certificado y recibo verificable en Civora | implementado en esta rama |
+| Impedir voto posterior por certificado y rechazar declaración posterior a un voto | implementado con bloqueo transaccional |
+| Impedir voto por ZK, voto presencial o por correo | no soportado; fuera del control de Civora |
+| Registro electoral oficial, censo y observación externa | pendiente de autoridad y acuerdo institucional |
+
+**Límite:** no usar el registro como documento oficial ni como garantía de que nadie haya emitido o contado un voto por otra vía.
 
 ## Fase 0: seguridad
 

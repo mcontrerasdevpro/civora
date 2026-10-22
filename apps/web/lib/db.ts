@@ -49,6 +49,34 @@ export async function enTransaccion<T>(fn: (cliente: PoolClient) => Promise<T>):
   }
 }
 
+let esquemaAbstencionesListo: Promise<void> | null = null;
+
+/** Registros de abstención Civora: pseudónimo HMAC, declaración y huella; sin NIF, firma ni certificado. */
+export function asegurarEsquemaAbstenciones(): Promise<void> {
+  if (!esquemaAbstencionesListo) {
+    esquemaAbstencionesListo = query(`
+      CREATE TABLE IF NOT EXISTS abstenciones_notificadas (
+        id UUID PRIMARY KEY,
+        propuesta_id TEXT NOT NULL REFERENCES propuestas(id) ON DELETE CASCADE,
+        nullifier TEXT NOT NULL,
+        fecha_declaracion TIMESTAMPTZ NOT NULL,
+        titulo TEXT NOT NULL,
+        pregunta TEXT NOT NULL,
+        fecha_apertura TIMESTAMPTZ NOT NULL,
+        fecha_cierre TIMESTAMPTZ NOT NULL,
+        huella TEXT NOT NULL,
+        UNIQUE (propuesta_id, nullifier)
+      )
+    `)
+      .then(() => undefined)
+      .catch((error) => {
+        esquemaAbstencionesListo = null;
+        throw error;
+      });
+  }
+  return esquemaAbstencionesListo;
+}
+
 let esquemaEventosListo: Promise<void> | null = null;
 
 /**

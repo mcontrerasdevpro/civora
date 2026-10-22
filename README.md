@@ -88,10 +88,7 @@ Estado del entorno de pruebas:
 | Teléfono de ayuda | Pendiente | No existe. Requisito: nunca pregunta ni registra el sentido del voto. |
 | Asistente de IA | No implementado | Futuro. Ayudaría con el proceso, nunca con la decisión, y no tocaría la papeleta. El recuento es siempre determinista: la IA nunca cuenta, decide ni anula votos; solo podría avisar de anomalías en datos públicos agregados ([ADR 0019](docs/decisiones/0019-ia-punto-asistido-auditoria.md)). |
 
-Esta PoC no debe usarse para elecciones oficiales ni vinculantes. La
-publicación de recuentos por la aplicación se retrasa hasta el cierre, pero
-los votos individuales y sus recuentos siguen siendo observables en la
-cadena pública.
+Esta PoC no debe usarse para elecciones oficiales ni vinculantes. El registro provisional de abstención notificada genera un recibo consultable en Civora, no un documento oficial ni un justificante imprimible validado por una autoridad; no incluye el nombre de la persona y no evita que otra persona vote en su nombre por canales externos. Su diseño definitivo está pendiente de decisión. La publicación de recuentos por la aplicación se retrasa hasta el cierre, pero los votos individuales y sus recuentos siguen siendo observables en la cadena pública.
 
 La red de producción está pendiente de decidir
 ([ROADMAP](docs/ROADMAP.md#paso-a-producción)). El diseño del voto asistido

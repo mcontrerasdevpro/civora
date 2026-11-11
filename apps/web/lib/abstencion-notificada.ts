@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { id as ethersId } from "ethers";
 import { enTransaccion, query, asegurarEsquemaAbstenciones } from "./db";
 import { derivarNullifierCertificado, secretoNullifierCertificado } from "./nullifier-certificado.mjs";

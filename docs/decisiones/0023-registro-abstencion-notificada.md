@@ -1,19 +1,19 @@
 # 0023. Registro interno de abstención notificada
 
-- **Estado:** implementación provisional para evaluación en la PoC; diseño definitivo pendiente de decisión del responsable. No válida como mecanismo electoral oficial
+- **Estado:** aceptada para la PoC (2026-11-11). No válida como mecanismo electoral oficial
 - **Fecha:** 2026-10-22
 
 ## Contexto
 
 El [OpTE](https://www.observatoriotransparenciaelectoral.org/abstencion) describe un proceso de declaración responsable firmada, remitida a su organización y acompañada de observación electoral. Civora no es autoridad electoral, no tiene acceso al censo ni puede controlar votos presenciales o por correo. Tampoco puede asociar de forma segura una prueba ZK con la identidad de un certificado. Un registro local no puede presentarse como equivalente ni impedir que terceros utilicen indebidamente datos electorales.
 
-## Alcance provisional (pendiente de decisión)
+## Decisión
 
-La implementación actual de la PoC permite, durante una propuesta abierta, registrar una declaración de intención de abstenerse, autenticada mediante firma de un certificado admitido por el flujo actual. La pantalla describe la declaración y requiere confirmación expresa. Se conserva un recibo consultable con identificador, fecha y huella del contenido. La API verifica la firma y el backend no conserva NIF, certificado ni firma; la identidad se representa en la tabla por el HMAC ya empleado para el voto con certificado.
+Civora permite, durante el periodo de votación de una propuesta que admita la vía de certificado, registrar una declaración de intención de abstenerse, autenticada mediante firma de un certificado admitido por el flujo actual. La pantalla describe la declaración y requiere confirmación expresa. Se conserva un recibo consultable con identificador, fecha y huella del contenido. La API verifica la firma y el backend no conserva NIF, certificado ni firma; la identidad se representa en la tabla por el HMAC ya empleado para el voto con certificado.
 
-Esta implementación se deja disponible para evaluación, no como decisión definitiva del producto. Está pendiente decidir si se mantiene así o se diseña otra forma. La versión actual no genera un documento oficial imprimible ni muestra en el recibo público el nombre u otro dato identificativo; imprimir la página del recibo no la convierte en documento oficial. No se ha definido ni construido ningún mecanismo que permita a una autoridad rechazar un voto emitido por otra persona en nombre del titular.
+El responsable acepta este diseño como el definitivo de la PoC (2026-11-11). El registro no genera un documento oficial imprimible ni muestra en el recibo público el nombre u otro dato identificativo; imprimir la página del recibo no la convierte en documento oficial. Queda fuera de alcance cualquier mecanismo que permita a una autoridad rechazar un voto emitido por otra persona en nombre del titular.
 
-Para esa propuesta y ese pseudónimo, la aplicación serializa con un bloqueo transaccional el registro de abstención y el envío de un voto certificado. Un voto previo impide una abstención retroactiva; una abstención previa impide votar después con certificado. El registro nunca emite una opción `abstencion`, no modifica el contrato ni sus resultados, y no cambia otros canales.
+Para esa propuesta y ese pseudónimo, la aplicación serializa con un bloqueo transaccional el registro de abstención y el envío de un voto certificado. Un voto previo impide una abstención retroactiva; una abstención previa impide votar después con certificado. El bloqueo se mantiene hasta que la transacción del voto se confirma, para que `nullifierUsado` refleje el voto antes de admitir una abstención. El registro nunca emite una opción `abstencion`, no modifica el contrato ni sus resultados, y no cambia otros canales.
 
 ## Límites obligatorios
 

@@ -93,6 +93,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    // El bloqueo se mantiene hasta que la transacción se confirma: si se
+    // liberase antes, una abstención podría registrarse mientras el voto aún
+    // no consta en el contrato (nullifierUsado seguiría en false).
     await conIdentidadBloqueada(propuestaId, nullifier, async (cliente) => {
       if (await existeAbstencionNotificada(cliente, propuestaId, nullifier)) {
         throw new Error("ABSTENCION_PREVIA");

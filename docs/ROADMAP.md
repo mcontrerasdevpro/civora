@@ -10,7 +10,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 
 | Fase | Estado | Rama |
 |---|---|---|
-| [Registro interno de abstención notificada](#registro-interno-de-abstención-notificada) | implementación PoC; diseño definitivo pendiente de decisión | `feat/abstencion-notificada` |
+| [Registro interno de abstención notificada](#registro-interno-de-abstención-notificada) | hecho; no oficial | `feat/abstencion-notificada` |
 | [Fase 0: seguridad](#fase-0-seguridad) | hecho | `fase-0-seguridad` |
 | [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
 | [Revisión externa R-01 a R-05](#revisión-externa-r-01-a-r-05) | hecho, salvo R-01 | `correcciones-revision` |
@@ -29,12 +29,13 @@ Estados: **hecho**, **en curso**, **pendiente**.
 
 | Tarea | Estado |
 |---|---|
-| Declaración firmada con certificado y recibo verificable en Civora | implementado en esta rama |
-| Impedir voto posterior por certificado y rechazar declaración posterior a un voto | implementado con bloqueo transaccional |
+| Declaración firmada con certificado y recibo verificable en Civora | hecho |
+| Solo durante el periodo de votación y si la propuesta admite la vía de certificado | hecho |
+| Impedir voto posterior por certificado y rechazar declaración posterior a un voto | hecho, con bloqueo transaccional |
 | Impedir voto por ZK, voto presencial o por correo | no soportado; fuera del control de Civora |
 | Registro electoral oficial, censo y observación externa | pendiente de autoridad y acuerdo institucional |
 
-**Límite:** no usar el registro como documento oficial ni como garantía de que nadie haya emitido o contado un voto por otra vía. La implementación actual muestra un recibo consultable, no genera un documento oficial imprimible ni incluye la identidad de la persona. El usuario debe decidir si mantiene este diseño o explora otro; cualquier alternativa que pretenda impedir que otra persona vote requerirá definir quién emite y valida el documento, cómo se acredita identidad y censo, y cómo se coordina con todos los canales. No se ha acordado ni implementado ese mecanismo.
+**Límite:** no usar el registro como documento oficial ni como garantía de que nadie haya emitido o contado un voto por otra vía. La implementación actual muestra un recibo consultable, no genera un documento oficial imprimible ni incluye la identidad de la persona. Diseño aceptado para la PoC el 2026-11-11 ([ADR 0023](decisiones/0023-registro-abstencion-notificada.md)); cualquier evolución que pretenda impedir que otra persona vote requerirá definir quién emite y valida el documento, cómo se acredita identidad y censo, y cómo se coordina con todos los canales. No se ha acordado ni implementado ese mecanismo.
 
 ## Fase 0: seguridad
 

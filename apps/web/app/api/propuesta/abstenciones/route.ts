@@ -1,11 +1,11 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { z } from "zod";
-import { obtenerPropuesta } from "../../../../lib/propuestas-store";
+import { obtenerPropuesta, viasPermitidasDe } from "../../../../lib/propuestas-store";
 import { verificarFirmaCertificado } from "../../../../lib/certificado-digital";
 import { leerReciboAbstencion, registrarAbstencionNotificada } from "../../../../lib/abstencion-notificada";
 import { registrarError } from "../../../../lib/registro.mjs";
 import { segmentoFinal } from "../../../../lib/parametros-ruta.mjs";
-import { contextoFirmaAbstencion } from "../../../../lib/contexto-abstencion.mjs";
+import { contextoFirmaAbstencion, motivoRechazoAbstencion } from "../../../../lib/contexto-abstencion.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +33,18 @@ export async function POST(request: Request) {
 
   const propuesta = await obtenerPropuesta(parseo.data.propuestaId);
   if (!propuesta) return NextResponse.json({ error: "Propuesta inexistente o archivada." }, { status: 404 });
-  if (Date.now() >= Date.parse(propuesta.fechaCierre)) {
+  const rechazo = motivoRechazoAbstencion(propuesta, await viasPermitidasDe(propuesta.id));
+  if (rechazo === "no-abierta") {
+    return NextResponse.json({ error: "Esta votación todavía no ha comenzado." }, { status: 400 });
+  }
+  if (rechazo === "cerrada") {
     return NextResponse.json({ error: "El plazo de esta votación ha terminado." }, { status: 400 });
+  }
+  if (rechazo === "via-no-permitida") {
+    return NextResponse.json(
+      { error: "Esta votación no admite el certificado digital, que es la única vía para notificar una abstención." },
+      { status: 403 }
+    );
   }
 
   const verificacion = await verificarFirmaCertificado({

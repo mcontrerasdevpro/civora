@@ -40,3 +40,8 @@ test("el proyecto fija pnpm 9.0.0 y declara allowBuilds para pnpm >= 10.26", asy
     secp256k1: "false",
   });
 });
+
+test("zod no intenta evaluar código (la CSP no permite 'unsafe-eval')", async () => {
+  const fuente = await readFile(raiz("packages/shared-types/src/index.ts"), "utf8");
+  assert.match(fuente, /z\.config\(\{ jitless: true \}\)/);
+});

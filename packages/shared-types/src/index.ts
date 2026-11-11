@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Zod 4 compila validadores con `new Function` y, para saber si puede, lo
+// prueba al validar. Con nuestra CSP sin 'unsafe-eval' (ADR 0007) esa prueba
+// genera un aviso de bloqueo en el navegador. En modo jitless no se intenta.
+z.config({ jitless: true });
+
 /**
  * Esquema de una propuesta votable.
  *

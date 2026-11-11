@@ -45,6 +45,21 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## Registro de abstención notificada (2026-10-22, rama `feat/abstencion-notificada`)
+
+- Se añade declaración firmada por certificado en una propuesta abierta y recibo consultable con ID, fecha y huella.
+- El servidor valida firma/cadena/revocación con el mismo verificador de los votos por certificado. Certificado, firma y NIF no se almacenan; la base usa el HMAC de identidad ya establecido (que el operador aún puede vincular, deuda ADR 0005).
+- Un bloqueo transaccional por propuesta y HMAC serializa abstención y voto certificado, evitando la carrera entre ambos en la aplicación. Una abstención previa rechaza el voto certificado; un voto previo rechaza el registro.
+- **No mitiga votos emitidos fuera del flujo certificado de Civora**: ZKPassport, correo y voto presencial quedan fuera; no hay conexión censal, observador, anclaje público ni validez oficial. La huella pública tampoco prueba por sí sola la firma, ya que el documento firmado se descarta. No desplegar ni comunicar como protección ante suplantación o voto fraudulento.
+- Verificación local completada: `pnpm --filter web test` (97/97), `pnpm --filter web typecheck` y `pnpm --filter web build` pasan. La batería E2E completa pasó anteriormente (130/130); tras el ajuste del contexto firmado, `pnpm --filter web test:e2e -- e2e/paginas.spec.ts` pasó (40/40, escritorio y móvil), incluyendo la consulta del recibo.
+
+### Cierre del registro de abstención (2026-11-11)
+
+- La API rechaza la declaración antes de la apertura (antes solo comprobaba el cierre) y en propuestas que no admiten la vía de certificado, antes de verificar la firma (`motivoRechazoAbstencion`, con pruebas unitarias).
+- Se documenta por qué el bloqueo se mantiene hasta `tx.wait()` y su coste en el modelo de amenazas.
+- Se corrigen las tildes mal codificadas de las pruebas y el BOM de dos archivos.
+- ADR 0023 pasa a aceptada para la PoC.
+
 ## Dependencias (2026-10-06, rama `actualizar-dependencias`)
 
 Punto de partida: 90 alertas de Dependabot; `pnpm audit` daba 69 avisos

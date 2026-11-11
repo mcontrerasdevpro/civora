@@ -28,6 +28,7 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0020](0020-indice-incremental-eventos.md) | Índice incremental de eventos en civora-db | aceptada |
 | [0021](0021-una-sola-via-y-alertas-de-fraude.md) | Una sola vía de identidad por votación y alertas de fraude | aceptada (paso 2, en el contrato, pendiente) |
 | [0022](0022-el-votante-elige-la-via.md) | El votante puede elegir la vía (riesgo de doble voto aceptado en la demo) | aceptada (temporal) |
+| [0023](0023-registro-abstencion-notificada.md) | Registro interno de abstención notificada | aceptada para la PoC; no oficial |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

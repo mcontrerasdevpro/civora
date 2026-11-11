@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { NULLIFIER, PROPUESTA_ID, simularApi } from "./utilidades";
+import { NULLIFIER, PROPUESTA_ID, abrirVotacion, identificarseConCertificado, simularApi } from "./utilidades";
 
 const RUTAS = [
   "/",
@@ -126,6 +126,39 @@ test.describe("las páginas cliente arrancan", () => {
     expect(envios).toHaveLength(1);
     expect(envios[0].autorizacion).toBeNull();
     expect(envios[0].cuerpo).toMatchObject({ titulo: "Prueba", pregunta: "¿Sí o no?", via: "certificado" });
+  });
+
+  test("permite notificar una abstención firmada y consulta su recibo Civora", async ({ page }) => {
+    const envios: Record<string, unknown>[] = [];
+    await simularApi(page);
+    const reciboMock = {
+      id: "90e2eb2a-52f4-4c35-94f4-998a5d1f4266",
+      fechaDeclaracion: new Date().toISOString(),
+      huella: `0x${"a".repeat(64)}`,
+      declaracion: {
+        titulo: "Carril bici en la avenida principal",
+        pregunta: "¿Quiere que se construya un carril bici en la avenida principal?",
+        fechaApertura: new Date(Date.now() - 86_400_000).toISOString(),
+        fechaCierre: new Date(Date.now() + 86_400_000).toISOString(),
+        fechaDeclaracion: new Date().toISOString(),
+      },
+    };
+    await page.route("**/api/propuesta/abstenciones", (ruta) => {
+      envios.push(ruta.request().postDataJSON() as Record<string, unknown>);
+      return ruta.fulfill({ status: 201, json: { ok: true, recibo: reciboMock } });
+    });
+    await page.route("**/api/propuesta/abstenciones/*", (ruta) => ruta.fulfill({ json: { recibo: reciboMock } }));
+    await abrirVotacion(page);
+    await identificarseConCertificado(page);
+    await page.getByRole("button", { name: "Notificar abstención con certificado" }).click();
+    await page.getByRole("button", { name: "Sí, firmar y registrar mi abstención" }).click();
+    await expect(page.getByRole("heading", { name: "Abstención notificada en Civora" })).toBeVisible();
+    expect(envios).toHaveLength(1);
+    expect(envios[0]).toMatchObject({ propuestaId: PROPUESTA_ID, reto: "ab".repeat(32) });
+    expect(envios[0]).not.toHaveProperty("opcion");
+    await page.getByRole("link", { name: "Consultar este registro" }).click();
+    await expect(page.getByRole("heading", { name: "Registro de abstención notificada" })).toBeVisible();
+    await expect(page.getByText(/no es un certificado oficial/i)).toBeVisible();
   });
 
   test("/verificar comprueba un recibo", async ({ page }) => {

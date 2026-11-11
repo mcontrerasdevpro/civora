@@ -92,6 +92,13 @@ lo reproducen ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)).
 - El nullifier es un HMAC con un secreto del servidor (R-02): un tercero no
   puede recalcularlo enumerando DNI, pero el operador sí (A-01).
 
+### Registro de abstención notificada (ADR 0023)
+
+- **Qué previene:** dentro de Civora, que alguien con el mismo certificado vote después de haber declarado la abstención, o declare una abstención retroactiva tras votar. Un bloqueo transaccional por propuesta y pseudónimo serializa ambas operaciones y se mantiene hasta confirmar la transacción del voto.
+- **Qué no previene:** votos por ZKPassport, por correo, presenciales o fuera de Civora; no hay censo ni autoridad que valide la declaración. En propuestas con las dos vías ([ADR 0022](decisiones/0022-el-votante-elige-la-via.md)) la misma persona puede seguir votando con ZK.
+- **Confianza en el operador:** el recibo vive en la base de datos de Civora; la firma se valida y se descarta, así que la huella pública no permite revalidarla. El operador puede vincular el HMAC con la identidad (deuda de [ADR 0005](decisiones/0005-no-publicar-nif.md)).
+- **Bloqueo durante la transacción:** el voto con certificado mantiene abierta una transacción de Postgres mientras espera la confirmación en cadena; con mucha concurrencia o una red lenta puede agotar conexiones del pool.
+
 ### Registros del servidor y del proxy
 
 La aplicación no registra IPs, cuerpos de petición, firmas, certificados

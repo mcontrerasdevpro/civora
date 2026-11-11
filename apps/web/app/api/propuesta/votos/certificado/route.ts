@@ -16,6 +16,7 @@ import {
 } from "../../../../../lib/contrato";
 import { viaPermitida } from "../../../../../lib/vias-voto.mjs";
 import { intentosBloqueados, registrarIntentoRepetido } from "../../../../../lib/intentos-repetidos";
+import { conIdentidadBloqueada, existeAbstencionNotificada } from "../../../../../lib/abstencion-notificada";
 
 /**
  * Voto con certificado digital (FNMT/DNIe vía Autofirma). A diferencia de
@@ -92,15 +93,29 @@ export async function POST(request: Request) {
   }
 
   try {
-    const contrato = contratoEscritura();
-    const tx = await contrato.votarManual(
-      propuestaIdBytes32(propuestaId),
-      nullifierBytes32,
-      OPCIONES.indexOf(opcion),
-      toUtf8Bytes("certificado")
-    );
-    await tx.wait();
+    // El bloqueo se mantiene hasta que la transacción se confirma: si se
+    // liberase antes, una abstención podría registrarse mientras el voto aún
+    // no consta en el contrato (nullifierUsado seguiría en false).
+    await conIdentidadBloqueada(propuestaId, nullifier, async (cliente) => {
+      if (await existeAbstencionNotificada(cliente, propuestaId, nullifier)) {
+        throw new Error("ABSTENCION_PREVIA");
+      }
+      const contrato = contratoEscritura();
+      const tx = await contrato.votarManual(
+        propuestaIdBytes32(propuestaId),
+        nullifierBytes32,
+        OPCIONES.indexOf(opcion),
+        toUtf8Bytes("certificado")
+      );
+      await tx.wait();
+    });
   } catch (error) {
+    if (error instanceof Error && error.message === "ABSTENCION_PREVIA") {
+      return NextResponse.json(
+        { error: "Ya registraste una abstención notificada en esta votación y no puedes emitir un voto por certificado." },
+        { status: 409 }
+      );
+    }
     const razon = mensajeRevert(error) ?? "";
     if (razon.includes("ya ha votado")) {
       await registrarIntentoRepetido({ propuestaId, via: "certificado", motivo: "voto-repetido", nullifier });

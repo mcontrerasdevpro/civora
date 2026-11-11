@@ -3,9 +3,13 @@ import { z } from "zod";
 import { OpcionVotoSchema } from "@civora/shared-types";
 import { obtenerPropuesta } from "../../../../../lib/propuestas-store";
 import { generarReto } from "../../../../../lib/certificado-digital";
+import { contextoFirmaAbstencion } from "../../../../../lib/contexto-abstencion.mjs";
 
 /** El reto se pide al confirmar el voto e incluye la opción (R-04). */
-const CuerpoSchema = z.object({ propuestaId: z.string().uuid(), opcion: OpcionVotoSchema });
+const CuerpoSchema = z.object({
+  propuestaId: z.string().uuid(),
+  opcion: z.union([OpcionVotoSchema, z.literal("abstencion_notificada")]),
+});
 
 export async function POST(request: Request) {
   const cuerpo = await request.json().catch(() => null);
@@ -14,10 +18,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 });
   }
 
-  if (!(await obtenerPropuesta(parseo.data.propuestaId))) {
+  const propuesta = await obtenerPropuesta(parseo.data.propuestaId);
+  if (!propuesta) {
     return NextResponse.json({ error: "Propuesta inexistente." }, { status: 404 });
   }
 
-  const { reto, timestamp } = generarReto(parseo.data.propuestaId, parseo.data.opcion);
+  const opcion = parseo.data.opcion === "abstencion_notificada"
+    ? contextoFirmaAbstencion(propuesta)
+    : parseo.data.opcion;
+  const { reto, timestamp } = generarReto(parseo.data.propuestaId, opcion);
   return NextResponse.json({ reto, timestamp });
 }

@@ -1,9 +1,94 @@
+<div align="center">
+
+<img src="apps/web/public/logo.png" alt="Logotipo de Cívora" width="96" height="96">
+
 # CÍVORA
 
-Infraestructura de votación verificable — prueba de concepto para explorar
-verificación de elegibilidad y voto digital. Las garantías dependen de la
-vía de identificación: hoy no ofrece anonimato integral, censo verificable
-ni acreditación de todos los requisitos legales.
+**Infraestructura de votación verificable**
+
+Tu identidad acredita que puedes votar. Los votos y el recuento quedan en una
+cadena pública que cualquiera puede comprobar.
+
+[![CI](https://github.com/mcontrerasdevpro/civora/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mcontrerasdevpro/civora/actions/workflows/ci.yml)
+[![Licencia: AGPL-3.0-or-later](https://img.shields.io/badge/licencia-AGPL--3.0--or--later-blue.svg)](LICENSE)
+![Next.js 15](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)
+![Solidity](https://img.shields.io/badge/Solidity-Hardhat-363636?logo=solidity)
+![WCAG 2.1 AA](https://img.shields.io/badge/accesibilidad-WCAG%202.1%20AA-2e7d32)
+
+[Demo pública](https://civora.nexuraia.com) ·
+[Garantías](#garantías-por-requisito) ·
+[Hoja de ruta](docs/ROADMAP.md) ·
+[Decisiones](docs/decisiones/README.md) ·
+[Seguridad](SECURITY.md)
+
+</div>
+
+> [!WARNING]
+> **Prueba de concepto.** No está habilitada para elecciones oficiales ni
+> vinculantes. Las garantías dependen de la vía de identificación: hoy no
+> ofrece anonimato integral, censo verificable ni acreditación de todos los
+> requisitos legales. Consulta la [tabla de garantías](#garantías-por-requisito)
+> antes de interpretar resultados.
+
+![Página de inicio de Cívora](docs/capturas/inicio.jpg)
+
+## Qué ofrece
+
+- **Dos vías de identidad.** Certificado digital (FNMT o DNIe con Autofirma)
+  o DNIe y pasaporte por NFC con pruebas de conocimiento cero (ZKPassport),
+  verificadas en el contrato.
+- **Un voto por persona y vía en cada propuesta.** Cada identidad deriva un
+  identificador irrepetible; el contrato rechaza el segundo voto y los
+  intentos repetidos generan alertas de fraude.
+- **Opción ligada a la identidad.** La firma o la prueba incluye la opción
+  elegida, así que no puede reutilizarse para otra.
+- **Recuento verificable.** Tras el cierre, cualquiera puede rehacer el
+  recuento desde los eventos públicos del contrato y comprobar su voto con
+  un recibo.
+- **Abstención notificada.** Declaración firmada de que no se votará, con
+  recibo consultable, que impide votar después con ese certificado.
+- **Accesible.** WCAG 2.1 AA comprobado en cada cambio, modo sencillo con
+  letra grande y sin jerga, y lectura en voz alta con aviso de privacidad.
+
+## Capturas
+
+| Propuestas abiertas | Identificación |
+|---|---|
+| ![Listado de propuestas](docs/capturas/propuestas.jpg) | ![Elegir cómo identificarse](docs/capturas/votar-identificacion.jpg) |
+| **Papeleta y abstención notificada** | **Resultados tras el cierre** |
+| ![Papeleta con las opciones y el apartado de abstención](docs/capturas/votar-papeleta.jpg) | ![Gráfica y tabla de resultados](docs/capturas/resultados.jpg) |
+
+Las capturas usan datos de ejemplo.
+
+## Cómo funciona
+
+```mermaid
+flowchart LR
+    V([Persona votante]) -->|elige propuesta| W[Web Next.js]
+    W -->|certificado + Autofirma| S[Servidor Cívora<br/>verifica la firma]
+    W -->|DNIe o pasaporte por NFC| Z[App ZKPassport<br/>prueba ZK]
+    S -->|voto con identificador| C[(Contrato<br/>VotacionAnonima)]
+    Z -->|prueba + opción| C
+    C -->|eventos públicos| R[Recuento y verificación<br/>por cualquiera]
+    W <-->|contenido de propuestas<br/>y abstenciones| D[(Postgres)]
+```
+
+El contrato guarda los votos y ancla el contenido de cada propuesta. La
+vía de certificado pasa por el servidor, que puede vincular identidad y
+voto; la vía ZK no revela el documento al contrato. Los detalles y límites
+están en la [tabla de garantías](#garantías-por-requisito) y en el
+[modelo de amenazas](docs/modelo-amenazas.md).
+
+## Tecnología
+
+| Capa | Tecnología |
+|---|---|
+| Web | Next.js 15, React 19, TypeScript estricto, CSP con nonce |
+| Contrato | Solidity con Hardhat; Sepolia en la demo |
+| Identidad | Autofirma con FNMT y DNIe; ZKPassport (pruebas de conocimiento cero) |
+| Datos | PostgreSQL y esquemas compartidos con Zod |
+| Calidad | `node --test`, Playwright con axe (escritorio y móvil), CodeQL, GitGuardian |
+| Despliegue | Docker en VPS con Easypanel |
 
 ## Documentación
 
@@ -21,13 +106,6 @@ ni acreditación de todos los requisitos legales.
 
 Este README cubre qué es Civora, qué garantiza hoy y cómo configurar el
 entorno. Los comandos están solo en [AGENTS.md](AGENTS.md#comandos).
-
-## La idea en una frase
-
-La vía ZKPassport puede acreditar edad mínima y nacionalidad española sin
-revelar esos atributos al contrato. La vía de certificado verifica una
-firma en el servidor y puede vincular certificado y opción. Consulta la
-tabla de garantías antes de interpretar los resultados de esta PoC.
 
 ## Requisitos objetivo
 

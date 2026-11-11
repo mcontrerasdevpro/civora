@@ -70,7 +70,7 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
   const [prepararAbstencion, setPrepararAbstencion] = useState(false);
   const [enviandoAbstencion, setEnviandoAbstencion] = useState(false);
   const [reciboAbstencion, setReciboAbstencion] = useState<{
-    id: string; fechaDeclaracion: string; huella: string;
+    id: string; fechaDeclaracion: string; huella: string; texto: string;
     declaracion: { titulo: string; pregunta: string; fechaApertura: string; fechaCierre: string; fechaDeclaracion: string };
   } | null>(null);
   const encabezado = useRef<HTMLHeadingElement>(null);
@@ -328,7 +328,7 @@ export function VotarWizard({ propuesta, vias }: { propuesta: Propuesta; vias: r
           </div>
           <p>Identificador del registro: <code>{reciboAbstencion.id}</code></p>
           <dl>
-            <dt>Declaración</dt><dd>Manifiesto que no ejerceré mi voto en esta votación.</dd>
+            <dt>Declaración</dt><dd>{reciboAbstencion.texto}</dd>
             <dt>Propuesta</dt><dd>{reciboAbstencion.declaracion.titulo}: {reciboAbstencion.declaracion.pregunta}</dd>
             <dt>Periodo</dt><dd>{new Date(reciboAbstencion.declaracion.fechaApertura).toLocaleString("es-ES")} — {new Date(reciboAbstencion.declaracion.fechaCierre).toLocaleString("es-ES")}</dd>
             <dt>Huella del contenido</dt><dd><code>{reciboAbstencion.huella}</code></dd>

@@ -7,6 +7,7 @@ type Recibo = {
   id: string;
   fechaDeclaracion: string;
   huella: string;
+  texto: string;
   declaracion: { titulo: string; pregunta: string; fechaApertura: string; fechaCierre: string; fechaDeclaracion: string };
 };
 
@@ -41,7 +42,7 @@ export default function ConsultarAbstencionPage() {
           <dl>
             <dt>Identificador</dt><dd><code>{recibo.id}</code></dd>
             <dt>Fecha de declaración</dt><dd>{new Date(recibo.fechaDeclaracion).toLocaleString("es-ES")}</dd>
-            <dt>Declaración</dt><dd>Manifiesto que no ejerceré mi voto en esta votación.</dd>
+            <dt>Declaración</dt><dd>{recibo.texto}</dd>
             <dt>Propuesta</dt><dd>{recibo.declaracion.titulo}: {recibo.declaracion.pregunta}</dd>
             <dt>Periodo</dt><dd>{new Date(recibo.declaracion.fechaApertura).toLocaleString("es-ES")} — {new Date(recibo.declaracion.fechaCierre).toLocaleString("es-ES")}</dd>
             <dt>Huella del contenido</dt><dd><code>{recibo.huella}</code></dd>

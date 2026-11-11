@@ -46,3 +46,16 @@ test("la API de abstención valida periodo y vía antes de verificar la firma", 
   assert.match(api, /viasPermitidasDe/);
   assert.ok(api.indexOf("motivoRechazoAbstencion(") < api.indexOf("verificarFirmaCertificado("));
 });
+
+test("la declaración firmada prohíbe usar la abstención para votar en nombre del titular", async () => {
+  const textos = await import("../lib/texto-abstencion.mjs");
+  const { TEXTO_DECLARACION_ABSTENCION, contextoFirmaAbstencion } = await import("../lib/contexto-abstencion.mjs");
+  assert.equal(TEXTO_DECLARACION_ABSTENCION, textos.TEXTO_DECLARACION_ABSTENCION);
+  assert.match(TEXTO_DECLARACION_ABSTENCION, /^Manifiesto que no ejerceré mi voto en esta votación y no se podrá usar mi abstención/);
+  assert.match(TEXTO_DECLARACION_ABSTENCION, /otra persona en mi nombre bajo ningún concepto\.$/);
+  assert.notEqual(textos.TEXTO_DECLARACION_ABSTENCION_V1, TEXTO_DECLARACION_ABSTENCION);
+  assert.doesNotMatch(textos.TEXTO_DECLARACION_ABSTENCION_V1, /'/);
+  const propuesta = { id: "p", titulo: "t", pregunta: "q", fechaApertura: "a", fechaCierre: "c" };
+  assert.match(contextoFirmaAbstencion(propuesta), /^abstencion:0x[0-9a-f]{64}$/);
+  assert.match(modulo, /texto_declaracion/);
+});

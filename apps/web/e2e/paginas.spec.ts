@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { TEXTO_DECLARACION_ABSTENCION } from "../lib/texto-abstencion.mjs";
 import { NULLIFIER, PROPUESTA_ID, abrirVotacion, identificarseConCertificado, simularApi } from "./utilidades";
 
 const RUTAS = [
@@ -135,6 +136,7 @@ test.describe("las páginas cliente arrancan", () => {
       id: "90e2eb2a-52f4-4c35-94f4-998a5d1f4266",
       fechaDeclaracion: new Date().toISOString(),
       huella: `0x${"a".repeat(64)}`,
+      texto: TEXTO_DECLARACION_ABSTENCION,
       declaracion: {
         titulo: "Carril bici en la avenida principal",
         pregunta: "¿Quiere que se construya un carril bici en la avenida principal?",
@@ -159,6 +161,7 @@ test.describe("las páginas cliente arrancan", () => {
     await page.getByRole("link", { name: "Consultar este registro" }).click();
     await expect(page.getByRole("heading", { name: "Registro de abstención notificada" })).toBeVisible();
     await expect(page.getByText(/no es un certificado oficial/i)).toBeVisible();
+    await expect(page.getByText(TEXTO_DECLARACION_ABSTENCION)).toBeVisible();
   });
 
   test("/verificar comprueba un recibo", async ({ page }) => {

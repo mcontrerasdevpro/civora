@@ -60,6 +60,11 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - Se corrigen las tildes mal codificadas de las pruebas y el BOM de dos archivos.
 - ADR 0023 pasa a aceptada para la PoC.
 
+### Texto de la declaración, versión 2 (2026-11-11, rama `fix/texto-abstencion`)
+
+- El texto firmado añade que la abstención no podrá usarse para que otra persona vote en nombre del titular. Es una manifestación de voluntad: técnicamente sigue sin impedirse el voto por vías fuera del certificado de Civora.
+- El contexto de firma y la huella pasan a `v2`, y la tabla guarda `texto_declaracion` (los registros previos quedan con el texto v1 por defecto), para que cada recibo muestre lo que se firmó.
+
 ## Dependencias (2026-10-06, rama `actualizar-dependencias`)
 
 Punto de partida: 90 alertas de Dependabot; `pnpm audit` daba 69 avisos

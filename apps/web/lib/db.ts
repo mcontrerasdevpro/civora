@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { TEXTO_DECLARACION_ABSTENCION_V1 } from "./texto-abstencion.mjs";
 
 /**
  * Conexion a Postgres. En la demo es el servicio civora-db del VPS, con
@@ -68,6 +69,11 @@ export function asegurarEsquemaAbstenciones(): Promise<void> {
         UNIQUE (propuesta_id, nullifier)
       )
     `)
+      // Los registros anteriores a esta columna se firmaron con el texto v1.
+      .then(() => query(
+        "ALTER TABLE abstenciones_notificadas ADD COLUMN IF NOT EXISTS texto_declaracion TEXT NOT NULL DEFAULT '" +
+          TEXTO_DECLARACION_ABSTENCION_V1 + "'"
+      ))
       .then(() => undefined)
       .catch((error) => {
         esquemaAbstencionesListo = null;

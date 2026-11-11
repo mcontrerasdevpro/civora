@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { id as ethersId } from "ethers";
 import { enTransaccion, query, asegurarEsquemaAbstenciones } from "./db";
 import { derivarNullifierCertificado, secretoNullifierCertificado } from "./nullifier-certificado.mjs";
+import { TEXTO_DECLARACION_ABSTENCION } from "./texto-abstencion.mjs";
 import { nullifierABytes32, propuestaIdBytes32, contratoLectura } from "./contrato";
 
 export type DeclaracionAbstencion = {
@@ -17,6 +18,8 @@ export type ReciboAbstencion = {
   id: string;
   fechaDeclaracion: string;
   huella: string;
+  /** Texto firmado, tal como se registró (cambia entre versiones). */
+  texto: string;
   declaracion: Omit<DeclaracionAbstencion, "propuestaId">;
 };
 
@@ -70,7 +73,7 @@ export async function registrarAbstencionNotificada(
     const id = randomUUID();
     const fechaDeclaracion = declaracion.fechaDeclaracion;
     const huella = ethersId(JSON.stringify({
-      schema: "civora/abstencion-notificada/v1",
+      schema: "civora/abstencion-notificada/v2",
       id,
       propuestaId: declaracion.propuestaId,
       titulo: declaracion.titulo,
@@ -78,19 +81,20 @@ export async function registrarAbstencionNotificada(
       fechaApertura: declaracion.fechaApertura,
       fechaCierre: declaracion.fechaCierre,
       fechaDeclaracion,
-      declaracion: "Manifiesto que no ejerceré mi voto en esta votación.",
+      declaracion: TEXTO_DECLARACION_ABSTENCION,
     }));
     await cliente.query(
       `INSERT INTO abstenciones_notificadas
-        (id, propuesta_id, nullifier, fecha_declaracion, titulo, pregunta, fecha_apertura, fecha_cierre, huella)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        (id, propuesta_id, nullifier, fecha_declaracion, titulo, pregunta, fecha_apertura, fecha_cierre, huella, texto_declaracion)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [id, declaracion.propuestaId, nullifier, fechaDeclaracion, declaracion.titulo,
-        declaracion.pregunta, declaracion.fechaApertura, declaracion.fechaCierre, huella]
+        declaracion.pregunta, declaracion.fechaApertura, declaracion.fechaCierre, huella, TEXTO_DECLARACION_ABSTENCION]
     );
     return {
       id,
       fechaDeclaracion,
       huella,
+      texto: TEXTO_DECLARACION_ABSTENCION,
       declaracion: {
         titulo: declaracion.titulo,
         pregunta: declaracion.pregunta,
@@ -106,9 +110,9 @@ export async function leerReciboAbstencion(id: string): Promise<ReciboAbstencion
   await asegurarEsquemaAbstenciones();
   const filas = await query<{
     id: string; fecha_declaracion: Date; huella: string; titulo: string; pregunta: string;
-    fecha_apertura: Date; fecha_cierre: Date;
+    fecha_apertura: Date; fecha_cierre: Date; texto_declaracion: string;
   }>(
-    `SELECT id, fecha_declaracion, huella, titulo, pregunta, fecha_apertura, fecha_cierre
+    `SELECT id, fecha_declaracion, huella, titulo, pregunta, fecha_apertura, fecha_cierre, texto_declaracion
      FROM abstenciones_notificadas WHERE id = $1`,
     [id]
   );
@@ -117,6 +121,7 @@ export async function leerReciboAbstencion(id: string): Promise<ReciboAbstencion
     id: fila.id,
     fechaDeclaracion: fila.fecha_declaracion.toISOString(),
     huella: fila.huella,
+    texto: fila.texto_declaracion,
     declaracion: {
       titulo: fila.titulo,
       pregunta: fila.pregunta,

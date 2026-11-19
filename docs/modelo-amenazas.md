@@ -45,8 +45,9 @@ que se despliegue el contrato nuevo, el desplegado en Sepolia sigue expuesto.
 La prueba no se verifica en el navegador ni sale hacia terceros: el SDK de
 ZKPassport la verificaría consultando un nodo de Alchemy con la prueba (con
 nullifier y opción) y la IP del votante, y la subiría a su panel. La web la
-envía directamente al contrato y crea el SDK con `disableProofStorage`; la
-CSP no permite WebAssembly ni Alchemy.
+envía directamente al contrato sin aplicar ninguna política del panel (desde
+el SDK 0.20, la subida solo ocurre con una política que la active); la CSP no
+permite WebAssembly ni Alchemy.
 
 ### Voto cruzado entre vías (A-04)
 

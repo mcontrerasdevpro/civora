@@ -34,7 +34,9 @@ import { datosVinculadosDeVoto, type Eligibility, type OpcionVoto } from "@civor
  * WebAssembly y descarga parámetros de Aztec, y consulta un nodo de Alchemy
  * con la prueba y la IP del votante. La CSP lo bloquea a propósito; la
  * verificación válida es la del contrato. Por lo mismo, las pruebas no se
- * suben al panel de ZKPassport (disableProofStorage).
+ * suben al panel de ZKPassport: desde @zkpassport/sdk 0.20 solo se suben si
+ * la solicitud usa una política del panel con proofStorageEnabled, y aquí
+ * nunca se aplica ninguna política (.policy()).
  *
  * crearSolicitudVerificacion() abre una conexion (WebSocket) con la app
  * movil de ZKPassport que debe permanecer viva mientras se espera la
@@ -49,7 +51,7 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_ZKPASSPORT_DOMAIN ?? "demo.zkpassport
 const DEV_MODE = process.env.NEXT_PUBLIC_ZKPASSPORT_DEV_MODE === "true";
 
 function clienteZkPassport(): ZKPassport {
-  return new ZKPassport(APP_DOMAIN, { disableProofStorage: true });
+  return new ZKPassport(APP_DOMAIN);
 }
 
 /** Indica si la prueba es la que verifica el contrato (modo compressed-evm). */

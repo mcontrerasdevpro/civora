@@ -52,6 +52,15 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Verificación:** `pnpm --filter web test` (111/111, incluidas las verificaciones CMS de `test/certificado.test.mjs`), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
 - **Pendiente:** una firma real con certificado en producción (escritorio y Android) tras desplegar.
 
+## SDK de ZKPassport 0.20 (2026-11-19, rama `fix/zkpassport-sdk-0.20`)
+
+- **Cambio:** `@zkpassport/sdk` 0.16.2 → 0.20.1 (sustituye al PR #53 de Dependabot, que fallaba en `typecheck`). El constructor ya no acepta opciones: `disableProofStorage` desaparece.
+- **Subida de pruebas al panel:** en 0.20 el SDK solo sube las pruebas si la solicitud aplica una política del panel con `proofStorageEnabled: true` (y nunca en modo demo). La web no aplica ninguna política (`.policy()`), así que las pruebas siguen sin salir hacia ZKPassport. El test de `datos-vinculados` comprueba ahora que no se usa `.policy(`.
+- **Nueva petición:** `request()` consulta `dashboard-api.zkpassport.id/public/project?domain=…` para leer la configuración del proyecto. Solo envía el dominio, la CSP ya lo permite (`*.zkpassport.id`) y, si falla, el SDK sigue sin ella.
+- **Contrato:** la forma de `SolidityVerifierParameters` (`version`, `proofVerificationData`, `committedInputs`, `serviceConfig`) no cambia y coincide con `ProofVerificationParams` de `Types.sol`.
+- **Verificación:** `pnpm --filter web test` (111/111), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
+- **Pendiente:** un voto real con la app de ZKPassport tras desplegar, para confirmar que el verificador del contrato acepta las pruebas de los circuitos nuevos.
+
 ## Firma en Android sin cifrado DES (2026-11-19, rama `fix/firma-android-sin-des`)
 
 - **Problema:** en producción, Android 16 con Cliente @firma 1.9.3 (última en Google Play) firmaba pero fallaba al cifrar el resultado con DES: «Error al cifrar la firma para enviarla al servidor intermedio» (`WebSignActivity.onSigningSuccess`, `CipherDataManager`, código de la app revisado en `ctt-gob-es/firma-android`).

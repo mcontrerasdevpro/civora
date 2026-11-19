@@ -45,6 +45,13 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## pkijs 4 y asn1js 4 (2026-11-19, rama `fix/pkijs-asn1js-4`)
+
+- **Cambio:** `pkijs` 3.4.1 → 4.0.1 y `asn1js` 3.0.10 → 4.0.0 en `apps/web`, juntos en un solo cambio (sustituye a los PR #54 y #55 de Dependabot). pkijs 4 declara asn1js ^4 como dependencia par y comprueba `instanceof` contra sus clases: con versiones mezcladas la verificación de firmas fallaría.
+- **Alcance:** solo `lib/certificado-digital.ts` usa las dos librerías (CMS, cadena y OCSP). La API exportada no cambia; las dos pasan a ser solo ESM y piden Node ^20.19 o ≥ 22.12 (la imagen usa Node 22.23 y el CI Node 24). asn1js 3 sigue en el lockfile solo como dependencia interna de `@peculiar/asn1-*` (vía `@zkpassport/utils`), que no se mezcla con pkijs.
+- **Verificación:** `pnpm --filter web test` (111/111, incluidas las verificaciones CMS de `test/certificado.test.mjs`), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
+- **Pendiente:** una firma real con certificado en producción (escritorio y Android) tras desplegar.
+
 ## SDK de ZKPassport 0.20 (2026-11-19, rama `fix/zkpassport-sdk-0.20`)
 
 - **Cambio:** `@zkpassport/sdk` 0.16.2 → 0.20.1 (sustituye al PR #53 de Dependabot, que fallaba en `typecheck`). El constructor ya no acepta opciones: `disableProofStorage` desaparece.

@@ -15,11 +15,11 @@
   "dependencies": {
     "@civora/shared-types": "workspace:*",
     "@civora/zk-identity": "workspace:*",
-    "asn1js": "^3.0.10",
+    "asn1js": "^4.0.0",
     "ethers": "^6.13.5",
     "next": "15.5.29",
     "pg": "^8.23.1",
-    "pkijs": "^3.4.1",
+    "pkijs": "^4.0.1",
     "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",

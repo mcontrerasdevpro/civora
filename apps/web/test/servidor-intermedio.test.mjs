@@ -85,3 +85,10 @@ test("las rutas existen donde autoscript.js las busca y no registran datos", asy
   assert.doesNotMatch(almacen, /console\./);
   assert.match(almacen, /DELETE FROM servidor_intermedio WHERE id = \$1 AND caduca > now\(\) RETURNING datos/);
 });
+
+test("autoscript.js lleva el parche de Civora que no pide cifrar en Android (ADR 0025)", async () => {
+  const script = await readFile(new URL("../public/js/autoscript.js", import.meta.url), "utf8");
+  assert.equal(script.match(/CIVORA \(ADR 0025\)/g)?.length, 2);
+  assert.ok(script.includes("var sinCifradoCivora = Platform.isAndroid();"));
+  assert.ok(script.includes("if (!cipherConfig && !sinCifradoCivora) {"));
+});

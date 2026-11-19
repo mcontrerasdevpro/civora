@@ -97,6 +97,7 @@ lo reproducen ([ADR 0021](decisiones/0021-una-sola-via-y-alertas-de-fraude.md)).
 - `StorageService` y `RetrieveService` son públicos y sin autenticación, como los oficiales de @firma. Solo guardan datos cifrados por el navegador o la app; la clave viaja en el enlace `afirma://` y no llega al servidor.
 - Un dato se entrega una sola vez y caduca a los 5 minutos. Quien conozca el identificador de sesión (20 caracteres aleatorios) podría recogerlo antes que el navegador e impedir esa firma, pero no descifrarlo.
 - Con 2000 datos pendientes el almacén rechaza más hasta que caducan: un abuso puede bloquear la firma desde el móvil unos minutos.
+- **En Android no hay cifrado** ([ADR 0025](decisiones/0025-firma-android-sin-cifrado-des.md)): el certificado (NIF y nombre) y la firma quedan en claro en la base de datos hasta entregarse o caducar (5 minutos). Quien obtenga el identificador de sesión en ese plazo podría leerlos.
 
 ### Registro de abstención notificada (ADR 0023)
 

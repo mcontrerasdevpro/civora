@@ -45,6 +45,13 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## Firma en Android sin cifrado DES (2026-11-19, rama `fix/firma-android-sin-des`)
+
+- **Problema:** en producción, Android 16 con Cliente @firma 1.9.3 (última en Google Play) firmaba pero fallaba al cifrar el resultado con DES: «Error al cifrar la firma para enviarla al servidor intermedio» (`WebSignActivity.onSigningSuccess`, `CipherDataManager`, código de la app revisado en `ctt-gob-es/firma-android`).
+- **Corrección ([ADR 0025](decisiones/0025-firma-android-sin-cifrado-des.md)):** parche marcado en `autoscript.js` para que en Android no envíe `key` ni `cipher`; la app sube certificado y firma en Base64 y el navegador los recoge sin descifrar. `autofirma.ts` quita los saltos de línea del Base64 de Android.
+- **Riesgo aceptado:** certificado y firma en claro en `servidor_intermedio` hasta 5 minutos o hasta entregarse. Ya llegan a la API de Civora para verificarse; no se registran.
+- **Verificación:** E2E con agentes Android (sin `key` ni `cipher`) e iOS (con los dos). Flujo completo simulado contra `next start` y Postgres local: la app sube `cert|firma` en Base64 URL-safe con saltos de línea y el navegador recibe los dos en Base64 estándar. `pnpm --filter web test` (111/111), `typecheck` y `test:e2e` (138/138). **Pendiente:** firma real con el móvil.
+
 ## Firma con certificado desde el móvil (2026-11-19, rama `feat/firma-certificado-movil`)
 
 - **Causa:** en Android e iOS, `autoscript.js` comprueba el servidor intermedio en `/afirma-signature-storage/StorageService` y `/afirma-signature-retriever/RetrieveService` del mismo origen; con un 404 muestra «no permite firmar desde el navegador en dispositivos móviles». Diseño en [ADR 0024](decisiones/0024-servidor-intermedio-autofirma-movil.md).

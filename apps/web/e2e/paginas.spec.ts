@@ -126,6 +126,39 @@ test.describe("CSP en todas las páginas", () => {
     });
   });
 
+  // Cliente @firma 1.9.x cifra con DES y falla en Android 16 (ADR 0025): en
+  // Android la web no le pasa clave; en iOS se mantiene el cifrado.
+  for (const [nombre, agente, conClave] of [
+    ["Android", "Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36", false],
+    ["iOS", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", true],
+  ] as const) {
+    test.describe(`firma en ${nombre}`, () => {
+      test.use({ userAgent: agente });
+
+      test(`el enlace a Cliente @firma ${conClave ? "lleva" : "no lleva"} clave de cifrado`, async ({ page }) => {
+        await simularApi(page);
+        await page.unroute("**/js/autoscript.js");
+        const enlaces: string[] = [];
+        page.on("request", (peticion) => {
+          if (/^(intent|afirma):\/\//.test(peticion.url())) enlaces.push(peticion.url());
+        });
+        await page.goto(`/votar/${PROPUESTA_ID}`);
+        await page.locator(".metodo-card").filter({ hasText: /certificado digital/i }).click();
+        await page.waitForFunction(() => Boolean((window as unknown as { AutoScript?: unknown }).AutoScript));
+        await page.evaluate(() => {
+          const w = window as unknown as { AutoScript: { sign: (...a: unknown[]) => void } };
+          w.AutoScript.sign("aG9sYQ==", "SHA256withRSA", "CAdES", "mode=explicit", () => {}, () => {});
+        });
+        await expect.poll(() => enlaces.length).toBeGreaterThan(0);
+        const parametros = new URL(enlaces[0].replace(/^(intent|afirma):\/\//, "https://app/")).searchParams;
+        expect(parametros.get("op")).toBe("sign");
+        expect(parametros.get("stservlet")).toContain("/afirma-signature-storage/StorageService");
+        expect(parametros.has("key")).toBe(conClave);
+        expect(parametros.has("cipher")).toBe(conClave);
+      });
+    });
+  }
+
   test("el servidor intermedio guarda un dato y lo entrega una sola vez", async ({ request }) => {
     const almacen = "/afirma-signature-storage/StorageService";
     const recuperacion = "/afirma-signature-retriever/RetrieveService";

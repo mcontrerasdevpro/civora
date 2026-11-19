@@ -33,6 +33,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 | Servidor intermedio (`StorageService` y `RetrieveService`) con Postgres, caducidad y entrega única | hecho |
 | Textos de la vía de certificado para el móvil | hecho |
 | E2E con agente de usuario Android y `autoscript.js` real | hecho |
+| En Android, sin cifrado DES: Cliente @firma 1.9.3 fallaba al cifrar ([ADR 0025](decisiones/0025-firma-android-sin-cifrado-des.md)) | hecho |
 | Firma real con Cliente @firma móvil en Android (certificado del sistema y DNIe por NFC) | pendiente (tras desplegar) |
 | Firma real con Cliente @firma móvil en iOS (certificado importado en la app) | pendiente (tras desplegar) |
 

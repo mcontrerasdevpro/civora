@@ -4784,7 +4784,15 @@ var AutoScript = ( function ( window, undefined ) {
 			function initProcess (opId, cipherConfig, params, successCallback, errorCallback) {
 				
 				var idSession = AfirmaUtils.generateNewIdSession();
-				var desKey = !!cipherConfig ? cipherConfig.legDes : generateDESCipherKey();
+				// CIVORA (ADR 0025): en Android no se pide cifrar el resultado. Cliente @firma
+				// 1.9.x lo cifra con DES y falla en Android 16 («Error al cifrar la firma para
+				// enviarla al servidor intermedio»). Sin "key" ni "cipher", la app lo sube en
+				// Base64 por HTTPS al servidor intermedio de Civora, que lo entrega una vez.
+				var sinCifradoCivora = Platform.isAndroid();
+				if (sinCifradoCivora) {
+					cipherConfig = null;
+				}
+				var desKey = sinCifradoCivora ? null : (!!cipherConfig ? cipherConfig.legDes : generateDESCipherKey());
 				var cipherConfigEncoded = !!cipherConfig ? encodeCipherConfig(cipherConfig) : null;
 				var sourceName = !!appName ? appName : DOMAIN_NAME;
 								
@@ -4803,7 +4811,7 @@ var AutoScript = ( function ( window, undefined ) {
 
 				// Si no hay configuracion de cifrado avanzada, componemos el objeto con la configuracion DES para
 				// despues poder procesar el resultado
-				if (!cipherConfig) {
+				if (!cipherConfig && !sinCifradoCivora) {
 					cipherConfig = { legDes : desKey };
 				}
 
@@ -4906,6 +4914,12 @@ var AutoScript = ( function ( window, undefined ) {
 			
 			function cipherAndSendData(dataB64, cipherConfig, fileId, httpRequest, errorCallback) {
 				
+				// CIVORA (ADR 0025): sin configuracion de cifrado (Android) se envian sin cifrar.
+				if (!cipherConfig) {
+					sendData(dataB64, fileId, httpRequest, errorCallback);
+					return;
+				}
+
 				var cipherConfigJson = cipherConfig;
 
 				// Si se soporta el cifrado avanzado, se utiliza				

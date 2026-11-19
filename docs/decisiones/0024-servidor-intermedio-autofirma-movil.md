@@ -2,6 +2,7 @@
 
 - **Estado:** aceptada (2026-11-19); pendiente de probar con la app en un móvil real
 - **Fecha:** 2026-11-19
+- **Modificada por:** [ADR 0025](0025-firma-android-sin-cifrado-des.md) en Android (sin cifrado DES)
 - **Relacionada:** [ADR 0013](0013-postgres-en-el-vps.md) (Postgres en el VPS), [ADR 0017](0017-servicios-por-frontera-de-confianza.md)
 
 ## Contexto

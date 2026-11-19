@@ -30,6 +30,7 @@ sustituya y marca la anterior como «sustituida por NNNN».
 | [0022](0022-el-votante-elige-la-via.md) | El votante puede elegir la vía (riesgo de doble voto aceptado en la demo) | aceptada (temporal) |
 | [0023](0023-registro-abstencion-notificada.md) | Registro interno de abstención notificada | aceptada para la PoC; no oficial |
 | [0024](0024-servidor-intermedio-autofirma-movil.md) | Servidor intermedio de Autofirma para firmar desde el móvil | aceptada (pendiente de prueba en móvil real) |
+| [0025](0025-firma-android-sin-cifrado-des.md) | En Android, Cliente @firma devuelve la firma sin cifrado DES | aceptada (pendiente de prueba en móvil real) |
 
 Para añadir una: copia cualquier ADR, usa el siguiente número libre y
 añádelo a esta tabla.

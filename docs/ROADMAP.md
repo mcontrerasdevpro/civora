@@ -10,6 +10,7 @@ Estados: **hecho**, **en curso**, **pendiente**.
 
 | Fase | Estado | Rama |
 |---|---|---|
+| [Firma con certificado desde el móvil](#firma-con-certificado-desde-el-móvil) | en curso (falta prueba en móvil real) | `feat/firma-certificado-movil` |
 | [Registro interno de abstención notificada](#registro-interno-de-abstención-notificada) | hecho; no oficial | `feat/abstencion-notificada` |
 | [Fase 0: seguridad](#fase-0-seguridad) | hecho | `fase-0-seguridad` |
 | [Accesibilidad y voto asistido (web)](#accesibilidad-y-voto-asistido-web) | hecho, con pendientes | `accesibilidad-voto-asistido` |
@@ -22,6 +23,20 @@ Estados: **hecho**, **en curso**, **pendiente**.
 | [Asistente de IA](#asistente-de-ia) | pendiente (futuro) | — |
 | [Paso a producción](#paso-a-producción) | en curso | `despliegue-vps` |
 | [Fase 2: MACI y auditoría externa](#fase-2-maci-y-auditoría-externa) | pendiente | — |
+
+## Firma con certificado desde el móvil
+
+**Objetivo:** que la vía de certificado funcione en Android e iOS con la app Cliente @firma móvil. Diseño: [ADR 0024](decisiones/0024-servidor-intermedio-autofirma-movil.md).
+
+| Tarea | Estado |
+|---|---|
+| Servidor intermedio (`StorageService` y `RetrieveService`) con Postgres, caducidad y entrega única | hecho |
+| Textos de la vía de certificado para el móvil | hecho |
+| E2E con agente de usuario Android y `autoscript.js` real | hecho |
+| Firma real con Cliente @firma móvil en Android (certificado del sistema y DNIe por NFC) | pendiente (tras desplegar) |
+| Firma real con Cliente @firma móvil en iOS (certificado importado en la app) | pendiente (tras desplegar) |
+
+**Criterio de aceptación:** un voto con certificado emitido desde un Android y un iPhone reales en la demo.
 
 ## Registro interno de abstención notificada
 

@@ -50,8 +50,8 @@ export function MetodoSelector({
           </span>
           <span className="metodo-card-desc">
             {sencillo
-              ? "Necesita tener en este ordenador su certificado digital y el programa Autofirma."
-              : "Firma un código con tu certificado digital (FNMT, DNIe...) usando Autofirma. Prueba tu identidad de verdad, pero no tu edad (el certificado no la contiene), así que se acepta autodeclarada."}
+              ? "Necesita su certificado digital y el programa Autofirma en el ordenador, o la app Cliente @firma en el móvil."
+              : "Firma un código con tu certificado digital (FNMT, DNIe...) usando Autofirma (o la app Cliente @firma en el móvil). Prueba tu identidad de verdad, pero no tu edad (el certificado no la contiene), así que se acepta autodeclarada."}
           </span>
         </button>
       )}

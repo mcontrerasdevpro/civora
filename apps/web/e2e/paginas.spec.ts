@@ -89,6 +89,53 @@ test.describe("CSP en todas las páginas", () => {
     expect(consola).toEqual([]);
   });
 
+  // En Android e iOS, autoscript.js usa el servidor intermedio del mismo
+  // origen (ADR 0024). Sin él mostraba «no permite firmar … en dispositivos
+  // móviles» nada más cargar.
+  test.describe("en un móvil Android", () => {
+    test.use({
+      userAgent:
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+    });
+
+    test("autoscript.js real encuentra el servidor intermedio y no bloquea la firma", async ({ page }) => {
+      const consola = await vigilarCsp(page);
+      await simularApi(page);
+      await page.unroute("**/js/autoscript.js");
+      const comprobaciones: { url: string; estado: number; texto: string }[] = [];
+      page.on("response", async (respuesta) => {
+        if (/afirma-signature-(storage|retriever)/.test(respuesta.url())) {
+          comprobaciones.push({ url: respuesta.url(), estado: respuesta.status(), texto: await respuesta.text() });
+        }
+      });
+
+      await page.goto(`/votar/${PROPUESTA_ID}`);
+      await page.locator(".metodo-card").filter({ hasText: /certificado digital/i }).click();
+      await expect.poll(() => comprobaciones.length).toBe(2);
+
+      for (const { url, estado, texto } of comprobaciones) {
+        expect(url).toContain("op=check");
+        expect(estado).toBe(200);
+        expect(texto).toBe("OK");
+      }
+      await page.waitForTimeout(300);
+      await expect(page.getByText(/no permite firmar desde el navegador/i)).toHaveCount(0);
+      const violaciones = await page.evaluate(() => (window as unknown as { __violaciones: string[] }).__violaciones);
+      expect(violaciones).toEqual([]);
+      expect(consola).toEqual([]);
+    });
+  });
+
+  test("el servidor intermedio guarda un dato y lo entrega una sola vez", async ({ request }) => {
+    const almacen = "/afirma-signature-storage/StorageService";
+    const recuperacion = "/afirma-signature-retriever/RetrieveService";
+    const id = "e2eAbCdEfGhIjKlMnOpQ";
+    expect(await (await request.get(`${recuperacion}?op=get&v=1_0&id=${id}&it=0`)).text()).toMatch(/^ERR-0[68]:=/);
+    const invalido = await request.post(almacen, { form: { op: "put", v: "1_0", id: "../x", dat: "a" } });
+    expect(await invalido.text()).toMatch(/^ERR-02:=/);
+    expect(invalido.headers()["content-type"]).toContain("text/plain");
+  });
+
   test("/logo.png se sirve como imagen (lo descarga la app de ZKPassport)", async ({ request }) => {
     const respuesta = await request.get("/logo.png");
     expect(respuesta.status()).toBe(200);

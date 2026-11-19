@@ -87,8 +87,8 @@ export function IdentificacionCertificado({
 
       {sencillo ? (
         <p className="form-hint" style={{ marginTop: 0, marginBottom: 20 }}>
-          Necesita tener en este ordenador su certificado digital y el programa
-          Autofirma. Después de elegir y confirmar su voto, Autofirma le pedirá
+          Necesita su certificado digital y el programa Autofirma en el
+          ordenador, o la app Cliente @firma en el móvil. Después de elegir y confirmar su voto, Autofirma le pedirá
           que lo firme: así sabemos que es usted.
         </p>
       ) : (
@@ -100,6 +100,13 @@ export function IdentificacionCertificado({
             instalada. Verificamos la firma y que tu certificado esté emitido
             por una autoridad real (FNMT o la DGP); la firma y el certificado no
             se guardan.
+          </p>
+
+          <p className="form-hint" style={{ marginBottom: 20 }}>
+            En Android o iOS se firma con la app Cliente @firma móvil, también
+            del Gobierno. En Android usa los certificados instalados en el
+            teléfono o el DNIe por NFC; en iOS hay que importar antes el
+            certificado en la app.
           </p>
 
           <p className="form-hint" style={{ marginBottom: 20 }}>

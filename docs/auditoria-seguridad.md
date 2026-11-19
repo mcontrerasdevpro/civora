@@ -45,6 +45,14 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## Firma con certificado desde el móvil (2026-11-19, rama `feat/firma-certificado-movil`)
+
+- **Causa:** en Android e iOS, `autoscript.js` comprueba el servidor intermedio en `/afirma-signature-storage/StorageService` y `/afirma-signature-retriever/RetrieveService` del mismo origen; con un 404 muestra «no permite firmar desde el navegador en dispositivos móviles». Diseño en [ADR 0024](decisiones/0024-servidor-intermedio-autofirma-movil.md).
+- **Corrección:** las dos rutas en la web, con tabla `servidor_intermedio` en Postgres: caducidad de 5 minutos, entrega única con `DELETE … RETURNING`, identificadores alfanuméricos, 256 KB por dato y 2000 pendientes como máximo. Respuestas `text/plain` con `no-store` y `nosniff`. Los datos llegan cifrados con una clave que solo viaja en el enlace `afirma://`; no se registran ni identificadores ni datos.
+- **Riesgo aceptado:** las rutas son públicas, como el servicio oficial. Un abuso puede llenar el tope durante 5 minutos y bloquear la firma desde el móvil, no la de escritorio.
+- **Verificación:** pruebas unitarias del protocolo (`test/servidor-intermedio.test.mjs`); `next start` contra un Postgres local: `check`, `put`, `get` único, `ERR-06` tras leer y tras caducar, e id no válido rechazado. E2E con agente de usuario Android y el `autoscript.js` real: las dos comprobaciones devuelven `OK`, no aparece el aviso de incompatibilidad ni bloqueos de CSP. `pnpm --filter web test` (110/110), `typecheck`, `build` y `test:e2e` (134/134) en verde.
+- **Pendiente:** firmar de verdad con Cliente @firma móvil en Android e iOS tras desplegar; no se ha podido probar sin dispositivo.
+
 ## Registro de abstención notificada (2026-10-22, rama `feat/abstencion-notificada`)
 
 - Se añade declaración firmada por certificado en una propuesta abierta y recibo consultable con ID, fecha y huella.

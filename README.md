@@ -135,7 +135,10 @@ dominios se configuran por variables de entorno, nunca en el código.
 Estado del entorno de pruebas:
 
 - **Certificado digital (Autofirma):** funciona con certificados reales
-  (probado en Edge y Brave). La edad se declara y no se contrasta.
+  (probado en Edge y Brave). La edad se declara y no se contrasta. En
+  Android e iOS se firma con la app Cliente @firma móvil a través del
+  servidor intermedio de la propia web ([ADR 0024](docs/decisiones/0024-servidor-intermedio-autofirma-movil.md));
+  pendiente de probar con un móvil real.
 - **DNIe o pasaporte (ZKPassport):** solo funciona con los **pasaportes
   simulados** de la app ZKPassport. El registro de certificados de
   ZKPassport en Sepolia solo contiene los de esos documentos; los reales
@@ -301,7 +304,11 @@ para cambiarlos hay que desplegar otro contrato. Para demo local, define
 La vía de certificado digital usa [Autofirma](https://github.com/ctt-gob-es/clienteafirma),
 la herramienta oficial del Gobierno de España (hay que tenerla instalada):
 el navegador le pide que firme un código aleatorio con el certificado
-instalado (FNMT, DNIe...) y el servidor comprueba, en
+instalado (FNMT, DNIe...). En el móvil firma la app Cliente @firma, que
+recibe y devuelve los datos cifrados por el servidor intermedio de la web
+(`/afirma-signature-storage` y `/afirma-signature-retriever`,
+[ADR 0024](docs/decisiones/0024-servidor-intermedio-autofirma-movil.md)).
+En los dos casos el servidor comprueba, en
 `apps/web/lib/certificado-digital.ts`:
 
 1. Que la firma CMS/CAdES es criptográficamente válida y cubre exactamente

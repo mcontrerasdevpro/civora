@@ -44,7 +44,8 @@ export function firmarReto(retoHex: string): Promise<{ firmaB64: string; certB64
       "SHA256withRSA",
       "CAdES",
       "mode=explicit\nformat=CAdES",
-      (firmaB64, certB64) => resolver({ firmaB64, certB64 }),
+      // Cliente @firma en Android devuelve Base64 con saltos de línea (ADR 0025).
+      (firmaB64, certB64) => resolver({ firmaB64: firmaB64.replace(/\s/g, ""), certB64: certB64.replace(/\s/g, "") }),
       (_tipoError, mensaje) => rechazar(new ErrorAutofirma(mensaje || "No se ha podido firmar con Autofirma."))
     );
   });

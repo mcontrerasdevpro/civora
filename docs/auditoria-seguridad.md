@@ -51,8 +51,15 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Subida de pruebas al panel:** en 0.20 el SDK solo sube las pruebas si la solicitud aplica una política del panel con `proofStorageEnabled: true` (y nunca en modo demo). La web no aplica ninguna política (`.policy()`), así que las pruebas siguen sin salir hacia ZKPassport. El test de `datos-vinculados` comprueba ahora que no se usa `.policy(`.
 - **Nueva petición:** `request()` consulta `dashboard-api.zkpassport.id/public/project?domain=…` para leer la configuración del proyecto. Solo envía el dominio, la CSP ya lo permite (`*.zkpassport.id`) y, si falla, el SDK sigue sin ella.
 - **Contrato:** la forma de `SolidityVerifierParameters` (`version`, `proofVerificationData`, `committedInputs`, `serviceConfig`) no cambia y coincide con `ProofVerificationParams` de `Types.sol`.
-- **Verificación:** `pnpm --filter web test` (110/110), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
+- **Verificación:** `pnpm --filter web test` (111/111), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
 - **Pendiente:** un voto real con la app de ZKPassport tras desplegar, para confirmar que el verificador del contrato acepta las pruebas de los circuitos nuevos.
+
+## Firma en Android sin cifrado DES (2026-11-19, rama `fix/firma-android-sin-des`)
+
+- **Problema:** en producción, Android 16 con Cliente @firma 1.9.3 (última en Google Play) firmaba pero fallaba al cifrar el resultado con DES: «Error al cifrar la firma para enviarla al servidor intermedio» (`WebSignActivity.onSigningSuccess`, `CipherDataManager`, código de la app revisado en `ctt-gob-es/firma-android`).
+- **Corrección ([ADR 0025](decisiones/0025-firma-android-sin-cifrado-des.md)):** parche marcado en `autoscript.js` para que en Android no envíe `key` ni `cipher`; la app sube certificado y firma en Base64 y el navegador los recoge sin descifrar. `autofirma.ts` quita los saltos de línea del Base64 de Android.
+- **Riesgo aceptado:** certificado y firma en claro en `servidor_intermedio` hasta 5 minutos o hasta entregarse. Ya llegan a la API de Civora para verificarse; no se registran.
+- **Verificación:** E2E con agentes Android (sin `key` ni `cipher`) e iOS (con los dos). Flujo completo simulado contra `next start` y Postgres local: la app sube `cert|firma` en Base64 URL-safe con saltos de línea y el navegador recibe los dos en Base64 estándar. `pnpm --filter web test` (111/111), `typecheck` y `test:e2e` (138/138). **Pendiente:** firma real con el móvil.
 
 ## Firma con certificado desde el móvil (2026-11-19, rama `feat/firma-certificado-movil`)
 

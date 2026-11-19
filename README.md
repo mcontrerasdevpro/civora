@@ -269,8 +269,9 @@ cualquier otra opción ([ADR 0014](docs/decisiones/0014-opcion-vinculada-prueba-
 La web toma la prueba en cuanto llega del móvil (`onProofGenerated`) y la
 envía al contrato sin esperar a que el SDK la verifique en el navegador: esa
 verificación enviaría la prueba, con la IP del votante, a un nodo de Alchemy,
-y la CSP la bloquea a propósito. El SDK se crea con `disableProofStorage`
-para que no suba las pruebas al panel de ZKPassport. En redes locales de Hardhat se despliega en su
+y la CSP la bloquea a propósito. Las pruebas no se suben al panel de ZKPassport:
+desde `@zkpassport/sdk` 0.20 solo se suben con una política del panel que lo
+active, y la web no aplica ninguna. En redes locales de Hardhat se despliega en su
 lugar un `MockRootVerifier` (ver `packages/contracts/test/`), porque el
 verificador real solo existe en redes públicas.
 

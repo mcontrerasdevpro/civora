@@ -45,6 +45,15 @@ Verificación: `pnpm --filter web test` (15 pruebas), `typecheck`, `build` y `pn
 - **Imagen:** base fijada por digest, lockfile congelado, usuario no root, sin `.env` ni tests, secretos solo en ejecución. El job «Imagen Docker» del CI la construye y comprueba healthcheck, `/api/salud`, CSP sin `unsafe-eval`, usuario no root y ausencia de `.env`. No se ha podido construir en local (sin Docker); queda verificada por ese job.
 - **Registros fuera de la aplicación:** proxy de Easypanel, Docker y proveedores; ver [modelo de amenazas](modelo-amenazas.md#registros-del-servidor-y-del-proxy).
 
+## SDK de ZKPassport 0.20 (2026-11-19, rama `fix/zkpassport-sdk-0.20`)
+
+- **Cambio:** `@zkpassport/sdk` 0.16.2 → 0.20.1 (sustituye al PR #53 de Dependabot, que fallaba en `typecheck`). El constructor ya no acepta opciones: `disableProofStorage` desaparece.
+- **Subida de pruebas al panel:** en 0.20 el SDK solo sube las pruebas si la solicitud aplica una política del panel con `proofStorageEnabled: true` (y nunca en modo demo). La web no aplica ninguna política (`.policy()`), así que las pruebas siguen sin salir hacia ZKPassport. El test de `datos-vinculados` comprueba ahora que no se usa `.policy(`.
+- **Nueva petición:** `request()` consulta `dashboard-api.zkpassport.id/public/project?domain=…` para leer la configuración del proyecto. Solo envía el dominio, la CSP ya lo permite (`*.zkpassport.id`) y, si falla, el SDK sigue sin ella.
+- **Contrato:** la forma de `SolidityVerifierParameters` (`version`, `proofVerificationData`, `committedInputs`, `serviceConfig`) no cambia y coincide con `ProofVerificationParams` de `Types.sol`.
+- **Verificación:** `pnpm --filter web test` (110/110), `typecheck`, `build` y `pnpm audit --prod` sin vulnerabilidades en local; E2E e imagen Docker en el CI.
+- **Pendiente:** un voto real con la app de ZKPassport tras desplegar, para confirmar que el verificador del contrato acepta las pruebas de los circuitos nuevos.
+
 ## Firma con certificado desde el móvil (2026-11-19, rama `feat/firma-certificado-movil`)
 
 - **Causa:** en Android e iOS, `autoscript.js` comprueba el servidor intermedio en `/afirma-signature-storage/StorageService` y `/afirma-signature-retriever/RetrieveService` del mismo origen; con un 404 muestra «no permite firmar desde el navegador en dispositivos móviles». Diseño en [ADR 0024](decisiones/0024-servidor-intermedio-autofirma-movil.md).

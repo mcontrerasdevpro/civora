@@ -35,8 +35,9 @@ test("la solicitud a ZKPassport vincula el dato con bind(\"custom_data\")", asyn
 
 test("la prueba se envía al llegar (onProofGenerated) y no se sube al panel de ZKPassport", async () => {
   const identidad = await readFile(new URL("../../../packages/zk-identity/src/index.ts", import.meta.url), "utf8");
-  assert.match(identidad, /new ZKPassport\(APP_DOMAIN, \{ disableProofStorage: true \}\)/);
-  assert.doesNotMatch(identidad, /new ZKPassport\(APP_DOMAIN\)/);
+  // Desde @zkpassport/sdk 0.20 la subida al panel solo ocurre si la solicitud
+  // aplica una política del panel con proofStorageEnabled: no se aplica ninguna.
+  assert.doesNotMatch(identidad, /\.policy\(\s*["'`]/);
 
   const flujo = await readFile(new URL("../app/votar/IdentificacionDnie.tsx", import.meta.url), "utf8");
   assert.match(flujo, /solicitud\.onProofGenerated\(/);

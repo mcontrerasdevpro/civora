@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@civora/shared-types": "workspace:*",
-    "@zkpassport/sdk": "^0.20.1"
+    "@zkpassport/sdk": "^0.21.0"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
